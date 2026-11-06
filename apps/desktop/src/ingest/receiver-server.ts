@@ -85,11 +85,12 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
       case 'pickFolder':
         return plain().reject('pickFolderUnsupported');
       case 'open':
-        void open(
+        return settle(
+          open,
           req,
           createResponder(res, cors, limits.deadlineMs, () => {}),
+          'focusFailed',
         );
-        return;
       case 'sync': {
         if (inFlight) return plain().reject('busy');
         const slot = Promise.withResolvers<void>();
@@ -98,9 +99,19 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
           if (inFlight === slot.promise) inFlight = null;
           slot.resolve();
         });
-        void sync(req, responder);
+        return settle(sync, req, responder, 'saveFailed');
       }
     }
+  }
+
+  // An unhandled rejection would end the child, and the sender with no reply.
+  function settle(
+    run: (req: IncomingMessage, responder: Responder) => Promise<void>,
+    req: IncomingMessage,
+    responder: Responder,
+    fallback: RejectionCode,
+  ): void {
+    run(req, responder).catch(() => responder.reject(fallback));
   }
 
   async function sync(req: IncomingMessage, responder: Responder): Promise<void> {

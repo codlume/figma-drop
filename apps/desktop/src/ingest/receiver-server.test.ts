@@ -8,7 +8,7 @@ import { bindListeners } from './listeners';
 import type { Listeners } from './listeners';
 import type { ReceiverBackend } from './receiver-protocol';
 import { createReceiverHandler } from './receiver-server';
-import type { ReceiverHandler, ReceiverLimits } from './receiver-server';
+import type { ReceiverHandler, ReceiverHandlerOptions, ReceiverLimits } from './receiver-server';
 import { REJECTIONS } from './rejections';
 import {
   PLUGIN_HEADERS,
@@ -39,11 +39,18 @@ afterEach(async () => {
 async function start(
   overrides: Partial<ReceiverBackend> = {},
   limits: Partial<ReceiverLimits> = {},
+  notify?: ReceiverHandlerOptions['notify'],
 ): Promise<Instance> {
   const scratch = await scratchDir();
   const port = await freePort();
   const backend = fakeBackend(overrides);
-  const handler = createReceiverHandler({ port, stagingDir: scratch.dir, backend, limits });
+  const handler = createReceiverHandler({
+    port,
+    stagingDir: scratch.dir,
+    backend,
+    limits,
+    ...(notify && { notify }),
+  });
   const bound = await bindListeners({
     port,
     handler: handler.handle,
@@ -171,6 +178,19 @@ describe('POST /sync', () => {
     });
     expectRejection(await syncRequest(port, validPayload()), 'libraryUnavailable');
     await waitForEntries(stagingDir, 0);
+  });
+
+  it('still replies and keeps serving when the pipeline throws unexpectedly', async () => {
+    const { port } = await start({}, {}, (event) => {
+      if (event === 'parse-start') throw new Error('parent port closed');
+    });
+
+    const reply = await syncRequest(port, validPayload());
+    expect(reply.status).toBe(REJECTIONS.saveFailed.status);
+    expect(JSON.parse(reply.body)).toEqual({ error: REJECTIONS.saveFailed.error });
+
+    const next = await request({ port, path: '/', headers: { Origin: 'null' } });
+    expect(next.status).toBe(200);
   });
 
   it('rejects malformed JSON and a payload with no node', async () => {
