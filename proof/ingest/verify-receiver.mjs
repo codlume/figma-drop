@@ -146,6 +146,37 @@ function overrunByChunks(port) {
   });
 }
 
+function blockingOverrun(port) {
+  return new Promise((resolve) => {
+    const size = 4 * 1024 * 1024;
+    const frame = Buffer.concat([
+      Buffer.from(`${size.toString(16)}\r\n`),
+      Buffer.alloc(size, 0x20),
+      Buffer.from('\r\n'),
+    ]);
+    const frames = (MAX_BODY_BYTES + 64 * 1024 * 1024) / size;
+    const socket = connect({ host: '127.0.0.1', port });
+    let reply = '';
+    let flushed = false;
+    socket.on('error', () => {});
+    socket.once('close', () => resolve({ reply, flushed }));
+    socket.on('data', (data) => {
+      reply += data.toString('latin1');
+      if (reply.includes('\r\n\r\n')) socket.destroy();
+    });
+    socket.pause();
+    socket.write(
+      `POST /sync HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+        `Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n`,
+    );
+    for (let sent = 1; sent < frames; sent += 1) socket.write(frame);
+    socket.write(frame, () => {
+      flushed = true;
+      socket.resume();
+    });
+  });
+}
+
 async function main() {
   const scratch = realpathSync(await mkdtemp(join(tmpdir(), 'figma-drop-receiver-')));
   const library = join(scratch, 'library');
@@ -327,6 +358,9 @@ async function main() {
       overrun.sent < MAX_BODY_BYTES + 64 * 1024 * 1024,
       `overrun cut near the cap, sent ${overrun.sent}`,
     );
+    const blocking = await blockingOverrun(port);
+    assert(blocking.flushed, 'a sender that writes before it reads is drained');
+    assert(blocking.reply.startsWith('HTTP/1.1 413'), 'and then reads its 413');
     assert((await revisionCount(page)) === counted, 'no refused request reached the library');
     assert(
       (await readdir(join(library, '.staging'))).length === 0,

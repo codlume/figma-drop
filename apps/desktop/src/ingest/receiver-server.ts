@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
 
 import { MAX_BODY_BYTES, REPLY_DEADLINE_MS } from '@figma-drop/export-contract';
 import { openRequestSchema } from '@figma-drop/export-contract/parser';
@@ -71,11 +72,13 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
   const { backend, stagingDir, port } = options;
   const notify = options.notify ?? (() => {});
   let inFlight: Promise<void> | null = null;
+  const refused = new WeakSet<Socket>();
 
   function handle(req: IncomingMessage, res: ServerResponse): void {
-    // Pipelined behind a refused upload, so a reply could never reach the sender.
-    if (req.socket.writableEnded) {
-      req.resume();
+    // No reply can follow a refusal on this socket, and holding the request unanswered
+    // would defeat Node's backpressure, so a sender that pipelines loses the connection.
+    if (refused.has(req.socket)) {
+      req.socket.destroy();
       return;
     }
     const { cors, outcome } = decideRequest(facts(req), port);
@@ -115,6 +118,7 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
   // this one half-closes instead and throws the rest away for a bounded time.
   function refuseUpload(req: IncomingMessage, responder: Responder): void {
     const { socket } = req;
+    refused.add(socket);
     socket.destroySoon = () => socket.end();
     responder.reject('bodyTooLarge', CLOSE);
     req.resume();

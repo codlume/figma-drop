@@ -1,10 +1,10 @@
-import { readdir, watch } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
 import type { Socket } from 'node:net';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import type { CommitResult } from '../shared/integration';
 import type { CommandErrorCode } from '../shared/library';
@@ -81,13 +81,7 @@ function expectCors(reply: HttpReply): void {
 }
 
 async function waitForEntries(dir: string, count: number): Promise<void> {
-  const controller = new AbortController();
-  try {
-    const changes = watch(dir, { signal: controller.signal })[Symbol.asyncIterator]();
-    while ((await readdir(dir)).length !== count) await changes.next();
-  } finally {
-    controller.abort();
-  }
+  await vi.waitFor(async () => expect(await readdir(dir)).toHaveLength(count));
 }
 
 describe('POST /sync', () => {
@@ -315,6 +309,13 @@ describe('POST /sync', () => {
   });
 });
 
+function head(port: number, target: string, framing: string): string {
+  return (
+    `POST ${target} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+    `Content-Type: application/json\r\n${framing}\r\n\r\n`
+  );
+}
+
 // Streams a body the way a plugin mid-upload does, and stops only on a reply or a dead socket.
 function uploadUntilReply(port: number, head: string, frame: Buffer): Promise<string> {
   return new Promise((resolve) => {
@@ -341,15 +342,12 @@ function uploadUntilReply(port: number, head: string, frame: Buffer): Promise<st
 
 describe('a plugin still uploading when the cap is reached', () => {
   const CAP = 1024 * 1024;
-  const headers = (port: number, framing: string) =>
-    `POST /sync HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
-    `Content-Type: application/json\r\n${framing}\r\n\r\n`;
 
   it('reads the 413 after a declared oversize, instead of a reset', async () => {
     const { port } = await start({}, { maxBodyBytes: CAP });
     const frame = Buffer.alloc(256 * 1024, 0x20);
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      const head = headers(port, `Content-Length: ${64 * CAP}`);
+      (port, `Content-Length: ${64 * CAP}`);
       expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
     }
   });
@@ -363,7 +361,7 @@ describe('a plugin still uploading when the cap is reached', () => {
       Buffer.from('\r\n'),
     ]);
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      const head = headers(port, 'Transfer-Encoding: chunked');
+      (port, 'Transfer-Encoding: chunked');
       expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
     }
   });
@@ -388,9 +386,6 @@ describe('a sender that never stops after the 413', () => {
 
 describe('a refused upload', () => {
   const CAP = 8 * 1024 * 1024;
-  const head = (port: number, target: string, framing: string) =>
-    `POST ${target} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
-    `Content-Type: application/json\r\n${framing}\r\n\r\n`;
 
   it('holds none of its body while the connection stays open', async () => {
     const { port } = await start({}, { maxBodyBytes: CAP, discardMs: 60_000 });
@@ -402,8 +397,14 @@ describe('a refused upload', () => {
       Buffer.alloc(size, 0x20),
       Buffer.from('\r\n'),
     ]);
-    collect();
-    const before = process.memoryUsage().arrayBuffers;
+    const settledArrayBuffers = async () => {
+      for (let pass = 0; pass < 4; pass += 1) {
+        collect();
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      return process.memoryUsage().arrayBuffers;
+    };
+    const before = await settledArrayBuffers();
 
     const held: Socket[] = [];
     for (let body = 0; body < 6; body += 1) {
@@ -416,12 +417,10 @@ describe('a refused upload', () => {
         for (let sent = 0; sent <= CAP; sent += size) socket.write(frame);
       });
     }
-    collect();
-    const retained = process.memoryUsage().arrayBuffers - before;
+    const retained = (await settledArrayBuffers()) - before;
     for (const socket of held) socket.destroy();
 
-    // Six held bodies would be 48 MiB. Socket and test buffers account for the rest.
-    expect(retained).toBeLessThan(3 * CAP);
+    expect(retained).toBeLessThan(CAP);
   });
 
   it('reads and discards all a blocking chunked sender writes before it reads', async () => {
@@ -498,6 +497,62 @@ describe('a refused upload', () => {
       expect(backend.commits).toHaveLength(0);
     },
   );
+});
+
+describe('a request pipelined behind a refusal', () => {
+  it('cannot commit or focus while an earlier reply delays the refusal', async () => {
+    const focusing = deferred<boolean>();
+    const focused: string[] = [];
+    const { port, backend, handler } = await start(
+      {
+        focus: (path) => {
+          focused.push(path);
+          return focused.length === 1 ? focusing.promise : Promise.resolve(true);
+        },
+      },
+      { maxOpenBodyBytes: 1024 },
+    );
+    const valid = JSON.stringify({ path: '/known' });
+    const refused = 'x'.repeat(2048);
+    const later = JSON.stringify({ path: '/second' });
+    const payload = validPayload();
+    const socket = connect({ host: '127.0.0.1', port });
+    socket.on('error', () => {});
+    const closed = new Promise((resolve) => socket.once('close', resolve));
+    socket.write(
+      head(port, '/open', `Content-Length: ${valid.length}`) +
+        valid +
+        head(port, '/open', `Content-Length: ${refused.length}`) +
+        refused +
+        head(port, '/open', `Content-Length: ${later.length}`) +
+        later +
+        head(port, '/sync', `Content-Length: ${Buffer.byteLength(payload)}`) +
+        payload,
+    );
+
+    await closed;
+    focusing.resolve(true);
+    await handler.idle();
+    expect(focused).toEqual(['/known']);
+    expect(backend.commits).toHaveLength(0);
+  });
+
+  it('ends the connection at once, so a flood cannot pile up unanswered', async () => {
+    const { port } = await start({}, { maxOpenBodyBytes: 1024, discardMs: 60_000 });
+    const refused = 'x'.repeat(2048);
+    const socket = connect({ host: '127.0.0.1', port, allowHalfOpen: true });
+    socket.on('error', () => {});
+    socket.resume();
+    const closed = new Promise((resolve) => socket.once('close', resolve));
+    socket.write(head(port, '/open', `Content-Length: ${refused.length}`) + refused);
+    socket.once('end', () => {
+      const flood = setInterval(() => {
+        socket.write(`GET / HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n\r\n`);
+      }, 1);
+      socket.once('close', () => clearInterval(flood));
+    });
+    await closed;
+  });
 });
 
 describe('the deadline reply', () => {
