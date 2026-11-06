@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,6 +29,12 @@ const launch = () => launchApp({ ...paths, port });
 const realLibraryBefore = existsSync(realLibrary) ? statSync(realLibrary).mtimeMs : null;
 const portsSeen = new Set();
 
+// The receiver lands separately, and with it a switched-on app reads differently.
+const hasIngest = existsSync(join(desktopDir, 'src/ingest/receiver-controller.ts'));
+const switchedOn = hasIngest
+  ? { state: 'listening', text: `Listening on port ${port}` }
+  : { state: 'unavailable', text: 'No receiver' };
+
 const persisted = async () => JSON.parse(await readFile(settingsPath, 'utf8'));
 
 async function step(label, run) {
@@ -40,10 +46,13 @@ async function recordPorts(app) {
   for (const seen of await app.listeningPorts()) portsSeen.add(seen);
 }
 
+// The switch appears once the receiver answers, and the list once the library has.
+const RENDERED = `!!document.querySelector('[role=switch]') && !!document.querySelector('nav [role=listbox]')`;
+
 async function waitForWindow(app) {
   const page = await app.page();
   const errors = await page.collectErrors();
-  await waitUntil(() => page.evaluate(`document.body.innerText.includes('figma-drop')`), 'content');
+  await waitUntil(() => page.evaluate(RENDERED), 'the library list and the receiver switch');
   return { page, errors };
 }
 
@@ -99,27 +108,51 @@ async function exitsByItselfWithAWindowOpen({ label, trigger }) {
   };
 }
 
+function builtCss() {
+  const rendererDir = join(desktopDir, 'dist/renderer');
+  const html = readFileSync(join(rendererDir, 'index.html'), 'utf8');
+  const links = [...html.matchAll(/<link rel="stylesheet"[^>]*href="\.\/(assets\/[^"]+)"/g)];
+  const cssFiles = readdirSync(join(rendererDir, 'assets')).filter((name) => name.endsWith('.css'));
+  assert(links.length === 1, `index.html links one stylesheet, got ${links.length}`);
+  assert(cssFiles.length === 1, `no orphan CSS asset, got ${cssFiles.join(', ')}`);
+  return readFileSync(join(rendererDir, links[0][1]), 'utf8');
+}
+
 const trayItem = async (app, id) => (await app.hook('tray()')).items.find((i) => i.id === id);
 
 async function main() {
   log.write('scratch library and user data under the system temp dir, free test port');
   assert(existsSync(join(desktopDir, 'dist-electron/main.cjs')), 'run pnpm build first');
 
+  await step('one linked CSS file holds the StyleX rules and the App stylesheet', async () => {
+    const css = builtCss();
+    assert(css.includes('@layer'), 'StyleX layers in the linked CSS');
+    assert(css.includes('#f6f6f4'), 'token values in the linked CSS');
+    assert(css.includes('color-scheme'), "App's own style.css in the linked CSS");
+  });
+
+  await step('the receiver bundle is packed exactly when src/ingest exists', async () => {
+    const packed = existsSync(join(desktopDir, 'dist-electron/receiver.cjs'));
+    assert(packed === hasIngest, `receiver.cjs ${packed}, src/ingest ${hasIngest}`);
+  });
+
   let app = launch();
   let { page, errors } = await waitForWindow(app);
   await app.waitForHooks();
 
-  await step('a window loads and renders the status view', async () => {
-    await waitForText(page, 'The library interface is not installed yet.');
+  await step('a window loads and renders the real library view', async () => {
     assert((await app.hook('windows()')).length === 1, 'one window');
+    await waitForText(page, 'Figma files');
+    await waitForText(page, 'Unidentified');
+    await waitForText(page, switchedOn.text);
   });
 
   await step('StyleX CSS is linked and token colors reach the page', async () => {
     const style = await page.evaluate(`(() => {
-      const main = getComputedStyle(document.querySelector('main'));
+      const sidebar = getComputedStyle(document.querySelector('nav').parentElement);
       return {
         links: document.querySelectorAll('link[rel=stylesheet]').length,
-        background: main.backgroundColor,
+        background: sidebar.backgroundColor,
         bodyMargin: getComputedStyle(document.body).marginTop,
       };
     })()`);
@@ -161,28 +194,41 @@ async function main() {
     );
   });
 
-  await step('status reads unavailable and nothing listens on the test port', async () => {
-    const status = await page.evaluate('window.figmaDrop.receiver.getStatus()');
-    assert(status.state === 'unavailable', `status ${JSON.stringify(status)}`);
-    await waitForText(page, 'Receiver unavailable');
-    assert(await refusesConnection('127.0.0.1', port), 'nothing on 127.0.0.1');
-    assert(await refusesConnection('::1', port), 'nothing on ::1');
-    assert(!(await app.listeningPorts()).includes(port), 'the app holds no test port listener');
+  await step(`status reads ${switchedOn.state} and the test port agrees`, async () => {
+    const status = await waitUntil(async () => {
+      const current = await page.evaluate('window.figmaDrop.receiver.getStatus()');
+      return current.state === switchedOn.state && current;
+    }, `status ${switchedOn.state}`);
+    if (hasIngest) assert(status.port === port, `status ${JSON.stringify(status)}`);
+    const refused = !hasIngest;
+    assert(
+      (await refusesConnection('127.0.0.1', port)) === refused,
+      `127.0.0.1 refused ${!refused}`,
+    );
+    assert((await refusesConnection('::1', port)) === refused, `::1 refused ${!refused}`);
+    const held = (await app.listeningPorts()).includes(port);
+    assert(held === hasIngest, `the app holds the test port: ${held}`);
     await recordPorts(app);
   });
 
-  await step('the placeholder never implies exports are being received', async () => {
-    const text = await pageText(page);
-    assert(!/listening|ready to receive|waiting for exports/i.test(text), `page says: ${text}`);
-    const status = await trayItem(app, 'status');
-    assert(!/listening/i.test(status.label), `tray says: ${status.label}`);
-  });
+  if (!hasIngest) {
+    await step('a build with no receiver never implies exports are being received', async () => {
+      await waitForText(page, "This build can't receive exports");
+      const text = await pageText(page);
+      assert(!/listening|ready to receive|waiting for exports/i.test(text), `page says: ${text}`);
+      const status = await trayItem(app, 'status');
+      assert(!/listening/i.test(status.label), `tray says: ${status.label}`);
+    });
+  }
 
-  await step('library commands answer unavailable without the library', async () => {
+  await step('the library opens empty and refuses an unknown revision', async () => {
     const snapshot = await page.evaluate('window.figmaDrop.library.getSnapshot()');
-    assert(snapshot.state === 'unavailable', `snapshot ${JSON.stringify(snapshot)}`);
+    assert(snapshot.state === 'ready', `snapshot ${JSON.stringify(snapshot)}`);
+    assert(snapshot.projects.length === 0, `projects ${snapshot.projects.length}`);
+    assert(snapshot.unidentified.length === 0, `unidentified ${snapshot.unidentified.length}`);
+    assert(existsSync(paths.library), 'the library root is the scratch path');
     const result = await page.evaluate(`window.figmaDrop.library.trash('anything')`);
-    assert(result.ok === false && result.code === 'unavailable', JSON.stringify(result));
+    assert(result.ok === false && result.code === 'not-found', JSON.stringify(result));
   });
 
   await step('IPC refuses a non-boolean setEnabled', async () => {
@@ -200,6 +246,7 @@ async function main() {
     assert(status.state === 'off', `status ${JSON.stringify(status)}`);
     assert((await persisted()).receiverEnabled === false, 'false persisted');
     await waitForText(page, 'Receiver off');
+    await waitForText(page, 'The receiver is off');
     const tray = await trayItem(app, 'status');
     assert(tray.label === 'Receiver off', `tray status ${tray.label}`);
     assert((await trayItem(app, 'receiver-on')).checked === false, 'tray checkbox off');
@@ -257,7 +304,7 @@ async function main() {
 
   await step('toggling through the tray menu persists and updates the window', async () => {
     await app.hook(`clickTray('receiver-on')`);
-    await waitForText(page, 'Receiver unavailable');
+    await waitForText(page, switchedOn.text);
     assert((await persisted()).receiverEnabled === true, 'true persisted');
     assert((await trayItem(app, 'receiver-on')).checked === true, 'checkbox on');
     await app.hook(`clickTray('receiver-on')`);
@@ -276,6 +323,7 @@ async function main() {
     }
     assert(status.state === 'failed', `status ${JSON.stringify(status)}`);
     await waitForText(page, 'could not be saved');
+    await waitForText(page, 'Receiver problem');
     assert((await persisted()).receiverEnabled === false, 'the file keeps false');
     assert((await trayItem(app, 'receiver-on')).checked === false, 'the checkbox keeps false');
     const tray = await trayItem(app, 'status');
@@ -312,7 +360,7 @@ async function main() {
     app = launch();
     ({ page } = await waitForWindow(app));
     await app.waitForHooks();
-    await waitForText(page, 'Receiver unavailable');
+    await waitForText(page, switchedOn.text);
     assert((await trayItem(app, 'receiver-on')).checked === true, 'tray checkbox on');
     await recordPorts(app);
   });
@@ -335,12 +383,15 @@ async function main() {
     assert(after === realLibraryBefore, `before ${realLibraryBefore}, after ${after}`);
   });
 
-  await step('neither port 3579 nor the test port was ever bound by the app', async () => {
-    assert(portsSeen.size > 0, 'lsof saw the app listeners, so an absent port means something');
-    assert(!portsSeen.has(REAL_PORT), `saw ${[...portsSeen].join(', ')}`);
-    assert(!portsSeen.has(port), `saw ${[...portsSeen].join(', ')}`);
-    log.write(`  ${portsSeen.size} app listeners sampled across checkpoints, all CDP or inspector`);
-  });
+  await step(
+    'the app never bound port 3579, and bound the test port only with a receiver',
+    async () => {
+      assert(portsSeen.size > 0, 'lsof saw the app listeners, so an absent port means something');
+      assert(!portsSeen.has(REAL_PORT), `saw ${[...portsSeen].join(', ')}`);
+      assert(portsSeen.has(port) === hasIngest, `saw ${[...portsSeen].join(', ')}`);
+      log.write(`  ${portsSeen.size} app listeners sampled across checkpoints`);
+    },
+  );
 }
 
 async function screenshot(page) {
