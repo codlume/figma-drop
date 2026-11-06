@@ -73,6 +73,11 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
   let inFlight: Promise<void> | null = null;
 
   function handle(req: IncomingMessage, res: ServerResponse): void {
+    // Pipelined behind a refused upload, so a reply could never reach the sender.
+    if (req.socket.writableEnded) {
+      req.resume();
+      return;
+    }
     const { cors, outcome } = decideRequest(facts(req), port);
     const plain = () => createResponder(res, cors, null, () => {});
     if (outcome.kind === 'reject') return plain().reject(outcome.code, outcome.headers);
@@ -239,6 +244,8 @@ function readBody(req: IncomingMessage, cap: number): Promise<BodyRead> {
       if (done) return;
       size += chunk.length;
       if (size > cap) {
+        // The socket outlives this during the discard, and so would these buffers.
+        chunks.length = 0;
         req.pause();
         finish({ kind: 'too-large' });
         return;

@@ -1,6 +1,9 @@
 import { readdir, watch } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
+import type { Socket } from 'node:net';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import type { CommitResult } from '../shared/integration';
@@ -380,6 +383,144 @@ describe('a sender that never stops after the 413', () => {
     const sending = setInterval(() => socket.write(Buffer.alloc(1024, 0x20)), 1);
     await closed;
     clearInterval(sending);
+  });
+});
+
+describe('a refused upload', () => {
+  const CAP = 8 * 1024 * 1024;
+  const head = (port: number, target: string, framing: string) =>
+    `POST ${target} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+    `Content-Type: application/json\r\n${framing}\r\n\r\n`;
+
+  it('holds none of its body while the connection stays open', async () => {
+    const { port } = await start({}, { maxBodyBytes: CAP, discardMs: 60_000 });
+    setFlagsFromString('--expose-gc');
+    const collect = runInNewContext('gc') as () => void;
+    const size = 1024 * 1024;
+    const frame = Buffer.concat([
+      Buffer.from(`${size.toString(16)}\r\n`),
+      Buffer.alloc(size, 0x20),
+      Buffer.from('\r\n'),
+    ]);
+    collect();
+    const before = process.memoryUsage().arrayBuffers;
+
+    const held: Socket[] = [];
+    for (let body = 0; body < 6; body += 1) {
+      const socket = connect({ host: '127.0.0.1', port, allowHalfOpen: true });
+      socket.on('error', () => {});
+      held.push(socket);
+      await new Promise<void>((resolve) => {
+        socket.once('data', () => resolve());
+        socket.write(head(port, '/sync', 'Transfer-Encoding: chunked'));
+        for (let sent = 0; sent <= CAP; sent += size) socket.write(frame);
+      });
+    }
+    collect();
+    const retained = process.memoryUsage().arrayBuffers - before;
+    for (const socket of held) socket.destroy();
+
+    // Six held bodies would be 48 MiB. Socket and test buffers account for the rest.
+    expect(retained).toBeLessThan(3 * CAP);
+  });
+
+  it('reads and discards all a blocking chunked sender writes before it reads', async () => {
+    const { port } = await start({}, { maxBodyBytes: 1024 });
+    const socket = connect({ host: '127.0.0.1', port });
+    socket.on('error', () => {});
+    socket.pause();
+    const size = 64 * 1024 * 1024;
+    const body = Buffer.concat([
+      Buffer.from(`${size.toString(16)}\r\n`),
+      Buffer.alloc(size, 0x20),
+      Buffer.from('\r\n'),
+    ]);
+    const flushed = new Promise<boolean>((resolve) => {
+      socket.once('close', () => resolve(false));
+      socket.write(head(port, '/sync', 'Transfer-Encoding: chunked'));
+      socket.write(body, () => resolve(true));
+    });
+    expect(await flushed).toBe(true);
+    socket.destroy();
+  });
+
+  it.each([
+    ['declared', (port: number) => head(port, '/open', 'Content-Length: 104857600')],
+    ['chunked', (port: number) => head(port, '/open', 'Transfer-Encoding: chunked')],
+  ])('lets a %s /open upload read its 413', async (framing, build) => {
+    const { port } = await start({}, { maxOpenBodyBytes: 1024 });
+    const size = 256 * 1024;
+    const frame =
+      framing === 'chunked'
+        ? Buffer.concat([
+            Buffer.from(`${size.toString(16)}\r\n`),
+            Buffer.alloc(size, 0x20),
+            Buffer.from('\r\n'),
+          ])
+        : Buffer.alloc(size, 0x20);
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      expect((await uploadUntilReply(port, build(port), frame)).slice(0, 12)).toBe('HTTP/1.1 413');
+    }
+  });
+
+  it.each([
+    ['in the same write', true],
+    ['after the 413', false],
+  ])(
+    'ignores a /sync pipelined %s, so no export lands without a reply',
+    async (_when, together) => {
+      const { port, backend, handler } = await start(
+        {},
+        { maxOpenBodyBytes: 1024, discardMs: 100 },
+      );
+      const payload = validPayload();
+      const refused = 'x'.repeat(2048);
+      const first = head(port, '/open', `Content-Length: ${refused.length}`) + refused;
+      const second = head(port, '/sync', `Content-Length: ${Buffer.byteLength(payload)}`) + payload;
+
+      const reply = await new Promise<string>((resolve) => {
+        const socket = connect({ host: '127.0.0.1', port, allowHalfOpen: true });
+        let received = '';
+        socket.on('data', (data) => {
+          const firstData = received === '';
+          received += data.toString('latin1');
+          if (firstData && !together) socket.end(second);
+        });
+        socket.once('close', () => resolve(received));
+        socket.once('error', () => {});
+        if (together) socket.end(first + second);
+        else socket.write(first);
+      });
+
+      await handler.idle();
+      expect(reply.slice(0, 12)).toBe('HTTP/1.1 413');
+      expect(reply.match(/HTTP\/1\.1 /g)).toHaveLength(1);
+      expect(backend.commits).toHaveLength(0);
+    },
+  );
+});
+
+describe('the deadline reply', () => {
+  it('closes a stalled sender, which must not be left half-open', async () => {
+    const { port } = await start({}, { deadlineMs: 50 });
+    const socket = connect({ host: '127.0.0.1', port, allowHalfOpen: true });
+    socket.on('error', () => {});
+    let reply = '';
+    socket.on('data', (data) => {
+      reply += data.toString('latin1');
+    });
+    const closed = new Promise((resolve) => socket.once('close', resolve));
+    socket.write(
+      `POST /sync HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+        `Content-Type: application/json\r\nContent-Length: 100000000\r\n\r\n{`,
+    );
+    // Only a write can show a half-open client that the server really let go.
+    socket.once('end', () => {
+      const probing = setInterval(() => socket.write(' '), 1);
+      socket.once('close', () => clearInterval(probing));
+    });
+    await closed;
+    expect(reply.slice(0, 12)).toBe('HTTP/1.1 503');
   });
 });
 
