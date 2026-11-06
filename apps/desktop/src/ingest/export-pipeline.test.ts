@@ -231,6 +231,13 @@ describe('prepareExport identity', () => {
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
+  it('lets a top-level __proto__ key change the hash', () => {
+    const body = JSON.stringify(exportPayload());
+    const hostile = prepareExport(Buffer.from(`{"__proto__":{"a":1},${body.slice(1)}`));
+    if (!hostile.ok) throw new Error(hostile.rejection);
+    expect(hostile.prepared.lookup.contentHash).not.toBe(prepared().lookup.contentHash);
+  });
+
   it('keeps a nested __proto__ key as data in node.json', () => {
     const hostile = '{"nodeId":"1:2","node":{"__proto__":{"polluted":true}}}';
     const result = prepareExport(Buffer.from(hostile));
@@ -370,7 +377,7 @@ describe('prepareExport bundle', () => {
   });
 
   it.each([
-    ['tokens as a number', { tokens: 5, collections: 'many' }],
+    ['tokens as a string', { tokens: 'many', collections: 'many' }],
     ['no tokens at all', {}],
   ])('counts zero for variables with %s', (_label, variables) => {
     const counts = meta(prepared({ variables, styles: { styles: 'none' } }));
