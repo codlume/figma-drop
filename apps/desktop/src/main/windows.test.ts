@@ -6,8 +6,8 @@ import { createWindows } from './windows.ts';
 // real one, it throws when touched after destruction.
 const { FakeWindow } = await vi.hoisted(async () => {
   const { EventEmitter } = await import('node:events');
-  class FakeWindow {
-    static created: FakeWindow[] = [];
+  class Fake {
+    static created: Fake[] = [];
     static load: () => Promise<void> = async () => {};
 
     sent: unknown[][] = [];
@@ -18,7 +18,7 @@ const { FakeWindow } = await vi.hoisted(async () => {
     #contents = new EventEmitter();
 
     constructor() {
-      FakeWindow.created.push(this);
+      Fake.created.push(this);
     }
 
     get webContents() {
@@ -44,7 +44,7 @@ const { FakeWindow } = await vi.hoisted(async () => {
     }
 
     loadURL() {
-      return FakeWindow.load();
+      return Fake.load();
     }
 
     isMinimized() {
@@ -71,7 +71,7 @@ const { FakeWindow } = await vi.hoisted(async () => {
       if (this.destroyed) throw new TypeError('Object has been destroyed');
     }
   }
-  return { FakeWindow };
+  return { FakeWindow: Fake };
 });
 
 vi.mock('electron', () => ({
@@ -117,13 +117,12 @@ describe('show', () => {
   });
 
   it('resolves false when the user closes the window before it loads', async () => {
-    let failLoad = () => {};
-    FakeWindow.load = () =>
-      new Promise((_resolve, reject) => (failLoad = () => reject(new Error('gone'))));
+    const load = Promise.withResolvers<void>();
+    FakeWindow.load = () => load.promise;
     const windows = open();
     const shown = windows.show();
     windowAt(0).destroy();
-    failLoad();
+    load.reject(new Error('gone'));
     expect(await shown).toBe(false);
   });
 

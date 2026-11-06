@@ -192,12 +192,12 @@ describe('with a controller', () => {
   });
 });
 
-describe('when the controller rejects', () => {
-  const failedWith = (cause: string) => ({
-    state: 'failed',
-    message: expect.stringContaining(cause),
-  });
+const failedWith = (cause: string) => ({
+  state: 'failed',
+  message: expect.stringContaining(cause),
+});
 
+describe('when the controller rejects', () => {
   it('reports a refused start instead of the stale status, keeping the setting on', async () => {
     const { controller, refuse } = fakeController({ state: 'off' });
     refuse.start = new Error('refused');
@@ -254,16 +254,16 @@ describe('when the controller rejects', () => {
   function refusesOnce() {
     const { controller } = fakeController();
     let attempts = 0;
-    let finish = () => {};
+    const pending = Promise.withResolvers<void>();
     const flaky: ReceiverController = {
       ...controller,
       start() {
         attempts += 1;
         if (attempts === 1) return Promise.reject(new Error('refused'));
-        return new Promise<void>((resolve) => (finish = resolve));
+        return pending.promise;
       },
     };
-    return { flaky, attempts: () => attempts, finish: () => finish() };
+    return { flaky, attempts: () => attempts, finish: () => pending.resolve() };
   }
 
   it('stops reporting the failure once the next toggle begins', async () => {

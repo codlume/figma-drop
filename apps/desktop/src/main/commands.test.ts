@@ -161,33 +161,33 @@ describe('receiver commands', () => {
   });
 });
 
+// Labelled fake: it stands in for A-INGEST's controller in this test only.
+function fakeController(start: (report: (status: ReceiverStatus) => void) => Promise<void>) {
+  const listeners = new Set<(status: ReceiverStatus) => void>();
+  let current: ReceiverStatus = { state: 'off' };
+  const report = (status: ReceiverStatus) => {
+    current = status;
+    for (const listener of listeners) listener(status);
+  };
+  const controller: ReceiverController = {
+    start: () => start(report),
+    async stop() {
+      report({ state: 'off' });
+    },
+    status: () => current,
+    onStatus(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  return controller;
+}
+
 // The renderer applies pushes and replies to one state, so a reply must never disagree with the
 // push it follows. This runs the real switch in one process. It says nothing about the order
 // Electron delivers a `webContents.send` and an `invoke` reply to the renderer.
 describe('push and reply through the real switch', () => {
   const LISTENING: ReceiverStatus = { state: 'listening', port: 13579 };
-
-  // Labelled fake: it stands in for A-INGEST's controller in this test only.
-  function fakeController(start: (report: (status: ReceiverStatus) => void) => Promise<void>) {
-    const listeners = new Set<(status: ReceiverStatus) => void>();
-    let current: ReceiverStatus = { state: 'off' };
-    const report = (status: ReceiverStatus) => {
-      current = status;
-      for (const listener of listeners) listener(status);
-    };
-    const controller: ReceiverController = {
-      start: () => start(report),
-      async stop() {
-        report({ state: 'off' });
-      },
-      status: () => current,
-      onStatus(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
-    };
-    return controller;
-  }
 
   async function open(controller: ReceiverController) {
     const dir = await mkdtemp(NodePath.join(tmpdir(), 'commands-'));
