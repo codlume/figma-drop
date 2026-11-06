@@ -111,7 +111,11 @@ export const createReceiverController: CreateReceiverController = ({ entry, port
   };
   return {
     start: () =>
-      new Promise<void>((resolve) => {
+      new Promise<void>((resolve, reject) => {
+        if ((globalThis as Record<string, unknown>).throwawayRefuseStart) {
+          reject(new Error('throwaway refusal'));
+          return;
+        }
         boot.push('start');
         set({ state: 'starting' });
         child = fork(entry);
@@ -324,6 +328,19 @@ async function main() {
       );
     }
     pass('present: a target sent during a reload reaches the reloaded page');
+
+    await page.evaluate('window.figmaDrop.receiver.setEnabled(false)');
+    await app.evaluateInMain('globalThis.throwawayRefuseStart = true');
+    const refused = await page.evaluate('window.figmaDrop.receiver.setEnabled(true)');
+    assert(refused.message?.includes('throwaway refusal'), `refused ${JSON.stringify(refused)}`);
+    const { items } = await app.hook('tray()');
+    const trayLabel = items.find((item) => item.id === 'status').label;
+    assert(trayLabel.startsWith('Receiver failed'), `tray status ${trayLabel}`);
+    assert(items.find((item) => item.id === 'receiver-on').checked, 'the setting stays on');
+    await app.evaluateInMain('globalThis.throwawayRefuseStart = false');
+    const retried = await page.evaluate('window.figmaDrop.receiver.setEnabled(true)');
+    assert(retried.state === 'listening', `retried ${JSON.stringify(retried)}`);
+    pass('present: a refused start reads failed in the reply and tray, and Try again recovers');
 
     await app.hook(`clickTray('quit')`).catch(() => {});
     const exit = await app.exitWithin(QUIT_DEADLINE_MS);

@@ -1,5 +1,5 @@
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -264,6 +264,25 @@ async function main() {
     await waitForText(page, 'Receiver off');
     assert((await persisted()).receiverEnabled === false, 'false persisted');
     assert((await trayItem(app, 'receiver-on')).checked === false, 'checkbox off');
+  });
+
+  await step('a setting that cannot be saved reads failed and changes nothing', async () => {
+    await chmod(paths.userData, 0o500);
+    let status;
+    try {
+      status = await page.evaluate('window.figmaDrop.receiver.setEnabled(true)');
+    } finally {
+      await chmod(paths.userData, 0o700);
+    }
+    assert(status.state === 'failed', `status ${JSON.stringify(status)}`);
+    await waitForText(page, 'could not be saved');
+    assert((await persisted()).receiverEnabled === false, 'the file keeps false');
+    assert((await trayItem(app, 'receiver-on')).checked === false, 'the checkbox keeps false');
+    const tray = await trayItem(app, 'status');
+    assert(tray.label.startsWith('Receiver failed'), `tray status ${tray.label}`);
+    const recovered = await page.evaluate('window.figmaDrop.receiver.setEnabled(false)');
+    assert(recovered.state === 'off', `recovered ${JSON.stringify(recovered)}`);
+    await waitForText(page, 'Receiver off');
   });
 
   await step('the tray toggle persists with no window open', async () => {
