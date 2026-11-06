@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent",
+    "app:local": "pnpm build && node scripts/package-local.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "vp run -r build",
     "fmt": "vp fmt",
