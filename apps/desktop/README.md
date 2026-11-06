@@ -1,6 +1,6 @@
 # figma-drop desktop
 
-The macOS Electron app. It stays in the menu bar when its window closes and persists its receiver on/off setting. Exports are received only once the A-INGEST ticket lands. Until then the window and tray say so.
+The macOS Electron app. It receives Figma exports on localhost, keeps them in the library, and stays in the menu bar with its receiver running when its window closes. The receiver on/off setting persists.
 
 ## Run
 

@@ -1,4 +1,4 @@
-  child folder "hero-card-b642e393"
+  child folder "hero-card-bac6fc82"
 PASS the real button copies into a new child of the chosen folder
 PASS main asked for a folder, attached to the window
 PASS the copy is a plain bundle, byte-equal, with no receipt

@@ -4,8 +4,7 @@ PASS the receiver bundle is packed exactly when src/ingest exists
 PASS a window loads and renders the real library view
 PASS StyleX CSS is linked and token colors reach the page
 PASS window.figmaDrop is frozen and matches the API, with no require
-PASS status reads unavailable and the test port agrees
-PASS a build with no receiver never implies exports are being received
+PASS status reads listening and the test port agrees
 PASS the library opens empty and refuses an unknown revision
 PASS IPC refuses a non-boolean setEnabled
 saved proof/shell/after-shell.png
@@ -22,14 +21,14 @@ PASS the tray toggle persists with no window open
 PASS relaunch after a tray toggle reads the tray value
 PASS a corrupt settings.json falls back to on
 PASS quit exits cleanly
-PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 53 ms
-PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 65 ms
-PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 85 ms
-PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 57 ms
-PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 53 ms
-PASS tray Quit while stopping the receiver rejects with a window open exits by itself: {"code":0,"signal":null} after 91 ms
+PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 28 ms
+PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 31 ms
+PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 40 ms
+PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 36 ms
+PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 34 ms
+PASS tray Quit while stopping the receiver rejects with a window open exits by itself: {"code":0,"signal":null} after 27 ms
 PASS a rejected receiver stop is logged, not swallowed
 PASS ~/figma-drop was not created or touched
-  8 app listeners sampled across checkpoints
+  9 app listeners sampled across checkpoints
 PASS the app never bound port 3579, and bound the test port only with a receiver
 ALL PASS
