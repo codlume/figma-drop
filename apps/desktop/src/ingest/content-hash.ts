@@ -64,12 +64,12 @@ class CanonicalWriter {
 function writeObject(
   writer: CanonicalWriter,
   object: Readonly<Record<string, unknown>>,
-  keys: string[],
+  keys: readonly string[],
   depth: number,
 ): boolean {
   writer.tag(TAG.object);
   writer.count(keys.length);
-  for (const key of keys.sort()) {
+  for (const key of keys.toSorted()) {
     writer.string(key);
     if (!writeValue(writer, object[key], depth + 1)) return false;
   }

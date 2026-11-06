@@ -29,9 +29,8 @@ describe('hashExport', () => {
   });
 
   it('still hashes an excluded field name below the top level', () => {
-    const node = (exportedAt: string) => ({ id: '1:2', exportedAt });
-    expect(hashExport(exportPayload({ node: node('a') }))).not.toBe(
-      hashExport(exportPayload({ node: node('b') })),
+    expect(hashExport(exportPayload({ node: { exportedAt: 'a' } }))).not.toBe(
+      hashExport(exportPayload({ node: { exportedAt: 'b' } })),
     );
   });
 
