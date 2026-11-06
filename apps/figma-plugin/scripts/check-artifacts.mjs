@@ -11,7 +11,7 @@ const MAX_CODE_BYTES = 64 * 1024;
 function sandboxFailures(code) {
   const failures = [];
   try {
-    new vm.Script(code, { filename: 'code.js' });
+    void new vm.Script(code, { filename: 'code.js' });
   } catch (error) {
     failures.push(`code.js does not parse as a classic script: ${error.message}`);
   }
