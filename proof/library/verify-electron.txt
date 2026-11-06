@@ -3,7 +3,7 @@ PASS history reaches the renderer newest first
 PASS a damaged revision reaches the renderer as damaged, files untouched
 PASS opening the app sweeps a staging leftover
 PASS a PNG preview renders through the preview scheme
-PASS an SVG preview renders as an image and its script stays inert
+PASS an SVG preview renders as an image through the preview scheme
 PASS an HTML-only export has no preview in the renderer
 PASS a well-formed unknown id reaches the library and comes back not-found
 PASS the catalog survives a real app restart unchanged

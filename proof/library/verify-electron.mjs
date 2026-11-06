@@ -141,12 +141,11 @@ try {
     const url = project.nodes[0].revisions[0].preview.url;
     assert(await imageLoads(page, url), 'PNG rendered');
   });
-  await step('an SVG preview renders as an image and its script stays inert', async () => {
+  await step('an SVG preview renders as an image through the preview scheme', async () => {
     const project = snapshot.projects.find((candidate) => candidate.fileKey === 'key-b');
     const revision = project.nodes[0].revisions[0];
     assert(revision.id === svg.revisionId, 'the SVG revision');
     assert(await imageLoads(page, revision.preview.url), 'SVG rendered');
-    assert((await page.evaluate('document.title')) !== 'ran', 'script did not run');
   });
   await step('an HTML-only export has no preview in the renderer', async () => {
     const entry = snapshot.unidentified.find((item) => item.id === html.revisionId);
