@@ -28,7 +28,11 @@ export type RunEvent =
   | { type: 'node-failed'; nodeId: string; message: string }
   | { type: 'send-finished'; nodeId: string; outcome: SendOutcome };
 
-const isRetryable = ({ state }: Item) => state.kind === 'failed' || state.kind === 'not-sent';
+// The receiver rejects an oversized export again on every attempt.
+const isTooLarge = (reason: FailureReason) => reason.kind === 'rejected' && reason.status === 413;
+
+export const isRetryable = ({ state }: Item) =>
+  state.kind === 'not-sent' || (state.kind === 'failed' && !isTooLarge(state.reason));
 
 function advance(items: Item[]): Run {
   const next = items.findIndex(({ state }) => state.kind === 'queued');

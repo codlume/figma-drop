@@ -11,6 +11,12 @@ import { buildSummary, tallyTree } from './summary.ts';
 import { collectVariables } from './variables.ts';
 
 const NODE_CAP = 40000;
+// A text layer's default name is its text, and the receiver rejects a long identity
+// field. `nodeName` is a display hint, and `node.name` keeps the full name.
+const NODE_NAME_CHARS = 1024;
+
+const displayName = (name: string) =>
+  name.slice(0, NODE_NAME_CHARS).replace(/[\uD800-\uDBFF]$/, '');
 
 export async function exportNode(figma: FigmaApi, node: BaseNode): Promise<RawExport> {
   const { tree, truncated } = await serializeTree(figma, node, NODE_CAP);
@@ -32,7 +38,7 @@ export async function exportNode(figma: FigmaApi, node: BaseNode): Promise<RawEx
     ...(fileKey ? { fileKey } : {}),
     fileName: figma.root.name,
     nodeId: node.id,
-    nodeName: node.name,
+    nodeName: displayName(node.name),
     exportedAt: new Date().toISOString(),
     summary: buildSummary({
       target: node,

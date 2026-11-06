@@ -36,6 +36,24 @@ const kinds = (run: Run) => items(run).map(({ state }) => state.kind);
 const stateOf = (run: Run, id: string): ItemState | undefined =>
   items(run).find(({ target: { id: itemId } }) => itemId === id)?.state;
 
+describe('a 413 reply', () => {
+  const tooLarge: SendOutcome = { kind: 'rejected', status: 413, message: 'too big' };
+  const target = { id: '1:1', name: 'Huge', type: 'FRAME' };
+
+  it('is not offered for retry, because the receiver rejects it every time', () => {
+    const reading = reduce({ phase: 'idle' }, { type: 'started', targets: [target] });
+    const sending = reduce(reading, { type: 'node-read', nodeId: '1:1' });
+    const finished = reduce(sending, {
+      type: 'send-finished',
+      nodeId: '1:1',
+      outcome: tooLarge,
+    });
+    expect(finished.phase).toBe('finished');
+    expect(retryableCount(finished)).toBe(0);
+    expect(reduce(finished, { type: 'retried' })).toBe(finished);
+  });
+});
+
 describe('starting', () => {
   it('queues every target and reads the first', () => {
     const run = start(...targets);

@@ -162,6 +162,15 @@ describe('row failure text', () => {
     expect(detail({ kind: 'rejected', status: 403, message: null })).toContain('refused');
   });
 
+  it('says a 413 will not succeed on retry and offers no Retry', () => {
+    const reason: FailureReason = { kind: 'rejected', status: 413, message: 'Too many assets.' };
+    const view = describePanel(finished(failed('a', reason)));
+    expect(view.rows[0]?.detail).toContain('Too many assets.');
+    expect(view.rows[0]?.detail).toContain('Retrying will not help');
+    expect(view.notice?.text).not.toContain('retry');
+    expect(view.primary.action).not.toBe('retry');
+  });
+
   it('explains a reply that confirmed nothing', () => {
     expect(detail({ kind: 'bad-reply', status: 200 })).toContain('port 3579');
   });

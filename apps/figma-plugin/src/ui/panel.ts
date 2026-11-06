@@ -1,6 +1,13 @@
 import { RECEIVER_PORT } from '@figma-drop/export-contract';
 import type { ExportTarget } from '../shared/messages.ts';
-import { retryableCount, type FailureReason, type Item, type ItemState, type Run } from './run.ts';
+import {
+  isRetryable,
+  retryableCount,
+  type FailureReason,
+  type Item,
+  type ItemState,
+  type Run,
+} from './run.ts';
 import type { Panel, ReceiverStatus, Selection } from './session.ts';
 
 export type Tone = 'success' | 'warning' | 'danger';
@@ -49,8 +56,11 @@ function describeFailure(reason: FailureReason): string {
     case 'export-failed':
       return `This layer could not be exported: ${reason.message}`;
     case 'rejected':
+      if (reason.status === 413) {
+        const cause = reason.message ?? 'This export is too large for figma-drop to accept.';
+        return `${cause} Retrying will not help, so export a smaller part of the design.`;
+      }
       if (reason.message !== null) return reason.message;
-      if (reason.status === 413) return 'This export is too large for figma-drop to accept.';
       return reason.status >= 500
         ? `figma-drop could not save this export (HTTP ${reason.status}).`
         : `figma-drop refused this export (HTTP ${reason.status}).`;
@@ -122,7 +132,10 @@ function describeOutcome(items: Item[]): PanelView['notice'] {
       text: `${progress} figma-drop stopped replying. Check that it is running, then retry. The export may already be saved, so a retry can add a second revision.`,
     };
   }
-  return { tone, text: `${progress} See each row for the reason, then retry.` };
+  const next = items.some(isRetryable)
+    ? 'See each row for the reason, then retry.'
+    : 'See each row for the reason.';
+  return { tone, text: `${progress} ${next}` };
 }
 
 function exportAction(selection: Selection | null): PanelView['primary'] {

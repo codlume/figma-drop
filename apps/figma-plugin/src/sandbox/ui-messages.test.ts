@@ -35,6 +35,14 @@ describe('file identity', () => {
     expect(new Date(raw.exportedAt ?? '').toISOString()).toBe(raw.exportedAt);
   });
 
+  it('shortens a long nodeName on the wire and keeps the full name in the tree', async () => {
+    const name = `${'x'.repeat(1023)}😀 and more text`;
+    const fake = createFakeFigma();
+    const raw = await exportNode(fake.figma, fake.node('TEXT', { name }));
+    expect(raw.nodeName).toBe('x'.repeat(1023));
+    expect(raw.node.name).toBe(name);
+  });
+
   it('adds none of the fields the plugin never sends', async () => {
     const fake = createFakeFigma();
     const raw = await exportNode(fake.figma, fake.node('RECTANGLE'));
