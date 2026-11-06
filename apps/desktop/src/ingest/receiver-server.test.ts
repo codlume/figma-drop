@@ -317,7 +317,7 @@ function head(port: number, target: string, framing: string): string {
 }
 
 // Streams a body the way a plugin mid-upload does, and stops only on a reply or a dead socket.
-function uploadUntilReply(port: number, head: string, frame: Buffer): Promise<string> {
+function uploadUntilReply(port: number, opening: string, frame: Buffer): Promise<string> {
   return new Promise((resolve) => {
     const socket = connect({ host: '127.0.0.1', port });
     let reply = '';
@@ -327,7 +327,7 @@ function uploadUntilReply(port: number, head: string, frame: Buffer): Promise<st
     });
     socket.once('close', () => resolve(reply));
     socket.once('error', () => {});
-    socket.write(head);
+    socket.write(opening);
     const pump = () => {
       while (!socket.destroyed) {
         if (!socket.write(frame)) {
@@ -347,8 +347,8 @@ describe('a plugin still uploading when the cap is reached', () => {
     const { port } = await start({}, { maxBodyBytes: CAP });
     const frame = Buffer.alloc(256 * 1024, 0x20);
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      (port, `Content-Length: ${64 * CAP}`);
-      expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
+      const opening = head(port, '/sync', `Content-Length: ${64 * CAP}`);
+      expect((await uploadUntilReply(port, opening, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
     }
   });
 
@@ -361,8 +361,8 @@ describe('a plugin still uploading when the cap is reached', () => {
       Buffer.from('\r\n'),
     ]);
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      (port, 'Transfer-Encoding: chunked');
-      expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
+      const opening = head(port, '/sync', 'Transfer-Encoding: chunked');
+      expect((await uploadUntilReply(port, opening, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
     }
   });
 });
