@@ -66,7 +66,6 @@ export type RowSnapshot = {
   detail: string | null;
 };
 
-/** What a user can read in the panel. A hidden element reads as null. */
 export type PanelSnapshot = {
   receiver: { status: string | undefined; text: string | null; hint: string | null };
   checkAgain: string | null;
@@ -370,7 +369,6 @@ export async function openPlugin({
   return {
     snapshot: async () => (await read()).panel,
 
-    /** Waits for the panel to reach a state, waking on DOM mutations. */
     async until(
       label: string,
       reached: (panel: PanelSnapshot) => boolean,
@@ -388,7 +386,6 @@ export async function openPlugin({
       }
     },
 
-    /** A real click at the control's centre. Fails if a user could not reach it. */
     async click(selector: string) {
       const { x, y, hittable, disabled } = await evaluate<{
         x: number;

@@ -51,7 +51,7 @@ Each export gets a row, and rows run one at a time.
 
 A run continues after a layer fails to read, a rejected export, or a reply with no path. A run stops when figma-drop cannot be reached or does not reply within 65 seconds, because later exports would fail the same way.
 
-When a run ends with failures, **Retry** sends the failed and not-sent rows again and leaves saved rows alone. **Done** clears the rows. A timed-out export may already be saved. Retrying it is safe, because figma-drop converges on the entry it already has.
+When a run ends with failures, **Retry** sends the failed and not-sent rows again and leaves saved rows alone. **Done** clears the rows. A timed-out export may already be saved. A retry converges on that entry when the export's bytes match, and adds a revision when they differ. Whether Figma's export bytes stay the same across calls is not known yet.
 
 ## What stays unverified
 
@@ -61,7 +61,10 @@ Check these in the Figma desktop app:
 
 - The `Origin` header from the plugin iframe. The receiver assumes `null`, and a different value shows up as a 403 or as "not answering".
 - Whether Figma sends a private network preflight to `localhost`, and whether the receiver must answer it.
+- Whether `figma.fileKey` reads at all in an imported development plugin. Figma's typings limit it to private organization plugins, and the manifest docs say `enablePrivatePluginApi` covers local development. If it reads `undefined`, every export goes to Unidentified, and the panel says so.
 - What `figma.fileKey` returns in a branch, a draft, and an unsaved file.
+- Whether Figma's export bytes stay the same across calls, which decides whether a retry converges.
+- Whether Figma accepts the string `id` in `manifest.json` at import.
 - Whether Figma enforces `allowedDomains` on an imported development plugin.
 - Whether Figma's iframe runs the inlined `type="module"` script.
 - Whether every `--figma-color-*` variable in `src/ui.css` exists in both themes. Light and dark were checked with stand-in values.

@@ -144,7 +144,7 @@ describe('all failed', () => {
   it('warns that a timed-out export may have saved and that retrying is safe', () => {
     const view = describePanel(finished(failed('a', { kind: 'timed-out' })));
     expect(view.rows[0]?.detail).toContain('may still have been saved');
-    expect(view.notice?.text).toContain('will not save a duplicate');
+    expect(view.notice?.text).toContain('can add a second revision');
   });
 });
 

@@ -464,7 +464,7 @@ describe('hung receiver', () => {
       );
       expect(panel.notice).toEqual({
         tone: 'danger',
-        text: 'Nothing was saved. figma-drop stopped replying. Check that it is running, then retry. Retrying will not save a duplicate.',
+        text: 'Nothing was saved. figma-drop stopped replying. Check that it is running, then retry. The export may already be saved, so a retry can add a second revision.',
       });
       expect(receiver.nodeIdsPosted).toEqual(['1:1']);
 

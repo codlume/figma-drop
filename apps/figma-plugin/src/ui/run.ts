@@ -30,7 +30,6 @@ export type RunEvent =
 
 const isRetryable = ({ state }: Item) => state.kind === 'failed' || state.kind === 'not-sent';
 
-// Hands the next queued item to the sandbox, or ends the run when none is left.
 function advance(items: Item[]): Run {
   const next = items.findIndex(({ state }) => state.kind === 'queued');
   if (next === -1) return { phase: 'finished', items };

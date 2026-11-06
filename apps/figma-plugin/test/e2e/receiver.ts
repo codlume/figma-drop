@@ -28,7 +28,6 @@ export type Reply =
   | { kind: 'json'; status: number; body: unknown }
   | { kind: 'text'; status: number; body: string }
   | { kind: 'hang' }
-  // A crash: the socket dies and nothing listens on the port afterwards.
   | { kind: 'crash' };
 
 export const savedPath = (nodeId: string) => `/synthetic-library/${nodeId.replaceAll(':', '-')}`;
@@ -58,7 +57,6 @@ export class SyntheticReceiver {
   #released = 0;
   #waiters = new Set<() => void>();
 
-  /** Takes a free port and leaves it closed, for a receiver that starts later. */
   static async stopped(): Promise<SyntheticReceiver> {
     const receiver = new SyntheticReceiver();
     await receiver.start();
@@ -100,7 +98,6 @@ export class SyntheticReceiver {
     this.#notify();
   }
 
-  /** Resolves when `condition` holds, rechecked on every recorded request. */
   async until(label: string, condition: () => boolean, timeoutMs = 10_000): Promise<void> {
     if (condition()) return;
     await new Promise<void>((resolve, reject) => {

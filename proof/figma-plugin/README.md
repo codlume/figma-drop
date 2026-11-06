@@ -20,7 +20,7 @@ The script builds `dist/`, then runs `test/e2e/*.e2e.ts`. One scenario waits out
 | Part                   | In this proof                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------ |
 | `dist/code.js`         | Real, run in a `node:vm` context with no `TextDecoder`, `btoa`, `atob`, or DOM |
-| `dist/ui.html`         | Real, with one change: the port number                                         |
+| `dist/ui.html`         | Real, with the port number changed and a stand-in Figma theme injected         |
 | `parseExportPayload`   | Real, called on every received body                                            |
 | `classifyFileIdentity` | Real, called on every received body                                            |
 | HTTP, CORS, preflight  | Real, between Chrome and a `node:http` server on an ephemeral loopback port    |

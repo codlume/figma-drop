@@ -9,7 +9,6 @@ export type ReceiverStatus = 'checking' | ReceiverProbe;
 export type Selection = { targets: ExportTarget[]; hasFileKey: boolean };
 
 export type Panel = {
-  // Null until the sandbox reports its first selection.
   selection: Selection | null;
   receiver: ReceiverStatus;
   run: Run;
@@ -35,7 +34,6 @@ function receiverAfter(outcome: SendOutcome, status: ReceiverStatus): ReceiverSt
   }
 }
 
-// The one owner of plugin state. Figma, the DOM and the network stay behind deps.
 export function createSession(deps: SessionDeps) {
   let panel: Panel = { selection: null, receiver: 'checking', run: { phase: 'idle' } };
   let latestReceiverReport = 0;

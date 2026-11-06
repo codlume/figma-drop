@@ -41,7 +41,6 @@ export function createFigmaFile(
   };
 }
 
-/** A frame with text, a vector, an image fill, a local and a remote instance, and a bound variable. */
 export function createProfileCard({ fake }: ReturnType<typeof createFigmaFile>) {
   fake.addCollection({
     id: 'VariableCollectionId:1:1',

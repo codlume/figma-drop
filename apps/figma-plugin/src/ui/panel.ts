@@ -10,7 +10,6 @@ export type RowView = {
   name: string;
   state: ItemState['kind'];
   label: string;
-  // A receipt path or a failure explanation. Either may be received text.
   detail: string | null;
 };
 
@@ -120,7 +119,7 @@ function describeOutcome(items: Item[]): PanelView['notice'] {
   if (failureKind(items, 'timed-out')) {
     return {
       tone,
-      text: `${progress} figma-drop stopped replying. Check that it is running, then retry. Retrying will not save a duplicate.`,
+      text: `${progress} figma-drop stopped replying. Check that it is running, then retry. The export may already be saved, so a retry can add a second revision.`,
     };
   }
   return { tone, text: `${progress} See each row for the reason, then retry.` };

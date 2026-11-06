@@ -1,5 +1,3 @@
-// Fails the build when dist/ is something Figma cannot load. Figma is the only
-// real judge, so these are the failures we can name without it.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
