@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+  <rect width="320" height="200" fill="hsl(170 60% 85%)"/>
+  <text x="160" y="176" text-anchor="middle" font-family="sans-serif" font-size="16" fill="hsl(170 60% 25%)">Synthetic frame</text>
+  <text x="160" y="110" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="700" fill="hsl(170 60% 25%)" opacity="0.35" transform="rotate(-14 160 100)">SYNTHETIC</text>
+</svg>
