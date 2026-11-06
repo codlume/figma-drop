@@ -9,6 +9,7 @@ PASS /open stays inside the catalog and /pick-folder opens nothing
 PASS toggle stops both listeners, then starts cleanly
 PASS a killed receiver restarts itself and keeps receiving
 PASS bodies that abort V8 in JSON.parse are refused before parsing, and the receiver stays up
+PASS the worst bodies under the value budget finish without killing the receiver
 PASS revisions and the toggle survive a restart
 PASS quit during a stalled receive exits and leaves no listener
 PASS an occupied port shows a conflict, kills nothing, and recovers by toggle

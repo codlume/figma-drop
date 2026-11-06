@@ -90,6 +90,8 @@ const waitForState = (app, state, timeoutMs) =>
     timeoutMs,
   );
 
+const hostHeader = (host) => ({ Host: host, Origin: 'null', 'Content-Type': 'application/json' });
+
 async function listenerPids(port) {
   const { stdout } = await execFileAsync('lsof', [
     '-nP',
@@ -224,7 +226,7 @@ async function main() {
     assert(sorted.unidentified.length === 4, 'every fallback stands alone in Unidentified');
     pass('unknown sources go to Unidentified and never merge by name');
 
-    const before = (await readdir(scratch)).sort().join();
+    const before = (await readdir(scratch)).toSorted().join();
     const hostile = await send({
       port,
       body: exportBody({
@@ -242,7 +244,7 @@ async function main() {
     });
     assert(hostile.status === 200, `traversal names are kept as data, got ${hostile.text}`);
     assert(hostile.json.path.startsWith(`${library}${sep}`), 'traversal stays in the library');
-    assert((await readdir(scratch)).sort().join() === before, 'nothing new beside the library');
+    assert((await readdir(scratch)).toSorted().join() === before, 'nothing new beside the library');
     assert((await readdir(outside)).length === 0, 'nothing in outputDir');
     assert(
       filesUnder(scratch).every(
@@ -254,11 +256,6 @@ async function main() {
     pass('path traversal in key, names, folderName, outputDir, and assets stays contained');
 
     const counted = await revisionCount(page);
-    const hostHeader = (host) => ({
-      Host: host,
-      Origin: 'null',
-      'Content-Type': 'application/json',
-    });
     const refusals = [
       ['malformed JSON', { body: '{"node":' }, 400],
       ['no node', { body: JSON.stringify({ nodeId: '1:1' }) }, 400],
@@ -320,7 +317,7 @@ async function main() {
     );
     const overrun = await overrunByChunks(port);
     assert(
-      /^HTTP\/1\.1 413/.test(overrun.reply),
+      overrun.reply.startsWith('HTTP/1.1 413'),
       `chunked overrun gets 413, got ${overrun.reply.slice(0, 40)}`,
     );
     assert(/access-control-allow-origin: null/i.test(overrun.reply), 'the 413 carries CORS');
