@@ -47,9 +47,12 @@ export async function createReceiverSwitch({
   const listeners = new Set<(status: ReceiverStatus) => void>();
 
   const status = (): ReceiverStatus => {
-    if (fault !== null) return { state: 'failed', message: fault };
-    if (controller) return controller.status();
-    return enabled ? { state: 'unavailable', message: unavailableMessage } : { state: 'off' };
+    if (fault !== null) return { state: 'failed', message: fault, enabled };
+    if (!controller) {
+      return enabled ? { state: 'unavailable', message: unavailableMessage } : { state: 'off' };
+    }
+    const current = controller.status();
+    return current.state === 'failed' ? { ...current, enabled } : current;
   };
   const publish = () => {
     const current = status();
