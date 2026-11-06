@@ -21,6 +21,8 @@ export default defineConfig({
     dts: false,
     clean: true,
     minify: true,
+    // Without this a dependency stays external. The build still exits 0, and the
+    // IIFE then throws in Figma on a global nobody defines.
     deps: { alwaysBundle: () => true, onlyBundle: false as const },
   },
   test: {
