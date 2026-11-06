@@ -1,0 +1,14 @@
+{
+  "name": "figma-drop",
+  "id": "figma-drop-local",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma", "dev"],
+  "documentAccess": "dynamic-page",
+  "enablePrivatePluginApi": true,
+  "networkAccess": {
+    "allowedDomains": ["http://localhost:3579"],
+    "reasoning": "Sends the selected export to the figma-drop desktop app on this Mac."
+  }
+}

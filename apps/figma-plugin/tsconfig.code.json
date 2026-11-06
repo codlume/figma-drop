@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "types": ["@figma/plugin-typings"],
+    "noEmit": true
+  },
+  "include": ["src/code.ts", "src/sandbox/**/*.ts", "src/shared/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/testing/**"]
+}

@@ -1,0 +1,38 @@
+figma-plugin end-to-end scenarios
+This is a mocked run, not a real Figma export. See README.md for the limits.
+
+PASSED  single export > delivers the whole payload and shows the receipt path
+        Chrome 157 headless, sandboxed srcdoc iframe
+        Origin on POST /sync: null (Chrome stand-in, not a Figma iframe)
+        Origin on the preflight: null
+PASSED  a file with no key > goes to Unidentified when figma.fileKey is undefined
+PASSED  a file with no key > goes to Unidentified when figma.fileKey is empty
+PASSED  a file with no key > goes to Unidentified when figma.fileKey is a throwing read
+PASSED  a file with no key > keeps two files with one name unidentified, never sharing a key
+PASSED  batch > sends one POST at a time, keeps order, and retries only the rejected node
+PASSED  receiver down > shows the offline state, then Check again goes online
+PASSED  receiver down > fails an export while down, then Retry saves it
+PASSED  connection lost mid-batch > fails the row in flight, marks the rest not sent, and posts nothing further
+PASSED  replies that are not a save > shows 400 and 413 errors, a non-JSON 500, and refuses to call a pathless 200 saved
+PASSED  hung receiver > times out at the real budget, keeps the rest unsent, and a retry saves
+        row failed after 65 s, real budget
+PASSED  hostile text > renders a layer name and an error reply as text, and no script runs
+PASSED  hostile text > carries awkward layer names verbatim
+PASSED  the file changes under a run > fails a deleted node and continues the batch
+PASSED  the file changes under a run > keeps the run’s targets when the selection changes mid-run
+PASSED  light panel > no selection
+PASSED  light panel > ready
+PASSED  light panel > running
+PASSED  light panel > saved
+PASSED  light panel > partial failure
+PASSED  light panel > offline
+PASSED  light panel > Unidentified notice
+PASSED  dark panel > no selection
+PASSED  dark panel > ready
+PASSED  dark panel > running
+PASSED  dark panel > saved
+PASSED  dark panel > partial failure
+PASSED  dark panel > offline
+PASSED  dark panel > Unidentified notice
+
+passed 29, failed 0

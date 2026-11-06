@@ -1,0 +1,49 @@
+Real receiver code from PR #6, real built plugin, fake figma global, Chrome stand-in iframe. Not a real Figma export.
+Receiver: built dist-electron/receiver.cjs forked by the real receiver-controller under plain Node, with a preload supplying process.parentPort in place of Electron's utilityProcess.
+Library: real PR #4 createLibrary at a404af2 in a scratch directory. One commit failure in the mixed batch case is injected by the driver.
+Chrome major version 157.
+
+PASS GET / probe reaches ready
+  receiver: GET / 200, Origin null, allow-origin null
+  panel: figma-drop is ready
+PASS single export with a file key
+  disk: revision holds bundle receipt.json; reply preview preview.png
+  receiver: OPTIONS /sync 204, POST /sync 200, committed
+  panel: Saved <library>/files/synthetic-fixture-c16cc49e082e81e4/profile-card-5e01603443fb4f55/<rev>/bundle
+  disk: figma-components.json meta.json node.json preview.assets preview.html preview.png preview.svg remote-masters.json styles.json variables.json; preview.assets: 3 files
+PASS meta.json identity
+  disk: fileKey SYNTHfixture0000000000, fileName Synthetic Fixture, nodeId 10:1, nodeName Profile Card
+PASS same export twice converges
+  receiver: POST 200; library find skipped
+  raw replay with contractVersion 999: 200, library skipped
+  control: changed content committed; 3 revisions after change and revert
+  panel: Saved <library>/files/synthetic-fixture-c16cc49e082e81e4/profile-card-5e01603443fb4f55/<rev>/bundle
+PASS no-key export stays unidentified
+  receiver: POST 200; repeat library converged
+  panel: Figma gave no key for this file. Exports still save, but they go to Unidentified in figma-drop instead of a project.
+  disk: <library>/unidentified/profile-card-<rev>/bundle; meta fileKey null; projects 1, unidentified 1
+PASS 413 too many assets, no Retry
+  receiver: POST 413, 193330 byte body, allow-origin null
+  panel: This export has too many image assets. Retrying will not help, so export a smaller part of the design. | Nothing was saved. See each row for the reason. | primary Export layer
+PASS 413 value budget, no Retry
+  receiver: POST 413, about 16 MB body
+  panel: This export is too large for figma-drop to receive. Retrying will not help, so export a smaller part of the design.
+PASS 413 real body over 256 MiB, no Retry
+  attempt 1: receiver 413 for 279621624 bytes; panel [Failed] This export is too large for figma-drop to receive. Retrying will not help, so export a smaller part of the design. | receiver status online | primary Export layer
+  attempt 2: receiver 413 for 279621624 bytes; panel [Failed] This export is too large for figma-drop to receive. Retrying will not help, so export a smaller part of the design. | receiver status online | primary Export layer
+  attempt 3: receiver 413 for 279621624 bytes; panel [Failed] This export is too large for figma-drop to receive. Retrying will not help, so export a smaller part of the design. | receiver status online | primary Export layer
+PASS layer name over 4096 chars saves
+  receiver: POST 200; control with full 5525-char nodeName 400
+  disk: meta nodeName 1023 chars, node.json name 5525 chars
+PASS mixed batch retries only the retryable row
+  receiver: 70:1 413; 70:2 503,200; 70:3 200
+  panel: first Retry 1 layer; after Export 3 layers; 2 of 3 saved. See each row for the reason.
+PASS receiver stopped, offline, Retry saves after restart
+  panel: down [figma-drop is not answering] Nothing was saved. Open figma-drop, turn its receiver on, then retry.; back [figma-drop is ready]; Saved
+  after full restart: library skipped, same path true
+PASS iframe Origin sent and accepted (Chrome only)
+  receiver: Origin values null, requests without Origin from the iframe 0; foreign 403; none 403
+  preflight Access-Control-Request-Private-Network values: none
+  hosts seen: localhost:<port>,127.0.0.1:<port>
+
+12 of 12 cases passed.

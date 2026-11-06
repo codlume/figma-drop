@@ -1,0 +1,22 @@
+{
+  "name": "@figma-drop/figma-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vp pack && vp build && node scripts/inline-ui.mjs dist && node scripts/check-artifacts.mjs dist",
+    "test": "vp test run",
+    "test:e2e": "pnpm run build && vp test run --config test/e2e/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.code.json && tsc -p tsconfig.ui.json && tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@figma-drop/export-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
