@@ -4,6 +4,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  App,
   assert,
   createLog,
   desktopDir,
@@ -20,6 +21,8 @@ const QUIT_DEADLINE_MS = 4_000;
 const realLibrary = join(homedir(), 'figma-drop');
 const proofDir = join(repoDir, 'proof/shell');
 const log = createLog();
+const appOutput = [];
+App.log = (line) => appOutput.push(line);
 
 const scratch = await mkdtemp(join(tmpdir(), 'figma-drop-shell-'));
 const paths = { userData: join(scratch, 'user-data'), library: join(scratch, 'library') };
@@ -86,6 +89,18 @@ const quitPaths = [
       app.evaluateInMain(`process.mainModule.require('electron').app.quit()`).catch(() => {}),
   },
   { label: 'tray Quit', trigger: clickTrayQuit },
+  {
+    // The tray rebuilds its menu on every status, so a throw here makes `receiver.stop()` reject.
+    label: 'tray Quit while stopping the receiver rejects',
+    trigger: async (app) => {
+      await app.evaluateInMain(`(() => {
+        process.mainModule.require('electron').Menu.buildFromTemplate = () => {
+          throw new Error('proof: status listener threw');
+        };
+      })()`);
+      await clickTrayQuit(app);
+    },
+  },
 ];
 
 async function exitsByItselfWithAWindowOpen({ label, trigger }) {
@@ -327,7 +342,7 @@ async function main() {
     assert((await persisted()).receiverEnabled === false, 'the file keeps false');
     assert((await trayItem(app, 'receiver-on')).checked === false, 'the checkbox keeps false');
     const tray = await trayItem(app, 'status');
-    assert(tray.label.startsWith('Receiver failed'), `tray status ${tray.label}`);
+    assert(tray.label.startsWith('Receiver problem'), `tray status ${tray.label}`);
     const recovered = await page.evaluate('window.figmaDrop.receiver.setEnabled(false)');
     assert(recovered.state === 'off', `recovered ${JSON.stringify(recovered)}`);
     await waitForText(page, 'Receiver off');
@@ -377,6 +392,11 @@ async function main() {
     outcomes.every((outcome) => outcome.passed),
     'every quit path exits by itself',
   );
+
+  await step('a rejected receiver stop is logged, not swallowed', async () => {
+    const logged = appOutput.some((line) => line.includes('Could not stop the receiver'));
+    assert(logged, 'the app logged the failed stop');
+  });
 
   await step('~/figma-drop was not created or touched', async () => {
     const after = existsSync(realLibrary) ? statSync(realLibrary).mtimeMs : null;
