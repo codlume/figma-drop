@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, sep } from 'node:path';
 import { promisify } from 'node:util';
 
+import { MAX_JSON_VALUES } from '../../apps/desktop/src/ingest/json-budget.ts';
 import {
   assert,
   createLog,
@@ -398,7 +399,7 @@ async function main() {
     );
 
     // The worst bodies the budget admits. Unique keys cost the most heap per value.
-    const budget = 7_990_000;
+    const budget = MAX_JSON_VALUES - 10_000;
     const worstBodies = {
       'unique keys': () => {
         const keys = Array.from({ length: budget }, (_, index) => `"k${index}":0`);

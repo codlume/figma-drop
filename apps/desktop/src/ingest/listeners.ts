@@ -24,11 +24,12 @@ type Attempt =
   | { ok: true; server: Server }
   | { ok: false; code: string | undefined; message: string };
 
-// A family can be absent from this machine, and the client falls back to the
-// family that answers, so one bound address is enough.
-// Loopback headers arrive at once. This must stay under the margin in requestTimeoutMs.
+// Must stay under the margin in requestTimeoutMs. Node enforces it on its 30 s
+// connection check, and no slot is held until headers complete.
 const HEADERS_TIMEOUT_MS = 5000;
 
+// A family can be absent from this machine, and the client falls back to the
+// family that answers, so one bound address is enough.
 const MISSING_FAMILY_CODES = new Set(['EADDRNOTAVAIL', 'EAFNOSUPPORT']);
 
 // `localhost` may resolve to either family, so EADDRINUSE on one is a conflict for

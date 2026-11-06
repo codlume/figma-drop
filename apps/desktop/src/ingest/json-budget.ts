@@ -1,7 +1,8 @@
 // A byte cap bounds neither parse time nor memory: 256 MiB of `[` or `[],` aborts
 // V8 inside JSON.parse with a fatal out-of-memory that no catch can contain, and a
-// sandboxed iframe on any site can send it. The plugin caps a tree at 40,000 nodes,
-// so this sits far above a real export.
+// sandboxed iframe on any site can send it. One object of about 2^23 keys also kills
+// the child on Electron 44, so this cannot rise without capping keys per object. No
+// real export has been measured, and a dense tree with many remote masters may reach it.
 export const MAX_JSON_VALUES = 8_000_000;
 
 const QUOTE = 0x22;

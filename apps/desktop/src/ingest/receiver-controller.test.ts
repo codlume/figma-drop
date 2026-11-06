@@ -550,21 +550,44 @@ describe('parseChildMessage', () => {
   });
 });
 
-describe('parseChildMessage length bounds', () => {
-  const staged = {
-    stagingId: '00000000-0000-4000-8000-000000000000',
-    identity: { kind: 'file', fileKey: 'key' },
-    figmaNodeId: '1:2',
-    contentHash: 'a'.repeat(64),
-    fileName: 'File',
-    nodeName: 'Node',
-    exportedAt: null,
-  };
-  const commit = (overrides: Record<string, unknown>) => ({
-    type: 'call',
-    callId: 1,
-    call: { method: 'commit', staged: { ...staged, ...overrides } },
+describe('child stop during a bind', () => {
+  it('exits when the bind fails after a stop arrived, rather than idling until killed', async () => {
+    const port = await freePort();
+    const foreign = await listenOn('127.0.0.1', port);
+    const exit = deferred<number>();
+    let deliver: (message: MainMessage) => void = () => {};
+    runReceiverChild({
+      post: () => {},
+      onMessage: (listener) => {
+        deliver = listener;
+      },
+      exit: (code) => exit.resolve(code),
+    });
+
+    deliver({ type: 'start', port, stagingDir: '/nonexistent' });
+    deliver({ type: 'stop' });
+
+    expect(await exit.promise).toBe(0);
+    await closeServer(foreign);
   });
+});
+
+const staged = {
+  stagingId: '00000000-0000-4000-8000-000000000000',
+  identity: { kind: 'file', fileKey: 'key' },
+  figmaNodeId: '1:2',
+  contentHash: 'a'.repeat(64),
+  fileName: 'File',
+  nodeName: 'Node',
+  exportedAt: null,
+};
+const commit = (overrides: Record<string, unknown>) => ({
+  type: 'call',
+  callId: 1,
+  call: { method: 'commit', staged: { ...staged, ...overrides } },
+});
+
+describe('parseChildMessage length bounds', () => {
   const oversized = 'x'.repeat(MAX_IDENTITY_CHARS + 1);
 
   it('accepts a well-formed commit', () => {
