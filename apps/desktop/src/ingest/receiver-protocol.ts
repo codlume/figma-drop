@@ -16,10 +16,16 @@ export type BackendCall =
 export type BackendResult =
   | { method: 'commit'; result: CommitResult }
   | { method: 'findExport'; result: CommitResult | null }
-  | { method: 'focus'; found: boolean };
+  | { method: 'focus'; result: 'found' | 'unknown' | 'failed' };
+
+// Main owns `off` and `starting`, so the child never reports them.
+export type ChildStatus = Extract<
+  ReceiverStatus,
+  { state: 'listening' | 'port-conflict' | 'failed' | 'stopping' }
+>;
 
 export type ChildMessage =
-  | { type: 'status'; status: ReceiverStatus }
+  | { type: 'status'; status: ChildStatus }
   // Brackets the synchronous work that no timer inside the child can interrupt.
   | { type: 'parse-start' }
   | { type: 'parse-end' }

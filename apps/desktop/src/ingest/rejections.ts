@@ -15,6 +15,7 @@ export const REJECTIONS = {
   missingNodeId: { status: 400, error: 'This export has no Figma node id.' },
   invalidAsset: { status: 400, error: 'This export has an image that is not valid base64.' },
   nestedTooDeeply: { status: 400, error: 'This export is nested too deeply.' },
+  invalidOpenRequest: { status: 400, error: 'This request names no export path.' },
   unknownExport: { status: 404, error: 'figma-drop has no export at that path.' },
   pickFolderUnsupported: {
     status: 501,
