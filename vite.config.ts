@@ -5,6 +5,7 @@ import { defineConfig } from 'vite-plus';
 
 const ignorePatterns = [
   '.audit/**',
+  'apps/desktop/.dev/**',
   'dist',
   'dist-electron',
   'node_modules',
