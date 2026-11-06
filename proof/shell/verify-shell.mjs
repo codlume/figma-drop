@@ -61,7 +61,7 @@ async function quit(app) {
 const trayItem = async (app, id) => (await app.hook('tray()')).items.find((i) => i.id === id);
 
 async function main() {
-  log.write(`scratch library and user data under the system temp dir, test port ${port}`);
+  log.write('scratch library and user data under the system temp dir, free test port');
   assert(existsSync(join(desktopDir, 'dist-electron/main.cjs')), 'run pnpm build first');
 
   let app = launch();
@@ -268,7 +268,7 @@ async function main() {
     assert(portsSeen.size > 0, 'lsof saw the app listeners, so an absent port means something');
     assert(!portsSeen.has(REAL_PORT), `saw ${[...portsSeen].join(', ')}`);
     assert(!portsSeen.has(port), `saw ${[...portsSeen].join(', ')}`);
-    log.write(`  listeners sampled at each checkpoint: ${[...portsSeen].join(', ')}`);
+    log.write(`  ${portsSeen.size} app listeners sampled across checkpoints, all CDP or inspector`);
   });
 }
 

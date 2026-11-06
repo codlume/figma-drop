@@ -1,4 +1,4 @@
-scratch library and user data under the system temp dir, test port 56319
+scratch library and user data under the system temp dir, free test port
 PASS a window loads and renders the status view
 PASS StyleX CSS is linked and token colors reach the page
 PASS window.figmaDrop is frozen and matches the API, with no require
@@ -20,6 +20,6 @@ PASS relaunch after a tray toggle reads the tray value
 PASS a corrupt settings.json falls back to on
 PASS quit exits cleanly
 PASS ~/figma-drop was not created or touched
-  listeners sampled at each checkpoint: 56320, 56321, 56354, 56355, 56378, 56379, 56384, 56385
+  8 app listeners sampled across checkpoints, all CDP or inspector
 PASS neither port 3579 nor the test port was ever bound by the app
 ALL PASS
