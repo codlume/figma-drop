@@ -36,7 +36,7 @@ export type Project = {
 export type UnidentifiedEntry = Revision & {
   claimedName: string | null;
   claimedKey: string | null;
-  figmaNodeId: string | null;
+  figmaNodeId: string;
   name: string;
 };
 

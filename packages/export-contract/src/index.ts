@@ -41,6 +41,7 @@ export const BUNDLE_FILES = {
   styles: 'styles.json',
   previewSvg: 'preview.svg',
   previewPng: 'preview.png',
+  previewHtml: 'preview.html',
   previewAssetsDir: 'preview.assets',
 } as const;
 

@@ -14,16 +14,15 @@ export type StagedExport = {
   stagingId: StagingId;
   identity: { kind: 'file'; fileKey: string } | { kind: 'unidentified'; claimedKey: string | null };
   fileName: string | null;
-  figmaNodeId: string | null;
+  figmaNodeId: string;
   nodeName: string | null;
   contentHash: string;
   exportedAt: string | null;
-  hasPreview: boolean;
 };
 
 export type ExportLookup = {
   identity: StagedExport['identity'];
-  figmaNodeId: string | null;
+  figmaNodeId: string;
   contentHash: string;
 };
 
@@ -61,7 +60,9 @@ export type LibraryOptions = {
   trashItem(path: string): Promise<void>;
 };
 
-export type CreateLibrary = (options: LibraryOptions) => Library;
+// Resolves before the receiver starts, because opening sweeps staging. It never
+// rejects: an unreadable library resolves with an `unreadable` snapshot.
+export type CreateLibrary = (options: LibraryOptions) => Promise<Library>;
 
 export interface ReceiverController {
   start(): Promise<void>;
