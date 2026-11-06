@@ -6,12 +6,14 @@ import { BUNDLE_FILES } from '@figma-drop/export-contract';
 import type { StagingId } from '../shared/library';
 import {
   discardStaging,
+  MAX_IDENTITY_CHARS,
   prepareExport,
   stageExport,
   type BundleFile,
   type PreparedExport,
 } from './export-pipeline';
 import { exportBody, exportPayload, ONE_PIXEL_PNG_BASE64 } from './ingest-fixtures';
+import { MAX_JSON_VALUES } from './json-budget';
 
 const faults = vi.hoisted(() => ({
   mkdir: undefined as ((path: string) => void) | undefined,
@@ -474,14 +476,6 @@ describe('prepareExport preview.html', () => {
     const html = text(prepared({ svg: '<svg></svg>', nodeId: '<1:2>', nodeName }), 'preview.html');
     expect(html).toContain('<title>&lt;1:2&gt;</title>');
   });
-
-  it('survives a node name far beyond any title', () => {
-    const prefix = Buffer.from('{"nodeId":"1:2","node":{},"svg":"<svg></svg>","nodeName":"');
-    const body = Buffer.concat([prefix, Buffer.alloc(2 ** 27, '&'), Buffer.from('"}')]);
-    const result = prepareExport(body);
-    if (!result.ok) throw new Error(result.rejection);
-    expect(text(result.prepared, 'preview.html').length).toBeLessThan(16 * 1024);
-  }, 60_000);
 });
 
 describe('staging', () => {
@@ -693,5 +687,25 @@ describe('staging', () => {
       };
       await expect(discardStaging(stagingDir, STAGING_ID)).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('prepareExport bounds', () => {
+  it('refuses a body with more JSON values than any real export before parsing it', () => {
+    const body = Buffer.from(`{"node":{"a":[${'[],'.repeat(MAX_JSON_VALUES)}[]]},"nodeId":"1:1"}`);
+    expect(prepareExport(body)).toEqual({ ok: false, rejection: 'bodyTooLarge' });
+  });
+
+  it.each(['fileKey', 'fileName', 'nodeId', 'nodeName', 'exportedAt'])(
+    'refuses an oversized %s, which would otherwise reach main and the receipt',
+    (field) => {
+      const body = exportBody({ [field]: 'x'.repeat(MAX_IDENTITY_CHARS + 1) });
+      expect(prepareExport(body)).toEqual({ ok: false, rejection: 'invalidExport' });
+    },
+  );
+
+  it('accepts those fields at the limit', () => {
+    const body = exportBody({ nodeName: 'x'.repeat(MAX_IDENTITY_CHARS) });
+    expect(prepareExport(body).ok).toBe(true);
   });
 });

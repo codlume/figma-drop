@@ -6,10 +6,6 @@ import type { RejectionCode } from './rejections';
 
 export const MAX_ASSETS = 2000;
 
-// Sized for a screenshot tab, and applied before escaping: a name of hundreds of
-// megabytes exhausts the heap in the replacement, which no catch can recover from.
-const MAX_TITLE_LENGTH = 1024;
-
 const MAX_INDENTATION_CHARS = 128 * 1024 * 1024;
 
 const PREVIEW_CSP =
@@ -74,7 +70,7 @@ function previewHtml(title: string, svg: string): string {
 <head>
 <meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">
 <meta charset="utf-8">
-<title>${escapeHtml(title.slice(0, MAX_TITLE_LENGTH))}</title>
+<title>${escapeHtml(title)}</title>
 </head>
 <body>
 ${svg}

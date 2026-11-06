@@ -6,7 +6,12 @@ import type { ExportLookup, StagedExport } from '../shared/integration';
 import type { StagingId } from '../shared/library';
 import { buildBundleFiles, type BundleResult } from './bundle';
 import { hashExport } from './content-hash';
+import { exceedsValueBudget } from './json-budget';
 import type { RejectionCode } from './rejections';
+
+// These fields cross into main and persist in the receipt, which every launch
+// reads, so unlike bundle files they cannot be as large as the body.
+export const MAX_IDENTITY_CHARS = 4096;
 
 const STAGING_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -24,6 +29,8 @@ export type PrepareResult =
   | { ok: false; rejection: RejectionCode };
 
 export function prepareExport(body: Buffer): PrepareResult {
+  if (exceedsValueBudget(body)) return { ok: false, rejection: 'bodyTooLarge' };
+
   let raw: unknown;
   try {
     raw = JSON.parse(body.toString('utf8'));
@@ -36,6 +43,11 @@ export function prepareExport(body: Buffer): PrepareResult {
   const { payload } = parsed;
   const { nodeId } = payload;
   if (!nodeId) return { ok: false, rejection: 'missingNodeId' };
+  const { fileKey, fileName, nodeName, exportedAt } = payload;
+  const identityFields = [fileKey, fileName, nodeId, nodeName, exportedAt];
+  if (identityFields.some((field) => (field?.length ?? 0) > MAX_IDENTITY_CHARS)) {
+    return { ok: false, rejection: 'invalidExport' };
+  }
 
   const contentHash = hashExport(raw as Record<string, unknown>);
   if (contentHash === null) return { ok: false, rejection: 'nestedTooDeeply' };
@@ -50,9 +62,9 @@ export function prepareExport(body: Buffer): PrepareResult {
 
   const lookup = { identity: classifyFileIdentity(payload), figmaNodeId: nodeId, contentHash };
   const display = {
-    fileName: payload.fileName ?? null,
-    nodeName: payload.nodeName ?? null,
-    exportedAt: payload.exportedAt ?? null,
+    fileName: fileName ?? null,
+    nodeName: nodeName ?? null,
+    exportedAt: exportedAt ?? null,
   };
   return {
     ok: true,

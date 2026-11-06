@@ -85,7 +85,7 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
       case 'pickFolder':
         return plain().reject('pickFolderUnsupported');
       case 'open':
-        return settle(
+        return replyOnThrow(
           open,
           req,
           createResponder(res, cors, limits.deadlineMs, () => {}),
@@ -99,19 +99,9 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
           if (inFlight === slot.promise) inFlight = null;
           slot.resolve();
         });
-        return settle(sync, req, responder, 'saveFailed');
+        return replyOnThrow(sync, req, responder, 'saveFailed');
       }
     }
-  }
-
-  // An unhandled rejection would end the child, and the sender with no reply.
-  function settle(
-    run: (req: IncomingMessage, responder: Responder) => Promise<void>,
-    req: IncomingMessage,
-    responder: Responder,
-    fallback: RejectionCode,
-  ): void {
-    run(req, responder).catch(() => responder.reject(fallback));
   }
 
   async function sync(req: IncomingMessage, responder: Responder): Promise<void> {
@@ -183,6 +173,16 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
     idle: () => inFlight ?? Promise.resolve(),
     requestTimeoutMs: limits.deadlineMs + 10_000,
   };
+}
+
+// An unhandled rejection would end the child, and the sender with no reply.
+function replyOnThrow(
+  run: (req: IncomingMessage, responder: Responder) => Promise<void>,
+  req: IncomingMessage,
+  responder: Responder,
+  fallback: RejectionCode,
+): void {
+  run(req, responder).catch(() => responder.reject(fallback));
 }
 
 function facts(req: IncomingMessage): RequestFacts {
