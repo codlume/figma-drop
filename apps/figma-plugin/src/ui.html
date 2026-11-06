@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>figma-drop</title>
+    <link rel="stylesheet" href="./ui.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header id="receiver" class="receiver" data-status="checking" role="status">
+        <span class="receiver-dot" aria-hidden="true"></span>
+        <p id="receiver-text" class="receiver-text"></p>
+        <button id="check-again" class="link" type="button" hidden>Check again</button>
+        <p id="receiver-hint" class="receiver-hint" hidden></p>
+      </header>
+
+      <section class="selection" aria-label="Selection">
+        <h1 id="selection-title" class="selection-title"></h1>
+        <p id="selection-detail" class="selection-detail" hidden></p>
+        <p id="unidentified" class="note" hidden></p>
+      </section>
+
+      <section class="progress" aria-label="Exports">
+        <p id="intro" class="intro">
+          figma-drop saves each export on this Mac and groups exports from the same Figma file.
+        </p>
+        <ul id="rows" class="rows" hidden></ul>
+      </section>
+
+      <footer class="footer">
+        <p id="notice" class="notice" role="status" hidden></p>
+        <div class="actions">
+          <button id="primary" class="primary" type="button" disabled>Export</button>
+          <button id="dismiss" class="secondary" type="button" hidden>Done</button>
+        </div>
+      </footer>
+    </main>
+    <script type="module" src="./ui.ts"></script>
+  </body>
+</html>

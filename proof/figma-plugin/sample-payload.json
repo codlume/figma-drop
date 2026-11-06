@@ -1,0 +1,218 @@
+{
+  "note": "Synthetic fixture through a fake figma global. Base64 and the timestamp are elided, and node trees keep only id, name, type.",
+  "node": {
+    "id": "10:1",
+    "name": "Profile Card",
+    "type": "FRAME",
+    "children": [
+      {
+        "id": "10:2",
+        "name": "Title",
+        "type": "TEXT"
+      },
+      {
+        "id": "10:3",
+        "name": "Divider",
+        "type": "VECTOR"
+      },
+      {
+        "id": "10:4",
+        "name": "Avatar",
+        "type": "RECTANGLE"
+      },
+      {
+        "id": "10:5",
+        "name": "Close",
+        "type": "INSTANCE",
+        "children": [
+          {
+            "id": "I10:5;20:2",
+            "name": "Glyph",
+            "type": "VECTOR"
+          }
+        ]
+      },
+      {
+        "id": "10:6",
+        "name": "Follow",
+        "type": "INSTANCE",
+        "children": [
+          {
+            "id": "I10:6;30:2",
+            "name": "Label",
+            "type": "TEXT"
+          }
+        ]
+      }
+    ]
+  },
+  "fileKey": "SYNTHfixture0000000000",
+  "fileName": "Synthetic Fixture",
+  "nodeId": "10:1",
+  "nodeName": "Profile Card",
+  "exportedAt": "<timestamp elided>",
+  "summary": {
+    "target": {
+      "id": "10:1",
+      "name": "Profile Card",
+      "type": "FRAME"
+    },
+    "totalNodes": 8,
+    "nodeTypes": {
+      "FRAME": 1,
+      "TEXT": 2,
+      "VECTOR": 2,
+      "RECTANGLE": 1,
+      "INSTANCE": 2
+    },
+    "textLayerCount": 2,
+    "textSamples": ["Ada Example", "Follow"],
+    "components": {
+      "total": 2,
+      "local": 1,
+      "remote": 1
+    },
+    "sets": [],
+    "remoteMastersResolved": 1,
+    "remoteMasterErrors": [],
+    "variables": {
+      "collections": 1,
+      "tokens": 1
+    },
+    "styles": {
+      "paint": 1,
+      "text": 0,
+      "effect": 0,
+      "grid": 0
+    },
+    "imageAssets": 1,
+    "truncated": false,
+    "truncatedAt": null,
+    "preview": {
+      "svg": true,
+      "png": true,
+      "svgSkipped": false
+    }
+  },
+  "components": [
+    {
+      "id": "20:1",
+      "name": "Icon/Close",
+      "key": "0f1e2d3c4b5a69788796a5b4c3d2e1f001234567",
+      "type": "COMPONENT",
+      "description": "",
+      "remote": false,
+      "componentSetId": null
+    },
+    {
+      "id": "30:1",
+      "name": "Library Button",
+      "key": "feedface00000000000000000000000000000001",
+      "type": "COMPONENT",
+      "description": "",
+      "remote": true,
+      "componentSetId": null,
+      "masterName": "Library Button"
+    }
+  ],
+  "remoteMasters": [
+    {
+      "id": "30:1",
+      "name": "Library Button",
+      "type": "COMPONENT",
+      "children": [
+        {
+          "id": "30:2",
+          "name": "Label",
+          "type": "TEXT"
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "collections": [
+      {
+        "id": "VariableCollectionId:1:1",
+        "name": "Theme",
+        "key": "c0ffee0000000000000000000000000000000001",
+        "remote": false,
+        "defaultModeId": "1:0",
+        "modes": [
+          {
+            "modeId": "1:0",
+            "name": "Light"
+          }
+        ]
+      }
+    ],
+    "tokens": [
+      {
+        "id": "VariableID:1:2",
+        "name": "color/surface",
+        "key": "c0ffee0000000000000000000000000000000002",
+        "remote": false,
+        "resolvedType": "COLOR",
+        "description": "",
+        "collectionId": "VariableCollectionId:1:1",
+        "collectionName": "Theme",
+        "scopes": ["ALL_SCOPES"],
+        "valuesByMode": {
+          "Light": {
+            "hex": "#ffffff",
+            "rgba": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            }
+          }
+        }
+      }
+    ]
+  },
+  "styles": {
+    "styles": [
+      {
+        "id": "S:aaaa000000000000000000000000000000000001,",
+        "key": "aaaa000000000000000000000000000000000001",
+        "name": "Surface/Card",
+        "remote": false,
+        "description": "",
+        "type": "PAINT",
+        "paints": [
+          {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><image href=\"preview.assets/img-0.png\"/></svg>",
+  "png": "<base64 elided: 96 chars, sha256 10a7227ade22>",
+  "assets": [
+    {
+      "name": "img-0.png",
+      "base64": "<base64 elided: 96 chars, sha256 10a7227ade22>"
+    },
+    {
+      "name": "Icon-Close.0f1e2d3c4b5a69788796a5b4c3d2e1f001234567.svg",
+      "base64": "<base64 elided: 92 chars, sha256 e5c4b74f5e8c>"
+    }
+  ],
+  "images": [
+    {
+      "imageHash": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      "name": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678.png",
+      "base64": "<base64 elided: 72 chars, sha256 a2dc583ad849>"
+    }
+  ],
+  "contractVersion": 1
+}

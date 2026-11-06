@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@figma/plugin-typings':
+      specifier: 1.142.0
+      version: 1.142.0
     '@stylexjs/stylex':
       specifier: 0.19.1
       version: 0.19.1
@@ -116,6 +119,28 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.3.3
+        version: '@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.12.4)(typescript@7.0.2)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.3.3(@types/node@24.12.4)(jsdom@31.0.0)(typescript@7.0.2)
+
+  apps/figma-plugin:
+    dependencies:
+      '@figma-drop/export-contract':
+        specifier: workspace:*
+        version: link:../../packages/export-contract
+    devDependencies:
+      '@figma/plugin-typings':
+        specifier: 'catalog:'
+        version: 1.142.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.12.4
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -259,6 +284,9 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@figma/plugin-typings@1.142.0':
+    resolution: {integrity: sha512-Loa9P4bUZi/pQejic8OYQSU4Zz9izJdIiDUkkKddq5Bfc5JPRV6pCeg3C8owovbX9lKshaFym86PlMhKZgLeBw==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1838,6 +1866,8 @@ snapshots:
       - supports-color
 
   '@exodus/bytes@1.16.0': {}
+
+  '@figma/plugin-typings@1.142.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
