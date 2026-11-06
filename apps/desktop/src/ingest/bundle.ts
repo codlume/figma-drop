@@ -10,6 +10,8 @@ export const MAX_ASSETS = 2000;
 // megabytes exhausts the heap in the replacement, which no catch can recover from.
 const MAX_TITLE_LENGTH = 1024;
 
+const MAX_INDENTATION_CHARS = 128 * 1024 * 1024;
+
 const PREVIEW_CSP =
   "default-src 'none'; img-src 'self' data: file:; style-src 'unsafe-inline'; font-src 'self' data: file:";
 
@@ -34,14 +36,27 @@ function isStrictBase64(value: string): boolean {
   return true;
 }
 
-// Pretty output of a deep tree can pass V8's string limit where compact fits.
-function toJson(value: unknown): string {
+function indented(value: unknown): string | null {
   try {
     return JSON.stringify(value, null, 2);
   } catch (error) {
-    if (error instanceof RangeError) return JSON.stringify(value);
+    if (error instanceof RangeError) return null;
     throw error;
   }
+}
+
+// Indentation grows with depth, so a few megabytes nested 900 deep pretty-print to
+// gigabytes across the bundle's files. That exhausts the heap, which no catch can
+// recover from. Once the shared allowance runs out, the remaining files stay compact.
+function jsonEncoder(): (value: unknown) => string {
+  let allowance = MAX_INDENTATION_CHARS;
+  return (value) => {
+    const compact = JSON.stringify(value);
+    const pretty = indented(value);
+    if (pretty === null || pretty.length - compact.length > allowance) return compact;
+    allowance -= pretty.length - compact.length;
+    return pretty;
+  };
 }
 
 function escapeHtml(text: string): string {
@@ -115,6 +130,7 @@ export function buildBundleFiles(payload: ExportPayload & { nodeId: string }): B
     return { ok: false, rejection: 'invalidAsset' };
   }
 
+  const toJson = jsonEncoder();
   const files: BundleFile[] = [
     { relativePath: BUNDLE_FILES.node, bytes: toJson(node) },
     { relativePath: BUNDLE_FILES.components, bytes: toJson(components ?? []) },

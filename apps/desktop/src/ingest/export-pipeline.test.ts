@@ -288,6 +288,17 @@ describe('prepareExport bundle', () => {
     expect(text(result.prepared, 'node.json')).toBe(`{"tree":${nestedJson(900, wide)}}`);
   }, 60_000);
 
+  it('holds a small body nested deep in six files to a bounded bundle', () => {
+    const tree = nestedJson(900, `${'0,'.repeat(280_000)}0`);
+    const object = `{"t":${tree}}`;
+    const body = `{"nodeId":"1:2","node":${object},"summary":${object},"variables":${object},"styles":${object},"components":${tree},"remoteMasters":${tree}}`;
+    const result = prepareExport(Buffer.from(body));
+    if (!result.ok) throw new Error(result.rejection);
+    const size = result.prepared.files.reduce((total, { bytes }) => total + bytes.length, 0);
+    expect(size).toBeLessThan(200 * 1024 * 1024);
+    expect(JSON.parse(text(result.prepared, 'variables.json'))).toEqual(JSON.parse(object));
+  }, 60_000);
+
   it('writes meta.json with exactly the wire keys, in order', () => {
     const summary = { totalNodes: 3 };
     const full = prepared({
