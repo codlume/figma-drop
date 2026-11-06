@@ -1,0 +1,506 @@
+Reproduction of gaps 1, 2, 3, item 7, and the signal-quit defect, before any production change.
+
+Production code: 681d99d (apps/desktop/src/main/*.ts other than tests were unchanged for this run).
+Tests: the commit that adds this file. Node 24.21.0, pnpm 11.10.0.
+To rerun: check out that commit, then run the three commands below from the repository root.
+Every expected value below is the decided behaviour. Every received value is what 681d99d does.
+
+Gap 1 (rejected controller call). Stale status with the setting on:
+  "reports a refused start": expected failed, received { state: 'off' }.
+  "reports a refused stop": expected failed, received { state: 'listening', port: 13579 }.
+Gap 2 (/open truthfulness). windows.test.ts: show() and send() report nothing (undefined), and a
+  dead window is reused. verify-seams: real Electron, page file hidden, onFocus resolved true.
+  focus.test.ts cannot run here: src/main/focus.ts does not exist at 681d99d.
+Gap 3 (unsaved setting). Toggle proceeds and diverges from disk:
+  "leaves the setting and a running controller": expected failed, received { state: 'off' }.
+  "agrees with what a relaunch reads": in-memory false, relaunch reads true.
+  tray.test.ts: checkbox shows false while the disk still says true.
+Item 7 (toggle after stop). calls were [ 'stop', 'start' ], so a toggle after stop starts the receiver.
+Item 4 (signal quit). verify-shell: SIGTERM, SIGHUP, SIGINT still running at 4000 ms with a window open.
+  app.quit() and tray Quit exit 0, so only the signal paths hang.
+
+=== pnpm exec vp test run --project node src/main/receiver-switch.test.ts src/main/windows.test.ts src/main/tray.test.ts (in apps/desktop), exit 1 ===
+⎯⎯⎯⎯⎯⎯ Failed Tests 24 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the controller rejects > reports a refused start instead of the stale status, keeping the setting on
+AssertionError: expected { state: 'off' } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringContaining "refused",
+-   "state": "failed",
++   "state": "off",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:193:45
+    191|     refuse.start = new Error('refused');
+    192|     const receiver = await open(controller);
+    193|     expect(await receiver.setEnabled(true)).toEqual(failedWith('refuse…
+       |                                             ^
+    194|     expect(receiver.status()).toEqual(failedWith('refused'));
+    195|     expect(receiver.enabled()).toBe(true);
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the controller rejects > reports a refused stop instead of the stale status, keeping the setting off
+AssertionError: expected { state: 'listening', port: 13579 } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringContaining "stuck",
+-   "state": "failed",
++   "port": 13579,
++   "state": "listening",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:203:46
+    201|     refuse.stop = new Error('stuck');
+    202|     const receiver = await open(controller);
+    203|     expect(await receiver.setEnabled(false)).toEqual(failedWith('stuck…
+       |                                              ^
+    204|     expect(receiver.enabled()).toBe(false);
+    205|     expect(await persisted()).toEqual({ receiverEnabled: false });
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the controller rejects > publishes the failure
+AssertionError: expected { state: 'off' } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringContaining "refused",
+-   "state": "failed",
++   "state": "off",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:215:25
+    213|     receiver.onStatus((status) => seen.push(status));
+    214|     await receiver.setEnabled(true);
+    215|     expect(seen.at(-1)).toEqual(failedWith('refused'));
+       |                         ^
+    216|   });
+    217|
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the controller rejects > reports and publishes a refused start on resume
+AssertionError: expected { state: 'off' } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringContaining "refused",
+-   "state": "failed",
++   "state": "off",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:225:31
+    223|     receiver.onStatus((status) => seen.push(status));
+    224|     await receiver.resume();
+    225|     expect(receiver.status()).toEqual(failedWith('refused'));
+       |                               ^
+    226|     expect(seen.at(-1)).toEqual(failedWith('refused'));
+    227|   });
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the setting cannot be saved > leaves the setting and a running controller as they were
+AssertionError: expected { state: 'off' } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringMatching /could not be saved.*unchanged/,
+-   "state": "failed",
++   "state": "off",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:306:46
+    304|     const receiver = await open(controller);
+    305|     await refuseWrites();
+    306|     expect(await receiver.setEnabled(false)).toEqual(notSaved);
+       |                                              ^
+    307|     await allowWrites();
+    308|     expect(calls).toEqual([]);
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the setting cannot be saved > does not start a stopped controller
+AssertionError: expected { state: 'listening', port: 13579 } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringMatching /could not be saved.*unchanged/,
+-   "state": "failed",
++   "port": 13579,
++   "state": "listening",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:318:45
+    316|     const receiver = await open(controller);
+    317|     await refuseWrites();
+    318|     expect(await receiver.setEnabled(true)).toEqual(notSaved);
+       |                                             ^
+    319|     await allowWrites();
+    320|     expect(calls).toEqual([]);
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the setting cannot be saved > agrees with what a relaunch reads
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/main/receiver-switch.test.ts:331:32
+    329|     await allowWrites();
+    330|     const relaunched = await open(null);
+    331|     expect(receiver.enabled()).toBe(relaunched.enabled());
+       |                                ^
+    332|   });
+    333|
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the setting cannot be saved > publishes the failure without a controller too
+AssertionError: expected { state: 'off' } to deeply equal { state: 'failed', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "message": StringMatching /could not be saved.*unchanged/,
+-   "state": "failed",
++   "state": "off",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:339:46
+    337|     receiver.onStatus((status) => seen.push(status));
+    338|     await refuseWrites();
+    339|     expect(await receiver.setEnabled(false)).toEqual(notSaved);
+       |                                              ^
+    340|     await allowWrites();
+    341|     expect(seen).toEqual([notSaved]);
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > when the setting cannot be saved > applies the toggle once saving works again
+AssertionError: expected [ 'stop', 'stop' ] to deeply equal [ 'stop' ]
+
+- Expected
++ Received
+
+  [
+    "stop",
++   "stop",
+  ]
+
+ ❯ src/main/receiver-switch.test.ts:351:19
+    349|     await allowWrites();
+    350|     expect(await receiver.setEnabled(false)).toEqual({ state: 'off' });
+    351|     expect(calls).toEqual(['stop']);
+       |                   ^
+    352|     expect(await persisted()).toEqual({ receiverEnabled: false });
+    353|   });
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > after stop > ignores a later toggle, leaving the controller and the setting alone
+AssertionError: expected { state: 'listening', port: 13579 } to deeply equal { state: 'off' }
+
+- Expected
++ Received
+
+  {
+-   "state": "off",
++   "port": 13579,
++   "state": "listening",
+  }
+
+ ❯ src/main/receiver-switch.test.ts:376:45
+    374|     const receiver = await open(controller);
+    375|     await receiver.stop();
+    376|     expect(await receiver.setEnabled(true)).toEqual({ state: 'off' });
+       |                                             ^
+    377|     expect(calls).toEqual(['stop']);
+    378|     expect(await persisted()).toEqual({ receiverEnabled: false });
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > after stop > ignores a toggle issued while stop is still running
+AssertionError: expected [ 'stop', 'start' ] to deeply equal [ 'stop' ]
+
+- Expected
++ Received
+
+  [
+    "stop",
++   "start",
+  ]
+
+ ❯ src/main/receiver-switch.test.ts:386:19
+    384|     const receiver = await open(controller);
+    385|     await Promise.all([receiver.stop(), receiver.setEnabled(true)]);
+    386|     expect(calls).toEqual(['stop']);
+       |                   ^
+    387|   });
+    388|
+
+
+ FAIL  |node| src/main/receiver-switch.test.ts > after stop > ignores a later resume
+AssertionError: expected [ 'stop', 'start' ] to deeply equal [ 'stop' ]
+
+- Expected
++ Received
+
+  [
+    "stop",
++   "start",
+  ]
+
+ ❯ src/main/receiver-switch.test.ts:394:19
+    392|     await receiver.stop();
+    393|     await receiver.resume();
+    394|     expect(calls).toEqual(['stop']);
+       |                   ^
+    395|   });
+    396|
+
+
+ FAIL  |node| src/main/tray.test.ts > receiver items > puts the checkbox back and says so when the setting cannot be saved
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/main/tray.test.ts:56:41
+     54|     await seen;
+     55|     await chmod(settingsDir, 0o700);
+     56|     expect(item('receiver-on').checked).toBe(true);
+       |                                         ^
+     57|     expect(item('status').label).toMatch(/^Receiver failed: .*could no…
+     58|   });
+
+
+ FAIL  |node| src/main/tray.test.ts > receiver items > keeps the checkbox on and shows the cause when the receiver cannot start
+AssertionError: expected 'Receiver off' to match /^Receiver failed: .*refused/
+
+- Expected:
+/^Receiver failed: .*refused/
+
++ Received:
+"Receiver off"
+
+ ❯ src/main/tray.test.ts:69:34
+     67|     await receiver.setEnabled(true);
+     68|     expect(item('receiver-on').checked).toBe(true);
+     69|     expect(item('status').label).toMatch(/^Receiver failed: .*refused/…
+       |                                  ^
+     70|   });
+     71| });
+
+
+ FAIL  |node| src/main/windows.test.ts > show > resolves true once the page has loaded
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:84:33
+     82| describe('show', () => {
+     83|   it('resolves true once the page has loaded', async () => {
+     84|     expect(await open().show()).toBe(true);
+       |                                 ^
+     85|   });
+     86|
+
+
+ FAIL  |node| src/main/windows.test.ts > show > resolves false when the page cannot load
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:89:33
+     87|   it('resolves false when the page cannot load', async () => {
+     88|     FakeWindow.load = () => Promise.reject(new Error('ERR_FILE_NOT_FOU…
+     89|     expect(await open().show()).toBe(false);
+       |                                 ^
+     90|   });
+     91|
+
+
+ FAIL  |node| src/main/windows.test.ts > show > destroys a failed window and builds a fresh one on the next show
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/main/windows.test.ts:96:35
+     94|     const windows = open();
+     95|     await windows.show();
+     96|     expect(windowAt(0).destroyed).toBe(true);
+       |                                   ^
+     97|     expect(windows.current()).toBeNull();
+     98|
+
+
+ FAIL  |node| src/main/windows.test.ts > show > resolves false when the user closes the window before it loads
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:113:25
+    111|     windowAt(0).destroy();
+    112|     failLoad();
+    113|     expect(await shown).toBe(false);
+       |                         ^
+    114|   });
+    115|
+
+
+ FAIL  |node| src/main/windows.test.ts > show > reuses a window that loaded
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:119:34
+    117|     const windows = open();
+    118|     await windows.show();
+    119|     expect(await windows.show()).toBe(true);
+       |                                  ^
+    120|     expect(FakeWindow.created).toHaveLength(1);
+    121|   });
+
+
+ FAIL  |node| src/main/windows.test.ts > send > returns true and delivers to a live window
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:128:46
+    126|     const windows = open();
+    127|     await windows.show();
+    128|     expect(windows.send('channel', 'value')).toBe(true);
+       |                                              ^
+    129|     expect(windowAt(0).sent).toEqual([['channel', 'value']]);
+    130|   });
+
+
+ FAIL  |node| src/main/windows.test.ts > send > returns false before any window exists
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:133:36
+    131|
+    132|   it('returns false before any window exists', () => {
+    133|     expect(open().send('channel')).toBe(false);
+       |                                    ^
+    134|   });
+    135|
+
+
+ FAIL  |node| src/main/windows.test.ts > send > returns false once the window has closed
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:140:37
+    138|     await windows.show();
+    139|     windowAt(0).destroy();
+    140|     expect(windows.send('channel')).toBe(false);
+       |                                     ^
+    141|   });
+    142|
+
+
+ FAIL  |node| src/main/windows.test.ts > send > returns false after a failed load
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:147:37
+    145|     const windows = open();
+    146|     await windows.show();
+    147|     expect(windows.send('channel')).toBe(false);
+       |                                     ^
+    148|   });
+    149|
+
+
+ FAIL  |node| src/main/windows.test.ts > send > returns false when the renderer has crashed, because nothing will read the message
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/main/windows.test.ts:154:37
+    152|     await windows.show();
+    153|     windowAt(0).crashed = true;
+    154|     expect(windows.send('channel')).toBe(false);
+       |                                     ^
+    155|     expect(windowAt(0).sent).toEqual([]);
+    156|   });
+
+
+
+ Test Files  3 failed (3)
+      Tests  24 failed | 25 passed (49)
+
+=== node proof/shell/verify-shell.mjs, exit 1 (last lines) ===
+PASS a corrupt settings.json falls back to on
+PASS quit exits cleanly
+FAIL SIGTERM with a window open is still running after 4000 ms
+FAIL SIGHUP with a window open is still running after 4000 ms
+FAIL SIGINT with a window open is still running after 4000 ms
+PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 798 ms
+PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 187 ms
+FAIL assertion failed: every quit path exits by itself
+
+=== node proof/shell/verify-seams.mjs, exit 1 (last lines) ===
+PASS present: previews render as images under the page CSP, and SVG scripts stay inert
+PASS present: onFocus resolves false for an unknown path and opens no window
+FAIL assertion failed: a page that cannot load: got true

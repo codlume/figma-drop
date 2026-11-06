@@ -169,6 +169,18 @@ export class App {
     await waitUntil(() => this.evaluateInMain(`typeof figmaDropTest === 'object'`), 'test hooks');
   }
 
+  // Resolves the exit, or null if the process is still running at the deadline. Waiting here, not in
+  // `stopTracked`, is what proves an exit: `stopTracked` ends a hung app by force.
+  async exitWithin(deadlineMs) {
+    let timer;
+    const deadline = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), deadlineMs);
+    });
+    const exit = await Promise.race([this.exited, deadline]);
+    clearTimeout(timer);
+    return exit;
+  }
+
   async listeningPorts() {
     const { stdout } = await execFileAsync('lsof', [
       '-nP',
@@ -185,6 +197,7 @@ export class App {
 
 const execFileAsync = promisify(execFile);
 const tracked = new Set();
+let forced = false;
 
 export function launchApp({ userData, library, port }) {
   const env = {
@@ -213,7 +226,8 @@ export function launchApp({ userData, library, port }) {
   return new App(child);
 }
 
-// Stops only what this run launched, by process group.
+// Stops only what this run launched, by process group. Resolves true once any process in this run
+// has needed the SIGKILL fallback, which a passing run must never rely on.
 export async function stopTracked() {
   const exits = [...tracked].map((child) => new Promise((resolve) => child.once('exit', resolve)));
   for (const child of tracked) {
@@ -222,6 +236,7 @@ export async function stopTracked() {
     } catch {}
   }
   const force = setTimeout(() => {
+    forced ||= tracked.size > 0;
     for (const child of tracked) {
       try {
         process.kill(-child.pid, 'SIGKILL');
@@ -230,6 +245,7 @@ export async function stopTracked() {
   }, 3000);
   await Promise.all(exits);
   clearTimeout(force);
+  return forced;
 }
 
 export function freePort() {

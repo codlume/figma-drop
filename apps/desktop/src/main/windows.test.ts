@@ -1,0 +1,157 @@
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+
+import { createWindows } from './windows.ts';
+
+// Labelled fake: it stands in for Electron's BrowserWindow, which cannot run under Node. Like the
+// real one, it throws when touched after destruction.
+const { FakeWindow } = vi.hoisted(() => {
+  class FakeWindow {
+    static created: FakeWindow[] = [];
+    static load: () => Promise<void> = async () => {};
+
+    sent: unknown[][] = [];
+    crashed = false;
+    destroyed = false;
+    #closed = () => {};
+
+    constructor() {
+      FakeWindow.created.push(this);
+    }
+
+    get webContents() {
+      this.#assertAlive();
+      return {
+        send: (...args: unknown[]) => this.sent.push(args),
+        isCrashed: () => this.crashed,
+      };
+    }
+
+    on(_event: 'closed', listener: () => void) {
+      this.#closed = listener;
+    }
+
+    loadURL() {
+      return FakeWindow.load();
+    }
+
+    isMinimized() {
+      this.#assertAlive();
+      return false;
+    }
+
+    show() {
+      this.#assertAlive();
+    }
+
+    isDestroyed() {
+      return this.destroyed;
+    }
+
+    destroy() {
+      this.#assertAlive();
+      this.destroyed = true;
+      this.#closed();
+    }
+
+    #assertAlive() {
+      if (this.destroyed) throw new TypeError('Object has been destroyed');
+    }
+  }
+  return { FakeWindow };
+});
+
+vi.mock('electron', () => ({
+  app: { focus: () => {} },
+  BrowserWindow: FakeWindow,
+  nativeTheme: { shouldUseDarkColors: false },
+}));
+
+const open = () => createWindows({ url: 'page', preload: 'preload', onCreated: () => {} });
+const windowAt = (index: number) => {
+  const window = FakeWindow.created[index];
+  if (!window) throw new Error(`no window ${index}`);
+  return window;
+};
+
+beforeEach(() => {
+  FakeWindow.created = [];
+  FakeWindow.load = async () => {};
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+describe('show', () => {
+  it('resolves true once the page has loaded', async () => {
+    expect(await open().show()).toBe(true);
+  });
+
+  it('resolves false when the page cannot load', async () => {
+    FakeWindow.load = () => Promise.reject(new Error('ERR_FILE_NOT_FOUND'));
+    expect(await open().show()).toBe(false);
+  });
+
+  it('destroys a failed window and builds a fresh one on the next show', async () => {
+    FakeWindow.load = () => Promise.reject(new Error('ERR_FILE_NOT_FOUND'));
+    const windows = open();
+    await windows.show();
+    expect(windowAt(0).destroyed).toBe(true);
+    expect(windows.current()).toBeNull();
+
+    FakeWindow.load = async () => {};
+    expect(await windows.show()).toBe(true);
+    expect(FakeWindow.created).toHaveLength(2);
+    expect(windows.current()).toBe(windowAt(1));
+  });
+
+  it('resolves false when the user closes the window before it loads', async () => {
+    let failLoad = () => {};
+    FakeWindow.load = () =>
+      new Promise((_resolve, reject) => (failLoad = () => reject(new Error('gone'))));
+    const windows = open();
+    const shown = windows.show();
+    windowAt(0).destroy();
+    failLoad();
+    expect(await shown).toBe(false);
+  });
+
+  it('reuses a window that loaded', async () => {
+    const windows = open();
+    await windows.show();
+    expect(await windows.show()).toBe(true);
+    expect(FakeWindow.created).toHaveLength(1);
+  });
+});
+
+describe('send', () => {
+  it('returns true and delivers to a live window', async () => {
+    const windows = open();
+    await windows.show();
+    expect(windows.send('channel', 'value')).toBe(true);
+    expect(windowAt(0).sent).toEqual([['channel', 'value']]);
+  });
+
+  it('returns false before any window exists', () => {
+    expect(open().send('channel')).toBe(false);
+  });
+
+  it('returns false once the window has closed', async () => {
+    const windows = open();
+    await windows.show();
+    windowAt(0).destroy();
+    expect(windows.send('channel')).toBe(false);
+  });
+
+  it('returns false after a failed load', async () => {
+    FakeWindow.load = () => Promise.reject(new Error('ERR_FILE_NOT_FOUND'));
+    const windows = open();
+    await windows.show();
+    expect(windows.send('channel')).toBe(false);
+  });
+
+  it('returns false when the renderer has crashed, because nothing will read the message', async () => {
+    const windows = open();
+    await windows.show();
+    windowAt(0).crashed = true;
+    expect(windows.send('channel')).toBe(false);
+    expect(windowAt(0).sent).toEqual([]);
+  });
+});

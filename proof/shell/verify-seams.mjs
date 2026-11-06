@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, rmdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -19,6 +19,8 @@ import {
 const execFileAsync = promisify(execFile);
 const log = createLog();
 const distDirs = [join(desktopDir, 'dist'), join(desktopDir, 'dist-electron')];
+const pageFile = join(desktopDir, 'dist/renderer/index.html');
+const QUIT_DEADLINE_MS = 4_000;
 
 // A 1x1 opaque PNG. The SVG carries a script, which must not run when rendered as an image.
 const PNG_BASE64 =
@@ -200,11 +202,12 @@ async function main() {
     await writeFile(join(scratch, 's.svg'), SVG);
     process.env.THROWAWAY_FILES = scratch;
     const port = await freePort();
-    const app = launchApp({
+    const paths = {
       userData: join(scratch, 'user-data'),
       library: join(scratch, 'library'),
       port,
-    });
+    };
+    const app = launchApp(paths);
     let page = await app.page();
     await waitUntil(() => page.evaluate(`!!document.querySelector('#throwaway-app')`), 'App');
     await app.waitForHooks();
@@ -279,6 +282,19 @@ async function main() {
     assert((await app.hook('windows()')).length === 0, 'unknown path opened no window');
     pass('present: onFocus resolves false for an unknown path and opens no window');
 
+    await rename(pageFile, `${pageFile}.hidden`);
+    let focusedWithoutPage;
+    let windowsAfterFailure;
+    try {
+      focusedWithoutPage = await app.evaluateInMain(`throwawayController.onFocus('/known')`);
+      windowsAfterFailure = (await app.hook('windows()')).length;
+    } finally {
+      await rename(`${pageFile}.hidden`, pageFile);
+    }
+    assert(focusedWithoutPage === false, `a page that cannot load: got ${focusedWithoutPage}`);
+    assert(windowsAfterFailure === 0, `a dead window stayed, got ${windowsAfterFailure}`);
+    pass('present: onFocus resolves false and leaves no window when the page cannot load');
+
     assert(
       (await app.evaluateInMain(`throwawayController.onFocus('/known')`)) === true,
       'a known path resolves true',
@@ -291,9 +307,26 @@ async function main() {
     pass('present: onFocus recreates a closed window and delivers the target to its page');
 
     await app.hook(`clickTray('quit')`).catch(() => {});
-    const exit = await app.exited;
-    assert(exit.code === 0, `exit ${JSON.stringify(exit)}`);
+    const exit = await app.exitWithin(QUIT_DEADLINE_MS);
+    assert(exit?.code === 0, `exit ${JSON.stringify(exit)}`);
     pass('present: quit stops the controller and exits cleanly');
+
+    const signalled = launchApp(paths);
+    const signalledPage = await signalled.page();
+    await waitUntil(async () => {
+      const current = await signalledPage.evaluate('window.figmaDrop.receiver.getStatus()');
+      return current.state === 'listening';
+    }, 'a running receiver child');
+    process.kill(signalled.child.pid, 'SIGTERM');
+    const signalledExit = await signalled.exitWithin(QUIT_DEADLINE_MS);
+    assert(signalledExit?.code === 0, `exit ${JSON.stringify(signalledExit)}`);
+    await waitUntil(async () => {
+      const { stdout } = await execFileAsync('pgrep', ['-g', String(signalled.child.pid)]).catch(
+        (error) => ({ stdout: error.stdout ?? '' }),
+      );
+      return stdout.trim() === '';
+    }, 'the receiver child and helpers to exit with the app');
+    pass('present: SIGTERM with a window and a receiver child open leaves nothing running');
   } finally {
     await stopTracked();
     await rm(scratch, { recursive: true, force: true });
@@ -308,7 +341,11 @@ try {
   failure = error;
   log.write(`FAIL ${error.message}`);
 } finally {
-  await stopTracked();
+  const forced = await stopTracked();
+  if (forced && !failure) {
+    failure = new Error('a process outlived the run and needed SIGKILL');
+    log.write(`FAIL ${failure.message}`);
+  }
   for (const path of written) {
     await rm(path, { force: true });
     await rmdir(dirname(path)).catch(() => {});

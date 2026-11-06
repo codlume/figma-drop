@@ -16,6 +16,7 @@ import {
 } from './driver.mjs';
 
 const REAL_PORT = 3579;
+const QUIT_DEADLINE_MS = 4_000;
 const realLibrary = join(homedir(), 'figma-drop');
 const proofDir = join(repoDir, 'proof/shell');
 const log = createLog();
@@ -52,10 +53,50 @@ async function waitForText(page, text) {
   await waitUntil(async () => (await pageText(page)).includes(text), `page text "${text}"`);
 }
 
+const exitedCleanly = (exit) => exit !== null && exit.code === 0 && exit.signal === null;
+
+const clickTrayQuit = (app) => app.hook(`clickTray('quit')`).catch(() => {});
+
 async function quit(app) {
-  await app.hook(`clickTray('quit')`).catch(() => {});
-  const exit = await app.exited;
-  assert(exit.code === 0 && exit.signal === null, `clean exit, got ${JSON.stringify(exit)}`);
+  await clickTrayQuit(app);
+  const exit = await app.exitWithin(QUIT_DEADLINE_MS);
+  assert(exitedCleanly(exit), `clean exit, got ${JSON.stringify(exit)}`);
+}
+
+// The signal goes to the main process alone, as `kill <pid>` would. A group signal also ends the
+// renderer, which is not the state under test. Every path runs even after one fails, so a capture
+// shows them all.
+const quitPaths = [
+  ...['SIGTERM', 'SIGHUP', 'SIGINT'].map((signal) => ({
+    label: signal,
+    trigger: async (app) => process.kill(app.child.pid, signal),
+  })),
+  {
+    label: 'app.quit(), which Cmd+Q calls',
+    trigger: (app) =>
+      app.evaluateInMain(`process.mainModule.require('electron').app.quit()`).catch(() => {}),
+  },
+  { label: 'tray Quit', trigger: clickTrayQuit },
+];
+
+async function exitsByItselfWithAWindowOpen({ label, trigger }) {
+  const app = launch();
+  await waitForWindow(app);
+  await app.waitForHooks();
+  const windows = await app.hook('windows()');
+  assert(windows.length === 1 && windows[0].visible, `one open window, got ${windows.length}`);
+  const startedAt = Date.now();
+  await trigger(app);
+  const exit = await app.exitWithin(QUIT_DEADLINE_MS);
+  const elapsed = Date.now() - startedAt;
+  // Runs only once the outcome above is fixed, so this SIGKILL fallback cannot turn a hang into a pass.
+  if (exit === null) await stopTracked();
+  return {
+    passed: exitedCleanly(exit),
+    line: exit
+      ? `${label} with a window open exits by itself: ${JSON.stringify(exit)} after ${elapsed} ms`
+      : `${label} with a window open is still running after ${QUIT_DEADLINE_MS} ms`,
+  };
 }
 
 const trayItem = async (app, id) => (await app.hook('tray()')).items.find((i) => i.id === id);
@@ -259,6 +300,17 @@ async function main() {
 
   await step('quit exits cleanly', () => quit(app));
 
+  const outcomes = [];
+  for (const path of quitPaths) {
+    const outcome = await exitsByItselfWithAWindowOpen(path);
+    outcomes.push(outcome);
+    log.write(`${outcome.passed ? 'PASS' : 'FAIL'} ${outcome.line}`);
+  }
+  assert(
+    outcomes.every((outcome) => outcome.passed),
+    'every quit path exits by itself',
+  );
+
   await step('~/figma-drop was not created or touched', async () => {
     const after = existsSync(realLibrary) ? statSync(realLibrary).mtimeMs : null;
     assert(after === realLibraryBefore, `before ${realLibraryBefore}, after ${after}`);
@@ -285,7 +337,11 @@ try {
   failure = error;
   log.write(`FAIL ${error.message}`);
 } finally {
-  await stopTracked();
+  const forced = await stopTracked();
+  if (forced && !failure) {
+    failure = new Error('a process outlived the run and needed SIGKILL');
+    log.write(`FAIL ${failure.message}`);
+  }
   await rm(scratch, { recursive: true, force: true });
   await mkdir(proofDir, { recursive: true });
   await writeFile(join(proofDir, 'verify-shell.txt'), `${log.lines.join('\n')}\n`);
