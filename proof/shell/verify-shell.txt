@@ -22,12 +22,12 @@ PASS the tray toggle persists with no window open
 PASS relaunch after a tray toggle reads the tray value
 PASS a corrupt settings.json falls back to on
 PASS quit exits cleanly
-PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 43 ms
-PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 44 ms
-PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 32 ms
-PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 24 ms
-PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 39 ms
-PASS tray Quit while stopping the receiver rejects with a window open exits by itself: {"code":0,"signal":null} after 33 ms
+PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 53 ms
+PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 65 ms
+PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 85 ms
+PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 57 ms
+PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 53 ms
+PASS tray Quit while stopping the receiver rejects with a window open exits by itself: {"code":0,"signal":null} after 91 ms
 PASS a rejected receiver stop is logged, not swallowed
 PASS ~/figma-drop was not created or touched
   8 app listeners sampled across checkpoints

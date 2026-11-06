@@ -136,14 +136,19 @@ async function main() {
   );
 
   await step('copying again adds a second child and leaves the first alone', async () => {
+    const secondCopy = `${firstCopy} 2`;
     await pressCopy(page);
-    const children = await waitUntil(async () => {
-      const seen = await readdir(destination);
-      return seen.length === 2 && seen;
-    }, 'a second child');
+    await waitUntil(
+      async () => (await statusText(page)).includes(secondCopy),
+      'the window to name the second copy',
+    );
+    const children = (await readdir(destination)).map((name) => join(destination, name)).toSorted();
+    assert(
+      JSON.stringify(children) === JSON.stringify([firstCopy, secondCopy]),
+      `exactly the two copies and no temp folder, got ${children.join(', ')}`,
+    );
     await assertPlainBundle(firstCopy, source);
-    const second = children.find((name) => join(destination, name) !== firstCopy);
-    await assertPlainBundle(join(destination, second), source);
+    await assertPlainBundle(secondCopy, source);
   });
 
   await step('cancel writes nothing and returns the button to idle', async () => {
