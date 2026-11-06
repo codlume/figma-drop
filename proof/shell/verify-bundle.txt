@@ -1,0 +1,11 @@
+PASS Info.plist names figma-drop and the renamed executable
+PASS the bundle holds the current build and no default app
+PASS the binary is arm64 with a valid ad-hoc signature and no identity
+  HOME alone moved app.getPath('home'): false
+  HOME alone moved app.getPath('appData'): false
+PASS RECORDED: whether HOME alone moves app.getPath, on unbundled Electron
+  probe saw {"isPackaged":true,"page":{"rendered":true,"bridge":"object","sheets":1},"utility":"utility ran"}
+PASS a scratch copy of the bundle launches a probe with app.isPackaged true
+NOT RUN the bundle's own main.cjs: it was never launched from the bundle
+NOT RUN so resolveRuntime picking ~/figma-drop and 3579 is proven by unit test only
+ALL PASS for the steps that ran

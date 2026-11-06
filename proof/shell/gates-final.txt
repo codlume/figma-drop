@@ -1,7 +1,7 @@
 Final gates. Fresh git clone of origin feat/desktop-foundation.
 Commit: fbc97957008bd51b8d6f2cbb0808a043f8b54b33
 Clean tree before the gates: 0 changed files
-node: /private/tmp/claude-501/-Users-paulagolanska--t3-worktrees-figma-drop-t3-5a95d4fa/717eb158-8d43-42e4-a2f9-140c08a28cbd/scratchpad/node24/node-v24.21.0-darwin-arm64/bin/node
+node: <scratchpad>/node24/node-v24.21.0-darwin-arm64/bin/node
 Node tarball: official node-v24.21.0-darwin-arm64.tar.gz, SHA-256 checked against nodejs.org SHASUMS256.txt
 
 === $ node -v ===

@@ -1,6 +1,6 @@
 # figma-drop desktop
 
-The macOS Electron app. It stays in the menu bar when its window closes and persists its receiver on/off setting. Exports are received only once the A-INGEST and B-LIBRARY tickets land. Until then the window and tray say so.
+The macOS Electron app. It stays in the menu bar when its window closes and persists its receiver on/off setting. Exports are received only once the A-INGEST ticket lands. Until then the window and tray say so.
 
 ## Run
 
@@ -41,7 +41,21 @@ An unpackaged build reads these variables. A packaged build ignores all of them,
 FIGMA_DROP_LIBRARY="$HOME/figma-drop" FIGMA_DROP_PORT=3579 pnpm dev
 ```
 
-Packaging is a later ticket.
+## Local app
+
+Run these from the repository root to build and open the app.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm app:local
+open apps/desktop/release/figma-drop.app
+```
+
+`pnpm app:local` builds the workspace and writes `apps/desktop/release/figma-drop.app`, replacing any earlier build. Run it again to pick up a change. Quit a running copy first.
+
+The first run uses the real library at `~/figma-drop` and port 3579, and keeps its settings in `~/Library/Application Support/figma-drop`. It ignores every variable in the table above.
+
+The app is an Electron bundle with an ad-hoc signature, which lets it run locally on arm64. It has no signing identity and no notarization, so it is not for distribution. The executable must keep a name other than `Electron`, because Electron derives `app.isPackaged` from it. Under the old name the app reads as a development build.
 
 ## Ownership
 
@@ -60,12 +74,21 @@ A controller is created only when the library is present, because it needs `Rece
 
 ## Proof
 
-Build first. Both scripts use scratch directories and a free port under the system temp dir, and they stop only the processes they started.
+Build first. These scripts use scratch directories and a free port under the system temp dir, and they stop only the processes they started.
 
 ```sh
-pnpm build
+pnpm app:local
 node proof/shell/verify-shell.mjs
-node proof/shell/verify-seams.mjs
+node proof/shell/verify-copy-to-folder.mjs
+node proof/shell/verify-chrome.mjs
+node proof/shell/verify-bundle.mjs
 ```
 
-`verify-shell.mjs` drives the built app over CDP. `verify-seams.mjs` builds both sides of each seam with throwaway implementations, then removes them. It refuses to run once any ticket's seam file exists.
+| Script                      | Proves                                                                                                                                    | Does not prove                                               |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `verify-shell.mjs`          | The window, tray, persistence, and quit lifecycle over CDP. It expects a receiver exactly when `src/ingest` exists.                       | The packaged app                                             |
+| `verify-copy-to-folder.mjs` | Copy to folder through the real button and library, with the dialog answered from the inspector. An unstubbed run shows the call pending. | That a person can pick a folder in the native panel          |
+| `verify-chrome.mjs`         | The window options, and the drag strip's computed style and geometry.                                                                     | A native window drag, or where the traffic lights really are |
+| `verify-bundle.mjs`         | The bundle's metadata, signature, and `app.isPackaged`, using a probe entry point in a scratch copy.                                      | The bundle's own `main.cjs`, which it never launches         |
+
+Never launch the bundle to test it with only `HOME` changed. On macOS `app.getPath('home')` ignores `HOME` and follows `CFFIXED_USER_HOME`, so the app would open the real `~/figma-drop`.
