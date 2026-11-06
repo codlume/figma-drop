@@ -1,0 +1,80 @@
+scratch library and user data, free test port, synthetic exports only
+PASS 1a an empty library shows the empty state
+PASS 1b the receiver text agrees with figmaDropTest.receiverStatus()
+PASS 1c an empty library with the receiver off offers to turn it on
+PASS 2a a POSTed export appears with no reload
+PASS 2b two files with one display name stay two tellable groups
+PASS 2c two same-named files whose keys share a prefix stay tellable
+PASS 2d every fallback form lands in Unidentified, never a group
+PASS 2e A/B/A keeps three revisions
+PASS 2f a repeat adds no revision, by hash and with a new exportedAt
+PASS 2g non-ASCII, dot-dot, case-pair, and long names all render
+PASS 2h a real key with an empty file name still gets a named row
+PASS 3a a real PNG preview loads and paints
+PASS 3b a real SVG preview loads and paints
+PASS 3c an SVG that carries a <style> block still paints it
+PASS 3d a scripted SVG renders as an inert image in the app
+PASS 3e an export with no preview shows the no-preview state
+PASS 4a picking an older revision changes the painted image
+PASS 4b Copy path acts on the picked revision, not the latest
+PASS 5a Copy path reaches the real system clipboard for the latest
+UNVERIFIED 5b-front Finder came to the front
+  Electron held the front already
+PASS 5b Reveal in Finder hands off to Finder and reports it
+PASS 5c Trash of one revision of three keeps the node and focus
+PASS 5d a revision removed behind the app reads as missing and leaves the UI
+PASS 5e Trash of a vanished revision reports gone and empties the project
+PASS 5f a failed command shows an alert, Retry, and Dismiss
+PASS 5g Copy to folder is offered on a healthy revision
+UNVERIFIED 5h Copy to folder through the native dialog
+  dialog.showOpenDialog has no injected seam and CDP cannot drive a native sheet
+PASS 10a Tab reaches the sidebar, receiver, grid, detail, and history
+PASS 10b Shift+Tab walks back
+PASS 10c arrows move focus through the grid and Enter selects
+PASS 10d arrows and Enter move between sidebar rows
+PASS 10e the Trash dialog traps focus and Escape cancels
+PASS 11-1000-light 1000x640 light fits and every action is reachable
+PASS 11-1000-dark 1000x640 dark fits and every action is reachable
+PASS 11-800-light 800x560 light fits and every action is reachable
+PASS 11-800-dark 800x560 dark fits and every action is reachable
+PASS 11a the top strip is a drag region clear of every control
+UNVERIFIED 11b traffic lights seen in a native capture
+  this process has no Screen Recording permission, and CDP screenshots omit native chrome
+UNVERIFIED 11c dragging the strip moves the window
+  CDP mouse events stop at the renderer, and an OS drag would take the real pointer
+PASS 8a a corrupt receipt shows damaged on the card, detail, and history
+PASS 8b a damaged revision hides Copy to folder and keeps the others
+PASS 8c a node with only a damaged revision still appears, with a readable name
+PASS 8d a damaged inbox entry shows damaged and hides Copy to folder
+PASS 8e the trash dialog names a damaged revision by its folder
+PASS 8f the damaged revisions keep their files across a restart
+PASS 6a the switch turns the receiver off and the socket really closes
+PASS 6b the switch turns it back on and exports land
+PASS 6c the tray toggle updates the window
+PASS 6d off persists across a restart, and exports survive it
+PASS 6e a taken port shows a visible conflict, and Try again recovers
+PASS 6f a holder on ::1 alone also conflicts and releases 127.0.0.1
+PASS 6g a receiver crash restarts on its own, then fails visibly and recovers
+PASS 9a a closed window keeps the receiver, and reopening shows what arrived
+PASS 9b POST /open focuses the export in the open window
+PASS 9c POST /open selects an older revision by its path
+PASS 9d POST /open with a batch parent opens the project
+PASS 9e POST /open reaches an Unidentified entry
+PASS 9f POST /open reopens a closed window onto the export
+PASS 9g POST /open refuses a path outside the library
+PASS 7a coming back to an open window shows an unreadable library
+PASS 7b a reopened window shows the failed screen
+PASS 7c the receiver control still works on the failed screen
+PASS 7d a POST while unreadable replies a clear error within the deadline
+PASS 7e Try again recovers without a restart
+PASS 5i the recorded flow: arrival, browse, history, toggle, Trash
+  67 frames
+PASS media interaction.mp4 encodes under 30 seconds
+PASS 3h no console errors, exceptions, or CSP violations over the whole run
+PASS 3f the scripted SVG stays inert even when navigated to as a document
+PASS 3g control: the same SVG does run as an open document, so 3d and 3f can fail
+PASS 12a quit exits cleanly
+PASS 12b the real library and real port stayed untouched
+  4 provoked error(s) during 3f and 3g, not the app's
+real Trash received: 000002-f22e1238-7505-46d4-bdf2-6b25254dc186, 000001-182b0b9e-2ec3-4f69-83fd-13fdc9f2b1b0
+ALL PASS, 4 unverified

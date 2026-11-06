@@ -1,0 +1,33 @@
+Check 5b (Reveal in Finder) failed in one full proof run. This records the trace that settled it.
+Build: the failing commit, real Electron, real preload, library, and receiver, scratch library.
+Scripts stopped after 5b, so no Trash call ran.
+
+Cause 1: the proof pressed Reveal while Copy path was still running.
+Check 5a waited for the clipboard, which main writes before it replies.
+Instrumented proof flow, 8 runs, 6 failed:
+  5 runs pressed Reveal 16-18 ms after Copy path, with the button locked. No click event fired, and 5b failed.
+    In each of them Copy path's reply landed 16-17 ms after the press.
+  3 runs pressed 33-34 ms after Copy path, after its reply, so the click fired. 2 passed. 1 failed from cause 2.
+With one added line, await session.waitText('Path copied'), on the same build:
+  6 of 6 runs passed.
+Verdict: a proof race. The one-action-at-a-time lock did what it is meant to. Fixed in check 5a.
+
+Cause 2: the proof required Finder to take OS focus.
+Run 7 showed "Shown in Finder", so the app finished the action. The window then kept focus for 15 s.
+Focused trace, frontmost app read with lsappinfo around each real Reveal:
+  14 of 14 moved the front app from this app to Finder.
+Across every run that reached that step: 22 of 23 handed off. The one miss did not recur.
+Cause of that miss: not proven. Other threads run Electron on this Mac at the same time, which may
+be related, and this trace does not show that.
+Verdict: no renderer defect shown. The app reports success only after main returns from
+shell.showItemInFolder. Check 5b now asserts Finder is frontmost, and reports UNVERIFIED rather than
+FAIL when another app already held the front before the click.
+
+Final full run (verify-renderer.txt): 5b passed, and 5b-front reported UNVERIFIED because another
+process named Electron held the front at that click.
+Same build, a temporary copy of the proof stopped after 5b, 3 more runs. Only these lines were kept:
+  front pid 41578, own pid 41578, 5b PASS
+  front pid 42444, own pid 42444, 5b PASS
+  front pid 42899, own pid 42899, 5b PASS
+Those runs overwrote after-history.png and after-unidentified.png, so those two images come from
+the same build but not from the run in verify-renderer.txt.
