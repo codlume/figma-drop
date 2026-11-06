@@ -954,7 +954,7 @@ async function look() {
     notProven(
       '11b',
       'traffic lights seen in a native capture',
-      'this process has no Screen Recording permission, and CDP screenshots omit native chrome',
+      `${native.message.split('\n')[0]}. CDP screenshots omit native chrome`,
     );
   } else {
     log.write('PASS 11b native capture saved, read after-traffic-lights.png');

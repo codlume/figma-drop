@@ -25,4 +25,9 @@ FAIL when another app already held the front before the click.
 
 Final full run (verify-renderer.txt): 5b passed, and 5b-front reported UNVERIFIED because another
 process named Electron held the front at that click.
-Same build, stopped after 5b, 3 more runs: this app held the front, and the Finder check ran and passed.
+Same build, a temporary copy of the proof stopped after 5b, 3 more runs. Only these lines were kept:
+  front pid 41578, own pid 41578, 5b PASS
+  front pid 42444, own pid 42444, 5b PASS
+  front pid 42899, own pid 42899, 5b PASS
+Those runs overwrote after-history.png and after-unidentified.png, so those two images come from
+the same build but not from the run in verify-renderer.txt.
