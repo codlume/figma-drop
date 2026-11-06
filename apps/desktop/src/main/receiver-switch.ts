@@ -19,7 +19,7 @@ export type ReceiverSwitch = {
   setEnabled(enabled: boolean): Promise<ReceiverStatus>;
   // Starts the receiver if the persisted setting says so. Call once the library has opened.
   resume(): Promise<void>;
-  // Stops for quit, leaving the persisted setting alone.
+  // Stops for quit, leaving the persisted setting alone. Later toggles and resumes do nothing.
   stop(): Promise<void>;
 };
 
@@ -30,6 +30,9 @@ export type ReceiverSwitchOptions = {
   unavailableMessage: string;
 };
 
+const SETTING_NOT_SAVED_MESSAGE =
+  'The setting could not be saved, so the receiver was left unchanged.';
+
 export async function createReceiverSwitch({
   settingsPath,
   controller,
@@ -37,35 +40,52 @@ export async function createReceiverSwitch({
 }: ReceiverSwitchOptions): Promise<ReceiverSwitch> {
   const settings = await readJsonFile(settingsPath, parseSettings);
   let enabled = (settings ?? DEFAULT_SETTINGS).receiverEnabled;
+  // Why the last step failed, which the controller's own status cannot say: it can still read `off`
+  // after refusing to start. It outranks that status until the next attempt or controller report.
+  let fault: string | null = null;
+  let stopped = false;
   const listeners = new Set<(status: ReceiverStatus) => void>();
 
   const status = (): ReceiverStatus => {
+    if (fault !== null) return { state: 'failed', message: fault };
     if (controller) return controller.status();
     return enabled ? { state: 'unavailable', message: unavailableMessage } : { state: 'off' };
   };
   const publish = () => {
     const current = status();
     for (const listener of listeners) listener(current);
+    return current;
   };
-  controller?.onStatus(publish);
+  controller?.onStatus(() => {
+    fault = null;
+    publish();
+  });
 
-  // One queue keeps the file and the controller on the last request when toggles overlap. Failures
-  // stay inside it: a full disk or a refused start must not stop the next toggle from running.
+  // One queue keeps the file and the controller on the last request when toggles overlap. Each step
+  // publishes before the next begins, and its caller gets that same status. A step records its own
+  // failures as `fault`, so only a throwing listener rejects, and the queue outlives that too.
   let queue: Promise<unknown> = Promise.resolve();
-  const enqueue = (step: () => Promise<void>): Promise<void> => {
-    const run = queue.then(step).catch((error: unknown) => {
+  const enqueue = (step: () => Promise<void>): Promise<ReceiverStatus> => {
+    const run = queue.then(async () => {
+      if (stopped) return status();
+      await step();
+      return publish();
+    });
+    queue = run.catch((error: unknown) => {
       console.error('Receiver switch step failed', error);
     });
-    queue = run;
     return run;
   };
 
-  const persist = (next: boolean) =>
-    writeJsonAtomic(settingsPath, { receiverEnabled: next } satisfies ReceiverSettings).catch(
-      (error: unknown) => {
-        console.error('Could not save the receiver setting', error);
-      },
-    );
+  const drive = async (action: 'start' | 'stop') => {
+    try {
+      await controller?.[action]();
+    } catch (error) {
+      console.error(`Could not ${action} the receiver`, error);
+      const cause = error instanceof Error ? error.message : String(error);
+      fault = `Could not ${action}: ${cause}`;
+    }
+  };
 
   return {
     enabled: () => enabled,
@@ -74,24 +94,31 @@ export async function createReceiverSwitch({
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    async setEnabled(next) {
-      await enqueue(async () => {
+    setEnabled: (next) =>
+      enqueue(async () => {
+        fault = null;
+        try {
+          await writeJsonAtomic(settingsPath, { receiverEnabled: next } satisfies ReceiverSettings);
+        } catch (error) {
+          console.error('Could not save the receiver setting', error);
+          fault = SETTING_NOT_SAVED_MESSAGE;
+          return;
+        }
         enabled = next;
-        await persist(next);
         // Always start, even when already on: this is the retry from `port-conflict` or `failed`.
-        if (next) await controller?.start();
-        else await controller?.stop();
+        await drive(next ? 'start' : 'stop');
+      }),
+    resume: async () => {
+      await enqueue(async () => {
+        fault = null;
+        if (enabled) await drive('start');
       });
-      publish();
-      return status();
     },
-    resume: () =>
-      enqueue(async () => {
-        if (enabled) await controller?.start();
-      }),
-    stop: () =>
-      enqueue(async () => {
-        await controller?.stop();
-      }),
+    stop: async () => {
+      await enqueue(async () => {
+        stopped = true;
+        await drive('stop');
+      });
+    },
   };
 }

@@ -170,6 +170,18 @@ describe('with a controller', () => {
     expect(calls).toEqual(['stop']);
   });
 
+  it('keeps running toggles after a listener throws', async () => {
+    const { controller, calls } = fakeController();
+    const receiver = await open(controller);
+    const unsubscribe = receiver.onStatus(() => {
+      throw new Error('listener');
+    });
+    await expect(receiver.setEnabled(true)).rejects.toThrow('listener');
+    unsubscribe();
+    expect(await receiver.setEnabled(false)).toEqual({ state: 'off' });
+    expect(calls).toEqual(['start', 'stop']);
+  });
+
   it('stops for quit without changing the persisted setting', async () => {
     const { controller, calls } = fakeController();
     const receiver = await open(controller);
