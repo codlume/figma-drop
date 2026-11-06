@@ -124,6 +124,7 @@ function overrunByChunks(port) {
     let reply = '';
     socket.on('data', (data) => {
       reply += data.toString('latin1');
+      if (reply.includes('\r\n\r\n')) socket.destroy();
     });
     const finish = () => resolve({ reply, sent });
     socket.once('close', finish);

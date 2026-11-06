@@ -1,5 +1,6 @@
 import { readdir, watch } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import type { CommitResult } from '../shared/integration';
@@ -232,16 +233,12 @@ describe('POST /sync', () => {
     expect(backend.commits).toHaveLength(0);
   });
 
-  it('stops a chunked body past the cap, ends the connection, and frees the slot', async () => {
+  it('refuses a chunked body past the cap and frees the slot', async () => {
     const { port, backend } = await start({}, { maxBodyBytes: 1024 });
-    // The reset that follows the reply can reach the client before it parses
-    // the 413, so a connection error is the other face of the same refusal.
-    const outcome = await new Promise<HttpReply | NodeJS.ErrnoException>((resolve) => {
-      let replied = false;
+    const reply = await new Promise<HttpReply>((resolve, reject) => {
       const req = httpRequest(
         { host: '127.0.0.1', port, method: 'POST', path: '/sync', headers: PLUGIN_HEADERS },
         (res) => {
-          replied = true;
           const chunks: Buffer[] = [];
           res.on('data', (chunk: Buffer) => chunks.push(chunk));
           res.on('end', () =>
@@ -253,23 +250,11 @@ describe('POST /sync', () => {
           );
         },
       );
-      req.on('error', (error: NodeJS.ErrnoException) => {
-        if (!replied) resolve(error);
-      });
-      const chunk = Buffer.alloc(512, 'x');
-      const pump = () => {
-        if (replied || req.destroyed) return;
-        if (req.write(chunk)) setImmediate(pump);
-        else req.once('drain', pump);
-      };
-      pump();
+      req.on('error', reject);
+      req.write(Buffer.alloc(2048, 'x'));
     });
-    if ('status' in outcome) {
-      expectRejection(outcome, 'bodyTooLarge');
-      expect(outcome.headers.connection).toBe('close');
-    } else {
-      expect(['EPIPE', 'ECONNRESET']).toContain(outcome.code);
-    }
+    expectRejection(reply, 'bodyTooLarge');
+    expect(reply.headers.connection).toBe('close');
     expect(backend.commits).toHaveLength(0);
     expect((await syncRequest(port, validPayload())).status).toBe(200);
   });
@@ -324,6 +309,77 @@ describe('POST /sync', () => {
     await handler.idle();
     expect((await syncRequest(port, validPayload())).status).toBe(200);
     expect(backend.commits).toHaveLength(1);
+  });
+});
+
+// Streams a body the way a plugin mid-upload does, and stops only on a reply or a dead socket.
+function uploadUntilReply(port: number, head: string, frame: Buffer): Promise<string> {
+  return new Promise((resolve) => {
+    const socket = connect({ host: '127.0.0.1', port });
+    let reply = '';
+    socket.on('data', (data) => {
+      reply += data.toString('latin1');
+      if (reply.includes('\r\n\r\n')) socket.destroy();
+    });
+    socket.once('close', () => resolve(reply));
+    socket.once('error', () => {});
+    socket.write(head);
+    const pump = () => {
+      while (!socket.destroyed) {
+        if (!socket.write(frame)) {
+          socket.once('drain', pump);
+          return;
+        }
+      }
+    };
+    pump();
+  });
+}
+
+describe('a plugin still uploading when the cap is reached', () => {
+  const CAP = 1024 * 1024;
+  const headers = (port: number, framing: string) =>
+    `POST /sync HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+    `Content-Type: application/json\r\n${framing}\r\n\r\n`;
+
+  it('reads the 413 after a declared oversize, instead of a reset', async () => {
+    const { port } = await start({}, { maxBodyBytes: CAP });
+    const frame = Buffer.alloc(256 * 1024, 0x20);
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const head = headers(port, `Content-Length: ${64 * CAP}`);
+      expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
+    }
+  });
+
+  it('reads the 413 after a chunked overrun, instead of a reset', async () => {
+    const { port } = await start({}, { maxBodyBytes: CAP });
+    const size = 256 * 1024;
+    const frame = Buffer.concat([
+      Buffer.from(`${size.toString(16)}\r\n`),
+      Buffer.alloc(size, 0x20),
+      Buffer.from('\r\n'),
+    ]);
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const head = headers(port, 'Transfer-Encoding: chunked');
+      expect((await uploadUntilReply(port, head, frame)).slice(0, 12)).toBe('HTTP/1.1 413');
+    }
+  });
+});
+
+describe('a sender that never stops after the 413', () => {
+  it('is cut off when the discard window ends', async () => {
+    const { port } = await start({}, { maxBodyBytes: 1024, discardMs: 50 });
+    const socket = connect({ host: '127.0.0.1', port, allowHalfOpen: true });
+    socket.on('error', () => {});
+    const closed = new Promise((resolve) => socket.once('close', resolve));
+    socket.write(
+      `POST /sync HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: null\r\n` +
+        `Content-Type: application/json\r\nContent-Length: 1000000000\r\n\r\n`,
+    );
+    socket.resume();
+    const sending = setInterval(() => socket.write(Buffer.alloc(1024, 0x20)), 1);
+    await closed;
+    clearInterval(sending);
   });
 });
 

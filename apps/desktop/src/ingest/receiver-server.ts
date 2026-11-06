@@ -18,6 +18,7 @@ export type ReceiverLimits = {
   maxOpenBodyBytes: number;
   maxOpenPathLength: number;
   deadlineMs: number;
+  discardMs: number;
 };
 
 export const DEFAULT_LIMITS: ReceiverLimits = {
@@ -25,6 +26,7 @@ export const DEFAULT_LIMITS: ReceiverLimits = {
   maxOpenBodyBytes: 64 * 1024,
   maxOpenPathLength: 4096,
   deadlineMs: REPLY_DEADLINE_MS,
+  discardMs: 5000,
 };
 
 export type ReceiverHandlerOptions = {
@@ -102,11 +104,25 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
     }
   }
 
+  // Closing with body bytes unread makes the OS send a reset, which can wipe the
+  // reply before a sender still uploading reads it, and the plugin then reports the
+  // receiver as down. Node destroys the socket after a `Connection: close` reply, so
+  // this one half-closes instead and throws the rest away for a bounded time.
+  function refuseUpload(req: IncomingMessage, responder: Responder): void {
+    const { socket } = req;
+    socket.destroySoon = () => socket.end();
+    responder.reject('bodyTooLarge', CLOSE);
+    req.resume();
+    const timer = setTimeout(() => socket.destroy(), limits.discardMs);
+    timer.unref();
+    socket.once('close', () => clearTimeout(timer));
+  }
+
   async function sync(req: IncomingMessage, responder: Responder): Promise<void> {
-    if (declaresMoreThan(req, limits.maxBodyBytes)) return responder.reject('bodyTooLarge', CLOSE);
+    if (declaresMoreThan(req, limits.maxBodyBytes)) return refuseUpload(req, responder);
     const read = await readBody(req, limits.maxBodyBytes);
     if (read.kind === 'aborted') return responder.abandon();
-    if (read.kind === 'too-large') return responder.reject('bodyTooLarge', CLOSE);
+    if (read.kind === 'too-large') return refuseUpload(req, responder);
 
     notify('parse-start');
     let prepared;
@@ -138,12 +154,10 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
   }
 
   async function open(req: IncomingMessage, responder: Responder): Promise<void> {
-    if (declaresMoreThan(req, limits.maxOpenBodyBytes)) {
-      return responder.reject('bodyTooLarge', CLOSE);
-    }
+    if (declaresMoreThan(req, limits.maxOpenBodyBytes)) return refuseUpload(req, responder);
     const read = await readBody(req, limits.maxOpenBodyBytes);
     if (read.kind === 'aborted') return responder.abandon();
-    if (read.kind === 'too-large') return responder.reject('bodyTooLarge', CLOSE);
+    if (read.kind === 'too-large') return refuseUpload(req, responder);
     let value: unknown;
     try {
       value = JSON.parse(read.body.toString('utf8'));
@@ -211,8 +225,6 @@ function declaresMoreThan(req: IncomingMessage, cap: number): boolean {
   return Number.isFinite(declared) && declared > cap;
 }
 
-// The reply closes the connection and destroys the socket once flushed, so the
-// rest of an oversized body is never drained.
 function readBody(req: IncomingMessage, cap: number): Promise<BodyRead> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
@@ -262,11 +274,8 @@ function createResponder(
   const send = (status: number, headers: Record<string, string>, body?: string) => {
     if (!settle()) return;
     if (res.destroyed) return;
-    const closing = headers.Connection === 'close';
     res.writeHead(status, { ...corsHeaders(cors), ...headers });
-    res.end(body, () => {
-      if (closing) res.socket?.destroy();
-    });
+    res.end(body);
   };
   const json = (status: number, body: object, headers: Record<string, string> = {}) =>
     send(status, { ...JSON_HEADERS, ...headers }, JSON.stringify(body));
