@@ -1,0 +1,40 @@
+import type { CommitResult, ExportLookup, StagedExport } from '../shared/integration';
+import type { ReceiverStatus } from '../shared/receiver';
+
+// These fields cross into main and persist in the receipt, which every launch
+// reads, so unlike bundle files they cannot be as large as the body.
+export const MAX_IDENTITY_CHARS = 4096;
+
+export type MainMessage =
+  | { type: 'start'; port: number; stagingDir: string }
+  | { type: 'stop' }
+  | { type: 'reply'; callId: number; result: BackendResult };
+
+export type BackendCall =
+  | { method: 'commit'; staged: StagedExport }
+  | { method: 'findExport'; lookup: ExportLookup }
+  | { method: 'focus'; path: string };
+
+export type BackendResult =
+  | { method: 'commit'; result: CommitResult }
+  | { method: 'findExport'; result: CommitResult | null }
+  | { method: 'focus'; result: 'found' | 'unknown' | 'failed' };
+
+// Main owns `off` and `starting`, so the child never reports them.
+export type ChildStatus = Extract<
+  ReceiverStatus,
+  { state: 'listening' | 'port-conflict' | 'failed' | 'stopping' }
+>;
+
+export type ChildMessage =
+  | { type: 'status'; status: ChildStatus }
+  // Brackets the synchronous work that no timer inside the child can interrupt.
+  | { type: 'parse-start' }
+  | { type: 'parse-end' }
+  | { type: 'call'; callId: number; call: BackendCall };
+
+export interface ReceiverBackend {
+  commit(staged: StagedExport): Promise<CommitResult>;
+  findExport(lookup: ExportLookup): Promise<CommitResult | null>;
+  focus(path: string): Promise<boolean>;
+}
