@@ -4,14 +4,16 @@ Three independent reviews ran on `apps/desktop/src/library/**`, each in its own 
 
 The reviewed SHAs below are local commits from before the history was regrouped into three commits, so they are not on the remote. The record of what changed after each review is in the table of findings.
 
-| Review               | Model      | Reviewed           | Verdict          |
-| -------------------- | ---------- | ------------------ | ---------------- |
-| 1. Full review       | Fable 5.1  | `da5e61f`          | SHIP, 5 findings |
-| 2. Delta re-check    | Opus 5.5   | `da5e61f..7d9e106` | BLOCK, 1 finding |
-| 3. Fix re-check      | Fable 5.1  | `e343de2`          | SHIP             |
-| 4. Integration delta | see the PR | see the PR         | see the PR       |
+| Review               | Model     | Reviewed                 | Verdict          |
+| -------------------- | --------- | ------------------------ | ---------------- |
+| 1. Full review       | Fable 5.1 | `da5e61f`                | SHIP, 5 findings |
+| 2. Delta re-check    | Opus 5.5  | `da5e61f..7d9e106`       | BLOCK, 1 finding |
+| 3. Fix re-check      | Fable 5.1 | `e343de2`                | SHIP             |
+| 4. Integration delta | Fable 5.1 | `a404af2` against `main` | READY, 3 notes   |
 
-After review 3, production code changed in three lines, all from lint: two `.sort()` calls became `.toSorted()`, and one `[...listeners]` copy was removed.
+After review 3, production code changed in three lines, all from lint: two `.sort()` calls became `.toSorted()`, and one `[...listeners]` copy was removed. Lint edits also touched the tests and `fixtures.ts`.
+
+After review 4, only `proof/library/` changed: an assertion that could not fail was removed, and this record was corrected. `main` also gained PR #7, which changes the receiver switch and imports nothing from the library, so it was merged in and every gate was rerun without another review.
 
 ## Findings
 
@@ -26,6 +28,8 @@ After review 3, production code changed in three lines, all from lint: two `.sor
 | 2    | Test gap | The second liveness check and `O_NOFOLLOW` had no test                                  | Fixed, both are pinned                                                              |
 | 3    | Note     | A refused folder leaves the snapshot with no message                                    | Open, issue #3                                                                      |
 
+Review 4 left three notes. The SVG script assertion in `verify-electron.mjs` could not fail, because an image never runs script, so it was removed. This record left out that `fixtures.ts` changed after review 3, which is corrected. The `~/figma-drop` check reads the top-level mtime only, so it is exact only while that folder does not exist, which is accepted because the real protection is the scratch root.
+
 ## Mutants on the real code, review 1
 
 17 of 18 were killed. The survivor removed the separator from the containment prefix check, which is unreachable because the library builds every candidate path and refuses symlinks first.
@@ -37,6 +41,10 @@ After the blocking fix, four more mutants were killed: `decide` ignoring `blocke
 ## Probes, review 3
 
 P1 to P5 reproduced the blocking finding and now behave correctly: no false `skipped`, no mis-sequenced revision, no duplicate node directory. P6 to P10 showed no regression. Q1 to Q7 attacked the new model, including a damaged highest revision, a folder blocked after the catalog was cached, and a replay into a blocked node, and none broke it.
+
+## Integration check, review 4
+
+The library was built on `877fafa`, and `git diff 877fafa` against the merged foundation is empty, so it was tested on the tree that landed. The merge of `main` carried no hidden edits, and a simulated squash adds new files only. Main's use of the real `Library` matched its test fakes on every path compared.
 
 ## What no review covered
 
