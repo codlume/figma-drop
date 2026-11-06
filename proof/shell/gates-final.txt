@@ -1,0 +1,145 @@
+Final gates. Fresh git clone of origin feat/desktop-foundation.
+Commit: fbc97957008bd51b8d6f2cbb0808a043f8b54b33
+Clean tree before the gates: 0 changed files
+node: /private/tmp/claude-501/-Users-paulagolanska--t3-worktrees-figma-drop-t3-5a95d4fa/717eb158-8d43-42e4-a2f9-140c08a28cbd/scratchpad/node24/node-v24.21.0-darwin-arm64/bin/node
+Node tarball: official node-v24.21.0-darwin-arm64.tar.gz, SHA-256 checked against nodejs.org SHASUMS256.txt
+
+=== $ node -v ===
+v24.21.0
+exit code: 0
+
+=== $ pnpm -v ===
+11.10.0
+exit code: 0
+
+=== $ pnpm install --frozen-lockfile ===
++ @types/node 24.12.4
++ typescript 7.0.2
++ vite-plus 0.3.3
+. prepare$ vp config --no-agent
+. prepare: Done
+Done in 2.7s using pnpm v11.10.0
+exit code: 0
+
+=== $ pnpm --filter @figma-drop/desktop exec install-electron ===
+exit code: 0
+
+=== $ pnpm build ===
+ℹ 2 files, total: 6.92 kB
+ℹ dist-electron/main.cjs      19.67 kB │ gzip:  6.63 kB
+ℹ dist-electron/main.cjs.map  48.17 kB │ gzip: 15.10 kB
+ℹ 2 files, total: 67.83 kB
+✔ Build complete in 27ms
+✔ Build complete in 27ms
+---
+vp run: 0/2 cache hit (0%). (Run `vp run --last-details` for full details)
+exit code: 0
+
+=== $ pnpm typecheck ===
+$ vp run -r typecheck
+~/packages/export-contract$ tsc --noEmit ⊘ cache disabled
+~/apps/desktop$ tsc --noEmit ⊘ cache disabled
+---
+vp run: 0/2 cache hit (0%). (Run `vp run --last-details` for full details)
+exit code: 0
+
+=== $ pnpm test ===
+      Tests  20 passed (20)
+   Start at  22:29:47
+   Duration  200ms (transform 45ms, setup 0ms, import 95ms, tests 6ms, environment 0ms)
+~/apps/desktop$ vp test run --passWithNoTests ⊘ cache disabled
+ RUN  v4.1.11 apps/desktop
+ Test Files  9 passed (9)
+      Tests  128 passed (128)
+   Start at  22:29:47
+   Duration  666ms (transform 530ms, setup 0ms, import 785ms, tests 703ms, environment 0ms)
+close timed out after 500ms
+Tests closed successfully but something prevents the main process from exiting
+You can try to identify the cause by enabling "hanging-process" reporter. See https://vitest.dev/guide/reporters.html#hanging-process-reporter
+---
+vp run: 0/2 cache hit (0%). (Run `vp run --last-details` for full details)
+exit code: 0
+
+=== $ pnpm lint ===
+$ vp lint --report-unused-disable-directives
+exit code: 0
+
+=== $ pnpm fmt:check ===
+$ vp fmt --check
+Checking formatting...
+All matched files use the correct format.
+Finished in 215ms on 53 files using 8 threads.
+exit code: 0
+
+=== $ node proof/shell/verify-shell.mjs ===
+scratch library and user data under the system temp dir, free test port
+PASS a window loads and renders the status view
+PASS StyleX CSS is linked and token colors reach the page
+PASS window.figmaDrop is frozen and matches the API, with no require
+PASS status reads unavailable and nothing listens on the test port
+PASS the placeholder never implies exports are being received
+PASS library commands answer unavailable without the library
+PASS IPC refuses a non-boolean setEnabled
+saved proof/shell/after-shell.png
+PASS setEnabled(false) writes settings.json and status reads off
+PASS closing the window leaves the process and tray alive with zero windows
+PASS reopening from the tray action creates a working window
+PASS a second launch exits and focuses the first
+PASS page and CSP errors stay empty across this launch
+PASS quit from the tray exits cleanly
+PASS relaunch keeps the persisted false
+PASS toggling through the tray menu persists and updates the window
+PASS a setting that cannot be saved reads failed and changes nothing
+PASS the tray toggle persists with no window open
+PASS relaunch after a tray toggle reads the tray value
+PASS a corrupt settings.json falls back to on
+PASS quit exits cleanly
+PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 50 ms
+PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 46 ms
+PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 41 ms
+PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 34 ms
+PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 44 ms
+PASS ~/figma-drop was not created or touched
+  8 app listeners sampled across checkpoints, all CDP or inspector
+PASS neither port 3579 nor the test port was ever bound by the app
+ALL PASS
+exit code: 0
+
+=== $ node proof/shell/verify-seams.mjs ===
+PASS absent: the linked CSS holds StyleX rules, with no App.tsx
+PASS absent: no receiver bundle and no seam code in main.cjs
+PASS present: throwaway seams typecheck against integration.ts
+PASS present: one linked CSS holds App's stylesheet and the StyleX rules
+PASS present: receiver.cjs is packed and the seams are bundled into main.cjs
+PASS present: the running page applies both StyleX tokens and the App stylesheet
+PASS present: library resolves, then the controller is created, then start runs
+PASS present: the controller gets the built receiver entry and the runtime port
+PASS present: utilityProcess runs receiver.cjs and its message reaches the status
+PASS present: getSnapshot reaches the library
+PASS present: previews render as images under the page CSP, and SVG scripts stay inert
+PASS present: onFocus resolves false for an unknown path and opens no window
+PASS present: onFocus resolves false and leaves no window when the page cannot load
+PASS present: onFocus recreates a closed window and delivers the target to its page
+PASS present: a target sent during a reload reaches the reloaded page
+PASS present: a refused start reads failed in the reply and tray, and Try again recovers
+PASS present: quit stops the controller and exits cleanly
+PASS present: SIGTERM with a window and a receiver child open leaves nothing running
+ALL PASS
+exit code: 0
+
+=== exit codes on fbc97957008bd51b8d6f2cbb0808a043f8b54b33 ===
+0  node -v
+0  pnpm -v
+0  pnpm install --frozen-lockfile
+0  pnpm --filter @figma-drop/desktop exec install-electron
+0  pnpm build
+0  pnpm typecheck
+0  pnpm test
+0  pnpm lint
+0  pnpm fmt:check
+0  node proof/shell/verify-shell.mjs
+0  node proof/shell/verify-seams.mjs
+
+Tree after the gates:
+ M proof/shell/verify-seams.txt
+ M proof/shell/verify-shell.txt
