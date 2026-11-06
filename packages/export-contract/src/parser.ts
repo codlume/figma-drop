@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { LITERAL_FALLBACK_FILE_KEY } from './index.ts';
 
 // Open objects throughout: unknown fields survive so a newer plugin never fails
-// an older receiver. Deep trees stay `unknown` because parse time must not scale
-// with a hostile tree, and bundle files store them verbatim.
+// an older receiver. Node trees, `components`, and `remoteMasters` are checked at
+// the top level only, because parse time must not scale with a hostile tree, and
+// bundle files store them verbatim. `assets` and `images` are still walked, so
+// parse time scales with their entry count.
 const assetSchema = z.looseObject({ name: z.string(), base64: z.string() });
 const imageSchema = z.looseObject({
   imageHash: z.string().optional(),
@@ -14,6 +16,7 @@ const plainObject = z.custom<Record<string, unknown>>(
   (value) => typeof value === 'object' && value !== null && !Array.isArray(value),
   'expected a plain object',
 );
+const plainArray = z.custom<unknown[]>((value) => Array.isArray(value), 'expected an array');
 
 export const exportPayloadSchema = z.looseObject({
   node: plainObject,
@@ -25,8 +28,8 @@ export const exportPayloadSchema = z.looseObject({
   outputDir: z.string().optional(),
   folderName: z.string().optional(),
   summary: plainObject.optional(),
-  components: z.array(z.unknown()).optional(),
-  remoteMasters: z.array(z.unknown()).optional(),
+  components: plainArray.optional(),
+  remoteMasters: plainArray.optional(),
   variables: plainObject.optional(),
   styles: plainObject.optional(),
   svg: z.string().optional(),
