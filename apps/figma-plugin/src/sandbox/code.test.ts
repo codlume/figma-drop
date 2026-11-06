@@ -4,7 +4,7 @@ import '../code.ts';
 
 it('opens the themed UI, answers ui-ready, and follows selectionchange', async () => {
   expect(fake.shownUi).toEqual([
-    { html: '<ui/>', options: { width: 320, height: 420, themeColors: true } },
+    { html: '<ui/>', options: { width: 320, height: 480, themeColors: true } },
   ]);
 
   fake.fromUi({ type: 'ui-ready' });
