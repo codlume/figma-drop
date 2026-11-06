@@ -1,0 +1,17 @@
+  constructor options {"width":1040,"height":680,"minWidth":800,"minHeight":560,"titleBarStyle":"hiddenInset","backgroundColor":"#1b1b1d"}
+PASS the window is built with hiddenInset and an 800x560 minimum
+  native {"minimum":[800,560],"frame":{"x":335,"y":150,"width":1040,"height":680},"content":{"x":335,"y":150,"width":1040,"height":680}}
+PASS the native window reports that minimum and a content area under the title bar
+  drag strips [{"left":0,"top":0,"width":239,"height":38},{"left":240,"top":0,"width":440,"height":38},{"left":681,"top":0,"width":359,"height":38}]
+  non-drag seams [{"left":239,"width":1},{"left":680,"width":1}]
+PASS the drag region covers the top strip but for pane borders at 1040x680
+PASS no control sits under the traffic lights at 1040x680
+  0 interactive elements intersect the strip
+PASS every control inside the strip is no-drag at 1040x680
+  drag strips [{"left":0,"top":0,"width":223,"height":38},{"left":224,"top":0,"width":296,"height":38},{"left":521,"top":0,"width":279,"height":38}]
+  non-drag seams [{"left":223,"width":1},{"left":520,"width":1}]
+PASS the drag region covers the top strip but for pane borders at 800x560
+PASS no control sits under the traffic lights at 800x560
+  0 interactive elements intersect the strip
+PASS every control inside the strip is no-drag at 800x560
+ALL PASS

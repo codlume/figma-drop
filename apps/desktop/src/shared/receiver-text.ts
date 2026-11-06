@@ -1,6 +1,7 @@
 import type { ReceiverStatus } from './receiver';
 
-// One wording for every surface that shows the receiver, so the window and tray never disagree.
+// The tray's wording. The window words its own title, and `failed` reads as a problem in both,
+// because it does not mean the receiver stopped.
 export function receiverStatusText(status: ReceiverStatus): string {
   switch (status.state) {
     case 'off':
@@ -16,7 +17,7 @@ export function receiverStatusText(status: ReceiverStatus): string {
         ? `Port ${status.port} is in use by ${status.holder.command}`
         : `Port ${status.port} is in use`;
     case 'failed':
-      return `Receiver failed: ${status.message}`;
+      return `Receiver problem: ${status.message}`;
     case 'unavailable':
       return `Receiver unavailable: ${status.message}`;
   }

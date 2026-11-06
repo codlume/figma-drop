@@ -7,3 +7,4 @@ dist-electron
 .audit/
 test-results/
 /apps/desktop/.dev/
+/apps/desktop/release/

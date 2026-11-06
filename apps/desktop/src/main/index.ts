@@ -122,7 +122,10 @@ async function main() {
     if (quitting) return;
     quitting = true;
     const timeout = new Promise((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS));
-    void Promise.race([receiver.stop(), timeout]).then(() => app.exit(0));
+    const stopped = receiver.stop().catch((error: unknown) => {
+      console.error('Could not stop the receiver', error);
+    });
+    void Promise.race([stopped, timeout]).then(() => app.exit(0));
   });
 
   show();

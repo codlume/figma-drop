@@ -54,7 +54,7 @@ describe('receiver items', () => {
     await seen;
     await chmod(settingsDir, 0o700);
     expect(item('receiver-on').checked).toBe(true);
-    expect(item('status').label).toMatch(/^Receiver failed: .*could not be saved/);
+    expect(item('status').label).toMatch(/^Receiver problem: .*could not be saved/);
   });
 
   it('keeps the checkbox on and shows the cause when the receiver cannot start', async () => {
@@ -66,6 +66,6 @@ describe('receiver items', () => {
     });
     await receiver.setEnabled(true);
     expect(item('receiver-on').checked).toBe(true);
-    expect(item('status').label).toMatch(/^Receiver failed: .*refused/);
+    expect(item('status').label).toMatch(/^Receiver problem: .*refused/);
   });
 });

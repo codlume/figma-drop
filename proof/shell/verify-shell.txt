@@ -1,10 +1,11 @@
 scratch library and user data under the system temp dir, free test port
-PASS a window loads and renders the status view
+PASS one linked CSS file holds the StyleX rules and the App stylesheet
+PASS the receiver bundle is packed exactly when src/ingest exists
+PASS a window loads and renders the real library view
 PASS StyleX CSS is linked and token colors reach the page
 PASS window.figmaDrop is frozen and matches the API, with no require
-PASS status reads unavailable and nothing listens on the test port
-PASS the placeholder never implies exports are being received
-PASS library commands answer unavailable without the library
+PASS status reads listening and the test port agrees
+PASS the library opens empty and refuses an unknown revision
 PASS IPC refuses a non-boolean setEnabled
 saved proof/shell/after-shell.png
 PASS setEnabled(false) writes settings.json and status reads off
@@ -15,11 +16,19 @@ PASS page and CSP errors stay empty across this launch
 PASS quit from the tray exits cleanly
 PASS relaunch keeps the persisted false
 PASS toggling through the tray menu persists and updates the window
+PASS a setting that cannot be saved reads failed and changes nothing
 PASS the tray toggle persists with no window open
 PASS relaunch after a tray toggle reads the tray value
 PASS a corrupt settings.json falls back to on
 PASS quit exits cleanly
+PASS SIGTERM with a window open exits by itself: {"code":0,"signal":null} after 28 ms
+PASS SIGHUP with a window open exits by itself: {"code":0,"signal":null} after 31 ms
+PASS SIGINT with a window open exits by itself: {"code":0,"signal":null} after 40 ms
+PASS app.quit(), which Cmd+Q calls with a window open exits by itself: {"code":0,"signal":null} after 36 ms
+PASS tray Quit with a window open exits by itself: {"code":0,"signal":null} after 34 ms
+PASS tray Quit while stopping the receiver rejects with a window open exits by itself: {"code":0,"signal":null} after 27 ms
+PASS a rejected receiver stop is logged, not swallowed
 PASS ~/figma-drop was not created or touched
-  8 app listeners sampled across checkpoints, all CDP or inspector
-PASS neither port 3579 nor the test port was ever bound by the app
+  9 app listeners sampled across checkpoints
+PASS the app never bound port 3579, and bound the test port only with a receiver
 ALL PASS

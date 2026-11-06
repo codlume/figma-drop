@@ -161,6 +161,29 @@ export class App {
     }
   }
 
+  // Runs `expression` at the pause `inspectBrk` holds, before any app code, then lets the app go.
+  async evaluateBeforeMain(expression) {
+    const port = await waitUntil(() => this.#ports.get('Debugger'), 'the inspector port');
+    const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+    const main = await Page.open(targets[0].webSocketDebuggerUrl);
+    try {
+      const paused = new Promise((resolve) => main.on('Debugger.paused', resolve));
+      await main.call('Debugger.enable');
+      await main.call('Runtime.runIfWaitingForDebugger');
+      const { callFrames } = await paused;
+      const { result, exceptionDetails } = await main.call('Debugger.evaluateOnCallFrame', {
+        callFrameId: callFrames[0].callFrameId,
+        expression,
+        returnByValue: true,
+      });
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description);
+      await main.call('Debugger.resume');
+      return result.value;
+    } finally {
+      main.close();
+    }
+  }
+
   hook(expression) {
     return this.evaluateInMain(`figmaDropTest.${expression}`);
   }
@@ -199,31 +222,44 @@ const execFileAsync = promisify(execFile);
 const tracked = new Set();
 let forced = false;
 
-export function launchApp({ userData, library, port }) {
-  const env = {
-    ...process.env,
-    FIGMA_DROP_USER_DATA: userData,
-    FIGMA_DROP_LIBRARY: library,
-    FIGMA_DROP_PORT: String(port),
-    FIGMA_DROP_TEST: '1',
-  };
+function spawnApp(binary, args, { cwd, env: extraEnv }) {
+  const env = { ...process.env, ...extraEnv };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
-  const args = [
-    '.',
-    '--remote-debugging-port=0',
-    '--inspect=0',
-    '-ApplePersistenceIgnoreState',
-    'YES',
-  ];
-  const child = spawn(electronPath, args, {
-    cwd: desktopDir,
+  const child = spawn(binary, args, {
+    cwd,
     env,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   tracked.add(child);
   return new App(child);
+}
+
+export function launchApp({ userData, library, port, env: extraEnv = {}, inspectBrk = false }) {
+  const args = [
+    '.',
+    '--remote-debugging-port=0',
+    inspectBrk ? '--inspect-brk=0' : '--inspect=0',
+    '-ApplePersistenceIgnoreState',
+    'YES',
+  ];
+  return spawnApp(electronPath, args, {
+    cwd: desktopDir,
+    env: {
+      ...extraEnv,
+      FIGMA_DROP_USER_DATA: userData,
+      FIGMA_DROP_LIBRARY: library,
+      FIGMA_DROP_PORT: String(port),
+      FIGMA_DROP_TEST: '1',
+    },
+  });
+}
+
+// Runs a packaged executable as it ships. `/` is the working directory Finder gives an app.
+export function launchBundle(binary, env) {
+  const args = ['--remote-debugging-port=0', '-ApplePersistenceIgnoreState', 'YES'];
+  return spawnApp(binary, args, { cwd: '/', env });
 }
 
 // Stops only what this run launched, by process group. Resolves true once any process in this run
@@ -268,6 +304,13 @@ export function refusesConnection(host, port) {
     });
     socket.once('error', () => resolve(true));
   });
+}
+
+export async function clickAt(page, { x, y }) {
+  const mouse = { x, y, button: 'left', clickCount: 1 };
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+  await page.call('Input.dispatchMouseEvent', { type: 'mousePressed', ...mouse });
+  await page.call('Input.dispatchMouseEvent', { type: 'mouseReleased', ...mouse });
 }
 
 export function createLog() {

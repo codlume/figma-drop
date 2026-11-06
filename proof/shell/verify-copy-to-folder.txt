@@ -1,0 +1,11 @@
+  child folder "hero-card-bac6fc82"
+PASS the real button copies into a new child of the chosen folder
+PASS main asked for a folder, attached to the window
+PASS the copy is a plain bundle, byte-equal, with no receipt
+PASS copying again adds a second child and leaves the first alone
+PASS cancel writes nothing and returns the button to idle
+UNSTUBBED: a fresh launch with dialog.showOpenDialog left alone
+  still pending after 3000 ms, with no new copy on disk
+PASS PENDING ONLY: the real call stays pending, and no panel click is proven
+PASS SIGTERM ends the app with that call still pending
+ALL PASS
