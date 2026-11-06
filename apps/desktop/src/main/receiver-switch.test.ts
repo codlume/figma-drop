@@ -106,6 +106,58 @@ describe('persisted setting', () => {
   });
 });
 
+describe('the switch position on a failed status', () => {
+  it('reads on after a refused start', async () => {
+    const { controller, refuse } = fakeController();
+    const receiver = await open(controller);
+    refuse.start = new Error('refused');
+    const reply = await receiver.setEnabled(true);
+    expect(reply).toMatchObject({ state: 'failed', enabled: true });
+    expect(receiver.status()).toEqual(reply);
+  });
+
+  it('reads off after a refused stop, so Try again keeps the user on off', async () => {
+    const { controller, refuse } = fakeController({ state: 'listening', port: 13579 });
+    const receiver = await open(controller);
+    refuse.stop = new Error('refused');
+    const reply = await receiver.setEnabled(false);
+    expect(reply).toMatchObject({ state: 'failed', enabled: false });
+    expect(await persisted()).toEqual({ receiverEnabled: false });
+  });
+
+  it('reads the setting that stayed in force after a failed save', async () => {
+    const { controller } = fakeController({ state: 'listening', port: 13579 });
+    const receiver = await open(controller);
+    await chmod(settingsDir, 0o500);
+    try {
+      const reply = await receiver.setEnabled(false);
+      expect(reply).toMatchObject({ state: 'failed', enabled: true });
+      expect(reply).toMatchObject({ enabled: receiver.enabled() });
+    } finally {
+      await chmod(settingsDir, 0o700);
+    }
+  });
+
+  it('fills it in on a failure the controller reports itself', async () => {
+    const { controller, set } = fakeController();
+    const receiver = await open(controller);
+    await receiver.setEnabled(false);
+    const seen: ReceiverStatus[] = [];
+    receiver.onStatus((status) => seen.push(status));
+    set({ state: 'failed', message: 'crashed three times' });
+    const expected = { state: 'failed', message: 'crashed three times', enabled: false };
+    expect(receiver.status()).toEqual(expected);
+    expect(seen).toEqual([expected]);
+  });
+
+  it('adds nothing to the other states', async () => {
+    const { controller } = fakeController();
+    const receiver = await open(controller);
+    expect(await receiver.setEnabled(true)).toEqual({ state: 'listening', port: 13579 });
+    expect(await receiver.setEnabled(false)).toEqual({ state: 'off' });
+  });
+});
+
 describe('with a controller', () => {
   it('starts on resume only when enabled', async () => {
     const on = fakeController();
@@ -195,6 +247,7 @@ describe('with a controller', () => {
 const failedWith = (cause: string) => ({
   state: 'failed',
   message: expect.stringContaining(cause),
+  enabled: expect.any(Boolean),
 });
 
 describe('when the controller rejects', () => {
@@ -305,6 +358,7 @@ describe('when the setting cannot be saved', () => {
   const notSaved = {
     state: 'failed',
     message: expect.stringMatching(/could not be saved.*unchanged/),
+    enabled: expect.any(Boolean),
   };
 
   const refuseWrites = () => chmod(settingsDir, 0o500);

@@ -243,7 +243,11 @@ describe('push and reply through the real switch', () => {
   it('pushes the failure it replies with when start rejects', async () => {
     const { toggle } = await open(fakeController(() => Promise.reject(new Error('refused'))));
     const { reply, lastPush } = await toggle(true);
-    expect(reply).toEqual({ state: 'failed', message: expect.stringContaining('refused') });
+    expect(reply).toEqual({
+      state: 'failed',
+      message: expect.stringContaining('refused'),
+      enabled: true,
+    });
     expect(lastPush).toEqual(reply);
   });
 });
