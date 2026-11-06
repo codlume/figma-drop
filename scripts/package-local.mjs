@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ const releaseDir = join(desktopDir, 'release');
 const stagingDir = join(releaseDir, '.staging');
 const stagedApp = join(stagingDir, `${APP_NAME}.app`);
 const finalApp = join(releaseDir, `${APP_NAME}.app`);
+const { version } = JSON.parse(readFileSync(join(desktopDir, 'package.json'), 'utf8'));
 
 if (process.platform !== 'darwin' || process.arch !== 'arm64') {
   throw new Error(`The local app is macOS arm64 only, not ${process.platform} ${process.arch}.`);
@@ -46,6 +47,8 @@ setPlistString('CFBundleExecutable', APP_NAME);
 setPlistString('CFBundleName', APP_NAME);
 setPlistString('CFBundleDisplayName', APP_NAME);
 setPlistString('CFBundleIdentifier', BUNDLE_ID);
+setPlistString('CFBundleShortVersionString', version);
+setPlistString('CFBundleVersion', version);
 // This hash describes the `default_app.asar` removed above.
 run('plutil', '-remove', 'ElectronAsarIntegrity', plist);
 

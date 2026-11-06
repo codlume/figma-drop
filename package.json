@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent",
-    "app:local": "pnpm build && node scripts/package-local.mjs",
+    "app:local": "rm -rf apps/desktop/dist apps/desktop/dist-electron && pnpm build && node scripts/package-local.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "vp run -r build",
     "fmt": "vp fmt",

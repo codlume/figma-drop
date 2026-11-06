@@ -51,7 +51,7 @@ pnpm app:local
 open apps/desktop/release/figma-drop.app
 ```
 
-`pnpm app:local` builds the workspace and writes `apps/desktop/release/figma-drop.app`, replacing any earlier build. Run it again to pick up a change. Quit a running copy first.
+`pnpm app:local` removes `apps/desktop/dist` and `apps/desktop/dist-electron`, builds the workspace, and writes `apps/desktop/release/figma-drop.app`, replacing any earlier build. Run it again to pick up a change. Quit a running copy first.
 
 The first run uses the real library at `~/figma-drop` and port 3579, and keeps its settings in `~/Library/Application Support/figma-drop`. It ignores every variable in the table above.
 
