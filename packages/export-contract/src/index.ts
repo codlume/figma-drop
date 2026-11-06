@@ -29,8 +29,16 @@ export const FORBIDDEN_ERROR_TEXT = 'output folder';
 
 export const LITERAL_FALLBACK_FILE_KEY = 'current';
 
-// `exportedAt` changes on every retry, and the other two describe placement.
-export const HASH_EXCLUDED_FIELDS = ['exportedAt', 'outputDir', 'folderName'] as const;
+// None of these describe the design. `exportedAt` and `batchId` change on every
+// run, `outputDir` and `folderName` describe placement, and `contractVersion`
+// changes with a plugin upgrade.
+export const HASH_EXCLUDED_FIELDS = [
+  'exportedAt',
+  'outputDir',
+  'folderName',
+  'batchId',
+  'contractVersion',
+] as const;
 
 export const BUNDLE_FILES = {
   node: 'node.json',

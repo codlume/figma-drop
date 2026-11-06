@@ -84,7 +84,8 @@ export type ReceiverControllerOptions = {
   port: number;
   library: ReceiverLibrary;
   fork(entry: string): ForkedProcess;
-  onFocus(path: string): void;
+  // Resolves false when the path matches nothing, so `/open` can reply 404.
+  onFocus(path: string): Promise<boolean>;
 };
 
 export type CreateReceiverController = (options: ReceiverControllerOptions) => ReceiverController;
