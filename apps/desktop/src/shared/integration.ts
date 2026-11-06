@@ -20,8 +20,9 @@ export type ExportLookup = {
   contentHash: string;
 };
 
-// `status` is what the sender's reply reports: committed adds a revision, skipped
-// matched the latest revision, and converged replayed a known staging id or entry.
+// `status` stays inside the app: committed adds a revision, skipped matched the
+// latest revision, and converged replayed a known staging id or entry. It never
+// goes on the wire, whose success reply stays `{path, preview?}`.
 export type CommitResult = CommandResult<{
   status: 'committed' | 'skipped' | 'converged';
   revisionId: RevisionId;
@@ -37,6 +38,7 @@ export interface ReceiverLibrary {
 
 export type PreviewFile = { path: string; contentType: 'image/png' | 'image/svg+xml' };
 
+// Revision ids are untrusted catalog keys. Look them up, and never build a path from one.
 export interface Library extends ReceiverLibrary {
   getSnapshot(): Promise<LibrarySnapshot>;
   onChanged(listener: () => void): Unsubscribe;
@@ -58,6 +60,7 @@ export type LibraryOptions = {
 // rejects: an unreadable library resolves with an `unreadable` snapshot.
 export type CreateLibrary = (options: LibraryOptions) => Promise<Library>;
 
+// `start` is idempotent. A failure surfaces through `status` or a rejection.
 export interface ReceiverController {
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -78,7 +81,8 @@ export type ReceiverControllerOptions = {
   port: number;
   library: ReceiverLibrary;
   fork(entry: string): ForkedProcess;
-  // Resolves false when the path matches nothing, so `/open` can reply 404.
+  // Resolves false when the path matches nothing or no loaded window took the target,
+  // so `/open` never reports a delivery that did not happen.
   onFocus(path: string): Promise<boolean>;
 };
 
