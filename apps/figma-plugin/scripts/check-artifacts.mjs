@@ -27,7 +27,9 @@ function sandboxFailures(code) {
   // An external dependency survives an IIFE build as a trailing argument, such as
   // `})(_figma_drop_export_contract);`, and throws only when Figma loads it.
   if (!/\)\(\s*\)\s*;?\s*$/.test(code)) {
-    failures.push('code.js does not end in an argument-free IIFE, so a dependency is external');
+    failures.push(
+      'code.js is not an argument-free IIFE, so a dependency is external or the format changed',
+    );
   }
   const bytes = Buffer.byteLength(code);
   if (bytes > MAX_CODE_BYTES) {

@@ -42,7 +42,7 @@ describe('check-artifacts', () => {
     ['import( in a string', '(function(){go("import(x)")})();', '`import(` text'],
     ['a dynamic import', '(function(){import("a")})();', '`import(` text'],
     ['a require call', '(function(){var a=require("a")})();', 'require('],
-    ['an external dependency', '(function(e){go(e)})(_contract);', 'dependency is external'],
+    ['an external dependency', '(function(e){go(e)})(_contract);', 'not an argument-free IIFE'],
     ['an oversized bundle', `(function(){go("${'a'.repeat(70_000)}")})();`, 'over the 65536 cap'],
   ])('rejects %s in code.js', (_name, code, reason) => {
     const { status, stderr } = check({ code });
