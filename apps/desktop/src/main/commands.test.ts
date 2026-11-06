@@ -1,9 +1,14 @@
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import * as NodePath from 'node:path';
+
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import type { Library } from '../shared/integration.ts';
+import type { Library, ReceiverController } from '../shared/integration.ts';
 import { IPC } from '../shared/ipc.ts';
+import type { ReceiverStatus } from '../shared/receiver.ts';
 import { createCommands, type DesktopActions } from './commands.ts';
-import type { ReceiverSwitch } from './receiver-switch.ts';
+import { createReceiverSwitch, type ReceiverSwitch } from './receiver-switch.ts';
 
 const REVISION = 'revision-1';
 const BUNDLE = '/library/bundle';
@@ -137,5 +142,92 @@ describe('receiver commands', () => {
 
   it.each([['true'], [1], [null], [undefined]])('rejects %j', async (value) => {
     await expect(commands[IPC.receiverSetEnabled](value)).rejects.toThrow(TypeError);
+  });
+});
+
+// The renderer applies pushes and replies to one state, so a reply must never disagree with the
+// push it follows. This runs the real switch in one process. It says nothing about the order
+// Electron delivers a `webContents.send` and an `invoke` reply to the renderer.
+describe('push and reply through the real switch', () => {
+  const LISTENING: ReceiverStatus = { state: 'listening', port: 13579 };
+
+  // Labelled fake: it stands in for A-INGEST's controller in this test only.
+  function fakeController(start: (report: (status: ReceiverStatus) => void) => Promise<void>) {
+    const listeners = new Set<(status: ReceiverStatus) => void>();
+    let current: ReceiverStatus = { state: 'off' };
+    const report = (status: ReceiverStatus) => {
+      current = status;
+      for (const listener of listeners) listener(status);
+    };
+    const controller: ReceiverController = {
+      start: () => start(report),
+      async stop() {
+        report({ state: 'off' });
+      },
+      status: () => current,
+      onStatus(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    return controller;
+  }
+
+  async function open(controller: ReceiverController) {
+    const dir = await mkdtemp(NodePath.join(tmpdir(), 'commands-'));
+    const realReceiver = await createReceiverSwitch({
+      settingsPath: NodePath.join(dir, 'settings.json'),
+      controller,
+      unavailableMessage: 'Not installed.',
+    });
+    const pushed: ReceiverStatus[] = [];
+    realReceiver.onStatus((status) => pushed.push(status));
+    const commands = createCommands({
+      library: null,
+      receiver: realReceiver,
+      desktop: fakeDesktop(),
+    });
+    // Reads the pushes at the moment the reply resolves, not once every toggle has ended.
+    const toggle = async (enabled: boolean) => {
+      const reply = await commands[IPC.receiverSetEnabled](enabled);
+      return { reply, lastPush: pushed.at(-1) };
+    };
+    return { toggle, pushed };
+  }
+
+  const starts = async (report: (status: ReceiverStatus) => void) => report(LISTENING);
+
+  it('pushes the replied status before the reply resolves', async () => {
+    const { toggle } = await open(fakeController(starts));
+    expect(await toggle(true)).toEqual({ reply: LISTENING, lastPush: LISTENING });
+    expect(await toggle(false)).toEqual({ reply: { state: 'off' }, lastPush: { state: 'off' } });
+  });
+
+  it('keeps each reply equal to the last push when toggles overlap', async () => {
+    const { toggle, pushed } = await open(fakeController(starts));
+    const outcomes = await Promise.all([toggle(true), toggle(false), toggle(true)]);
+    for (const { reply, lastPush } of outcomes) expect(lastPush).toEqual(reply);
+    expect(outcomes.map(({ reply }) => reply)).toEqual([LISTENING, { state: 'off' }, LISTENING]);
+    expect(pushed.at(-1)).toEqual(LISTENING);
+  });
+
+  it('replies with the final status when the controller reports during start', async () => {
+    const conflict: ReceiverStatus = { state: 'port-conflict', port: 13579 };
+    const { toggle, pushed } = await open(
+      fakeController(async (report) => {
+        report({ state: 'starting' });
+        await new Promise((resolve) => setImmediate(resolve));
+        report(conflict);
+      }),
+    );
+    expect(await toggle(true)).toEqual({ reply: conflict, lastPush: conflict });
+    expect(pushed[0]).toEqual({ state: 'starting' });
+  });
+
+  it('pushes the failure it replies with when start rejects', async () => {
+    const { toggle } = await open(fakeController(() => Promise.reject(new Error('refused'))));
+    const { reply, lastPush } = await toggle(true);
+    expect(reply).toEqual({ state: 'failed', message: expect.stringContaining('refused') });
+    expect(lastPush).toEqual(reply);
   });
 });
