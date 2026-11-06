@@ -114,17 +114,15 @@ async function main() {
   app.on('activate', show);
   app.on('second-instance', show);
 
-  let lifecycle: 'running' | 'stopping' | 'stopped' = 'running';
+  // Exits rather than calling `app.quit()` again: a quit that began as SIGTERM, SIGHUP, or SIGINT
+  // never finishes a second `app.quit()` while a window is open, and the process would hang.
+  let quitting = false;
   app.on('before-quit', (event) => {
-    if (lifecycle === 'stopped') return;
     event.preventDefault();
-    if (lifecycle === 'stopping') return;
-    lifecycle = 'stopping';
+    if (quitting) return;
+    quitting = true;
     const timeout = new Promise((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS));
-    void Promise.race([receiver.stop(), timeout]).then(() => {
-      lifecycle = 'stopped';
-      app.quit();
-    });
+    void Promise.race([receiver.stop(), timeout]).then(() => app.exit(0));
   });
 
   show();
