@@ -2,6 +2,7 @@ import type { Library } from '../shared/integration.ts';
 import { type FigmaDropApi, IPC } from '../shared/ipc.ts';
 import type { CommandError, LibrarySnapshot, RevisionId } from '../shared/library.ts';
 import type { ReceiverSwitch } from './receiver-switch.ts';
+import { parseRevisionId } from './revision-id.ts';
 
 type Api = FigmaDropApi;
 
@@ -48,12 +49,11 @@ export function createCommands({
 }): Commands {
   const onRevision =
     <Result>(run: (library: Library, revisionId: RevisionId) => Promise<Result>) =>
-    async (revisionId: unknown): Promise<Result | CommandError> => {
+    async (value: unknown): Promise<Result | CommandError> => {
       if (!library) return UNAVAILABLE;
-      if (typeof revisionId !== 'string' || revisionId === '') {
-        return { ok: false, code: 'not-found', message: 'No such revision.' };
-      }
-      return run(library, revisionId as RevisionId);
+      const revisionId = parseRevisionId(value);
+      if (!revisionId) return { ok: false, code: 'not-found', message: 'No such revision.' };
+      return run(library, revisionId);
     };
 
   return {

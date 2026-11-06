@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import type { Library } from '../shared/integration.ts';
 import type { RevisionId } from '../shared/library.ts';
+import { parseRevisionId } from './revision-id.ts';
 
 // Previews are images. These headers keep exported SVG from ever running as a document, even if
 // something navigates straight to a preview URL.
@@ -10,13 +11,13 @@ const HEADERS = {
   'Content-Security-Policy': "sandbox; default-src 'none'",
 };
 
-function parseRevisionId(requestUrl: string): RevisionId | null {
+function revisionIdFromUrl(requestUrl: string): RevisionId | null {
   const url = URL.parse(requestUrl);
   if (url?.hostname !== 'revision') return null;
   const [id, ...rest] = url.pathname.slice(1).split('/');
   if (!id || rest.length > 0) return null;
   try {
-    return decodeURIComponent(id) as RevisionId;
+    return parseRevisionId(decodeURIComponent(id));
   } catch {
     return null;
   }
@@ -27,7 +28,7 @@ export async function previewResponse(
   library: Pick<Library, 'previewFile'> | null,
 ): Promise<Response> {
   const notFound = new Response(null, { status: 404, headers: HEADERS });
-  const revisionId = parseRevisionId(requestUrl);
+  const revisionId = revisionIdFromUrl(requestUrl);
   if (!library || !revisionId) return notFound;
   const file = await library.previewFile(revisionId);
   if (!file) return notFound;

@@ -8,7 +8,7 @@ import type { PreviewFile } from '../shared/integration.ts';
 import { previewUrl, type RevisionId } from '../shared/library.ts';
 import { previewResponse } from './preview.ts';
 
-const ID = 'rev 1/é' as RevisionId;
+const ID = 'rev 1 é' as RevisionId;
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
 
 let file: PreviewFile;
@@ -52,6 +52,10 @@ describe('previewResponse', () => {
     'figma-drop-preview://revision/',
     'figma-drop-preview://revision/a/b',
     'figma-drop-preview://revision/%E0%A4%A',
+    'figma-drop-preview://revision/a%2Fb',
+    'figma-drop-preview://revision/a%5Cb',
+    'figma-drop-preview://revision/%2E%2E%2Fetc',
+    'figma-drop-preview://revision/a..b',
     'not a url',
   ])('answers 404 for %s without asking the library', async (url) => {
     const library = libraryWith(file);

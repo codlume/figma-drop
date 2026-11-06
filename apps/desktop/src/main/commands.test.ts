@@ -114,18 +114,34 @@ describe('with the library', () => {
     expect(library.copyTo).not.toHaveBeenCalled();
   });
 
-  it.each([[undefined], [null], [1], [''], [{}], [['revision-1']]])(
-    'answers not-found for the id %j without asking the library',
-    async (revisionId) => {
-      const library = fakeLibrary();
-      const commands = createCommands({ library, receiver, desktop: fakeDesktop() });
-      expect(await commands[IPC.libraryTrash](revisionId)).toMatchObject({
-        ok: false,
-        code: 'not-found',
-      });
-      expect(library.trash).not.toHaveBeenCalled();
-    },
-  );
+  it('keeps accepting an id of any other shape', async () => {
+    const library = fakeLibrary();
+    const commands = createCommands({ library, receiver, desktop: fakeDesktop() });
+    expect(await commands[IPC.libraryTrash]('rev 1 é.2')).toEqual({ ok: true });
+    expect(library.trash).toHaveBeenCalledWith('rev 1 é.2');
+  });
+
+  it.each([
+    [undefined],
+    [null],
+    [1],
+    [''],
+    [{}],
+    [['revision-1']],
+    ['a/b'],
+    ['a\\b'],
+    ['..'],
+    ['a..b'],
+    ['../../etc'],
+  ])('answers not-found for the id %j without asking the library', async (revisionId) => {
+    const library = fakeLibrary();
+    const commands = createCommands({ library, receiver, desktop: fakeDesktop() });
+    expect(await commands[IPC.libraryTrash](revisionId)).toMatchObject({
+      ok: false,
+      code: 'not-found',
+    });
+    expect(library.trash).not.toHaveBeenCalled();
+  });
 });
 
 describe('receiver commands', () => {
