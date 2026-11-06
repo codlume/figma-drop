@@ -6,6 +6,24 @@ PASS the binary is arm64 with a valid ad-hoc signature and no identity
 PASS RECORDED: whether HOME alone moves app.getPath, on unbundled Electron
   probe saw {"isPackaged":true,"page":{"rendered":true,"bridge":"object","sheets":1},"utility":"utility ran"}
 PASS a scratch copy of the bundle launches a probe with app.isPackaged true
-NOT RUN the bundle's own main.cjs: it was never launched from the bundle
-NOT RUN so resolveRuntime picking ~/figma-drop and 3579 is proven by unit test only
+PASS preflight: the probe copy runs the same binary as the bundle
+PASS preflight: that env moves app.getPath('home') and 'appData' into scratch
+PASS preflight: nothing listens on 3579
+PASS the running process is the bundle's own binary
+PASS the real App rendered from the bundle with no CSP or page errors
+PASS the CSP is live, so the empty error list above means something
+PASS main opened the library at <scratch>/figma-drop, not the planted root
+PASS the receiver reads unavailable, as src/ingest decides
+PASS quit exits 0 by itself, with no process left and no SIGKILL
+PASS the real home is unchanged and the bundle still verifies
+  the run left 83 entries in the scratch home, to depth 3:
+    Documents
+    Library
+    Library/Application Support
+    Library/Application Support/figma-drop
+    figma-drop
+    figma-drop/.staging
+    figma-drop/files
+    figma-drop/unidentified
+NOT RUN a Finder double-click: the proof executes the binary directly
 ALL PASS for the steps that ran

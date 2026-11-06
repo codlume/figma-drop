@@ -222,17 +222,21 @@ const execFileAsync = promisify(execFile);
 const tracked = new Set();
 let forced = false;
 
-export function launchApp({ userData, library, port, env: extraEnv = {}, inspectBrk = false }) {
-  const env = {
-    ...process.env,
-    ...extraEnv,
-    FIGMA_DROP_USER_DATA: userData,
-    FIGMA_DROP_LIBRARY: library,
-    FIGMA_DROP_PORT: String(port),
-    FIGMA_DROP_TEST: '1',
-  };
+function spawnApp(binary, args, { cwd, env: extraEnv }) {
+  const env = { ...process.env, ...extraEnv };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
+  const child = spawn(binary, args, {
+    cwd,
+    env,
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  tracked.add(child);
+  return new App(child);
+}
+
+export function launchApp({ userData, library, port, env: extraEnv = {}, inspectBrk = false }) {
   const args = [
     '.',
     '--remote-debugging-port=0',
@@ -240,14 +244,22 @@ export function launchApp({ userData, library, port, env: extraEnv = {}, inspect
     '-ApplePersistenceIgnoreState',
     'YES',
   ];
-  const child = spawn(electronPath, args, {
+  return spawnApp(electronPath, args, {
     cwd: desktopDir,
-    env,
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...extraEnv,
+      FIGMA_DROP_USER_DATA: userData,
+      FIGMA_DROP_LIBRARY: library,
+      FIGMA_DROP_PORT: String(port),
+      FIGMA_DROP_TEST: '1',
+    },
   });
-  tracked.add(child);
-  return new App(child);
+}
+
+// Runs a packaged executable as it ships. `/` is the working directory Finder gives an app.
+export function launchBundle(binary, env) {
+  const args = ['--remote-debugging-port=0', '-ApplePersistenceIgnoreState', 'YES'];
+  return spawnApp(binary, args, { cwd: '/', env });
 }
 
 // Stops only what this run launched, by process group. Resolves true once any process in this run

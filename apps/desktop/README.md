@@ -76,7 +76,7 @@ A controller is created only when the library is present, because it needs `Rece
 
 ## Proof
 
-Build first. These scripts use scratch directories and a free port under the system temp dir, and they stop only the processes they started.
+Build first. These scripts use scratch directories under the system temp dir, and they stop only the processes they started. All of them use a free test port except `verify-bundle.mjs`, the one proof that binds port 3579, because a packaged app cannot use any other.
 
 ```sh
 pnpm app:local
@@ -91,6 +91,6 @@ node proof/shell/verify-bundle.mjs
 | `verify-shell.mjs`          | The window, tray, persistence, and quit lifecycle over CDP. It expects a receiver exactly when `src/ingest` exists.                       | The packaged app                                             |
 | `verify-copy-to-folder.mjs` | Copy to folder through the real button and library, with the dialog answered from the inspector. An unstubbed run shows the call pending. | That a person can pick a folder in the native panel          |
 | `verify-chrome.mjs`         | The window options, and the drag strip's computed style and geometry.                                                                     | A native window drag, or where the traffic lights really are |
-| `verify-bundle.mjs`         | The bundle's metadata, signature, and `app.isPackaged`, using a probe entry point in a scratch copy.                                      | The bundle's own `main.cjs`, which it never launches         |
+| `verify-bundle.mjs`         | The bundle's metadata and signature, then a launch of its own executable on a scratch home: render, library root, receiver state, quit.   | A Finder double-click, which it does not perform             |
 
-Never launch the bundle to test it with only `HOME` changed. On macOS `app.getPath('home')` ignores `HOME` and follows `CFFIXED_USER_HOME`, so the app would open the real `~/figma-drop`.
+Never launch the bundle to test it with only `HOME` changed. On macOS `app.getPath('home')` ignores `HOME` and follows `CFFIXED_USER_HOME`, so the app would open the real `~/figma-drop`. `verify-bundle.mjs` sets both to a scratch directory. It launches the bundle only after a probe on the same binary reports that scratch home and nothing listens on port 3579, and it aborts otherwise.
