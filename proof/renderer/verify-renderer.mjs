@@ -1221,7 +1221,7 @@ async function receiver() {
       await session.waitText('Receiver problem');
       const live = await status();
       assert(live.state === 'failed', `status ${JSON.stringify(live)}`);
-      assert((await trayItem('status')).label.startsWith('Receiver failed'), 'tray says failed');
+      assert((await trayItem('status')).label.startsWith('Receiver problem'), 'tray says failed');
       await session.click(locate.button('Try again', RECEIVER_SECTION));
       await waitListening();
     },
