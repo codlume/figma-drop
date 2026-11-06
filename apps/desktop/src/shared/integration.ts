@@ -1,10 +1,4 @@
-import type {
-  CommandResult,
-  FocusTarget,
-  LibrarySnapshot,
-  RevisionId,
-  StagingId,
-} from './library';
+import type { CommandResult, FocusTarget, LibrarySnapshot, RevisionId, StagingId } from './library';
 import type { Unsubscribe } from './ipc';
 import type { ReceiverStatus } from './receiver';
 

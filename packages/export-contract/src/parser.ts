@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LITERAL_FALLBACK_FILE_KEY } from './index';
+import { LITERAL_FALLBACK_FILE_KEY } from './index.ts';
 
 // Open objects throughout: unknown fields survive so a newer plugin never fails
 // an older receiver. Deep trees stay `unknown` because parse time must not scale

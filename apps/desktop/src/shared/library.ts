@@ -42,11 +42,18 @@ export type UnidentifiedEntry = Revision & {
 
 export type LibrarySnapshot =
   | { state: 'ready'; projects: readonly Project[]; unidentified: readonly UnidentifiedEntry[] }
-  | { state: 'unreadable' | 'unavailable'; message: string; projects: readonly []; unidentified: readonly [] };
+  | {
+      state: 'unreadable' | 'unavailable';
+      message: string;
+      projects: readonly [];
+      unidentified: readonly [];
+    };
 
 export type CommandErrorCode = 'not-found' | 'damaged' | 'disk-full' | 'unavailable' | 'failed';
 export type CommandError = { ok: false; code: CommandErrorCode; message: string };
-export type CommandResult<Success extends object = object> = ({ ok: true } & Success) | CommandError;
+export type CommandResult<Success extends object = object> =
+  | ({ ok: true } & Success)
+  | CommandError;
 
 export type CopyToFolderResult = CommandResult<
   { status: 'copied'; path: string } | { status: 'cancelled' }

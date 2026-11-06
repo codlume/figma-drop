@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-electron
+*.tsbuildinfo
+.DS_Store
+*.log
+.audit/
+test-results/
+/apps/desktop/.dev/
