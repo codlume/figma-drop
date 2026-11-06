@@ -1,7 +1,6 @@
 import type { ErrorReply } from '@figma-drop/export-contract/parser';
 
-// Every way the receiver refuses or fails a request. Upstream's plugin shows
-// `error` verbatim in batch rows and on `/open`, so this text is user-facing.
+// Upstream's plugin shows `error` verbatim in batch rows and on `/open`, so this text is user-facing.
 export const REJECTIONS = {
   hostNotAllowed: { status: 403, error: 'This address is not allowed.' },
   originNotAllowed: { status: 403, error: 'This origin is not allowed.' },

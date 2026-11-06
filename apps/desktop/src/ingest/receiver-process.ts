@@ -1,7 +1,7 @@
 import { runReceiverChild } from './receiver-child';
 import type { MainMessage } from './receiver-protocol';
 
-// Electron's MessagePortMain, structurally, so ingest imports no electron.
+// Electron's ParentPort, structurally, so ingest imports no electron.
 type ParentPort = {
   postMessage(message: unknown): void;
   on(event: 'message', listener: (event: { data: unknown }) => void): unknown;

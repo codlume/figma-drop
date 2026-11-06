@@ -4,7 +4,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { LOOPBACK_BIND_ADDRESSES } from '@figma-drop/export-contract';
 
 export type Listeners = {
-  // Stops accepting. Open connections stay until closeAllConnections.
+  // Stops accepting. In-flight connections stay until closeAllConnections.
   close(): Promise<void>;
   closeAllConnections(): void;
 };
@@ -24,12 +24,14 @@ type Attempt =
   | { ok: true; server: Server }
   | { ok: false; code: string | undefined; message: string };
 
-// A family can be absent from this machine, in which case `localhost` cannot
-// resolve to it either, so one bound address is enough.
+// A family can be absent from this machine, and the client falls back to the
+// family that answers, so one bound address is enough.
+// Loopback headers arrive at once. This must stay under the margin in requestTimeoutMs.
+const HEADERS_TIMEOUT_MS = 5000;
+
 const MISSING_FAMILY_CODES = new Set(['EADDRNOTAVAIL', 'EAFNOSUPPORT']);
 
-// Binds every loopback address on one port. `localhost` may resolve to either
-// family, so both bind or neither does, and EADDRINUSE on one is a conflict for
+// `localhost` may resolve to either family, so EADDRINUSE on one is a conflict for
 // the whole port. It never signals or kills whatever holds the port.
 export async function bindListeners(options: BindOptions): Promise<BindResult> {
   const attempts = await Promise.all(
@@ -59,7 +61,7 @@ function bindOne(address: string, options: BindOptions): Promise<Attempt> {
     const server = createServer(
       {
         requestTimeout: options.requestTimeoutMs,
-        headersTimeout: Math.min(60_000, options.requestTimeoutMs - 1),
+        headersTimeout: HEADERS_TIMEOUT_MS,
       },
       options.handler,
     );

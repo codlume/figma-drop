@@ -7,6 +7,7 @@ import { runReceiverChild } from './receiver-child';
 import type { ChildOptions, ReceiverChild } from './receiver-child';
 import { createReceiverController, parseChildMessage } from './receiver-controller';
 import type { ControllerTuning } from './receiver-controller';
+import { MAX_IDENTITY_CHARS } from './receiver-protocol';
 import type { ChildMessage, MainMessage } from './receiver-protocol';
 import {
   PLUGIN_HEADERS,
@@ -44,7 +45,7 @@ class InProcessFork implements ForkedProcess {
   }
 
   postMessage(message: unknown): void {
-    if (this.exited) throw new Error('port closed');
+    if (this.exited) return;
     setImmediate(() => {
       for (const listener of this.childListeners) listener(message as MainMessage);
     });
@@ -74,7 +75,6 @@ class InProcessFork implements ForkedProcess {
   }
 }
 
-// The test plays the child: it inspects what main posted and feeds back whatever it likes.
 class ScriptedFork implements ForkedProcess {
   readonly posted: MainMessage[] = [];
   private readonly messageListeners: Listener<unknown>[] = [];
@@ -88,7 +88,7 @@ class ScriptedFork implements ForkedProcess {
   }
 
   postMessage(message: unknown): void {
-    if (this.exited) throw new Error('port closed');
+    if (this.exited) return;
     this.posted.push(message as MainMessage);
   }
 
@@ -547,5 +547,43 @@ describe('parseChildMessage', () => {
       }),
     ).toBeNull();
     expect(parseChildMessage({ type: 'status', status: { state: 'failed' } })).toBeNull();
+  });
+});
+
+describe('parseChildMessage length bounds', () => {
+  const staged = {
+    stagingId: '00000000-0000-4000-8000-000000000000',
+    identity: { kind: 'file', fileKey: 'key' },
+    figmaNodeId: '1:2',
+    contentHash: 'a'.repeat(64),
+    fileName: 'File',
+    nodeName: 'Node',
+    exportedAt: null,
+  };
+  const commit = (overrides: Record<string, unknown>) => ({
+    type: 'call',
+    callId: 1,
+    call: { method: 'commit', staged: { ...staged, ...overrides } },
+  });
+  const oversized = 'x'.repeat(MAX_IDENTITY_CHARS + 1);
+
+  it('accepts a well-formed commit', () => {
+    expect(parseChildMessage(commit({}))).not.toBeNull();
+  });
+
+  it.each([
+    ['figmaNodeId', { figmaNodeId: oversized }],
+    ['fileName', { fileName: oversized }],
+    ['nodeName', { nodeName: oversized }],
+    ['exportedAt', { exportedAt: oversized }],
+    ['fileKey', { identity: { kind: 'file', fileKey: oversized } }],
+    ['claimedKey', { identity: { kind: 'unidentified', claimedKey: oversized } }],
+  ])('drops an oversized %s from a child that bypassed its own checks', (_field, overrides) => {
+    expect(parseChildMessage(commit(overrides))).toBeNull();
+  });
+
+  it('drops an oversized focus path', () => {
+    const focus = { type: 'call', callId: 1, call: { method: 'focus', path: oversized } };
+    expect(parseChildMessage(focus)).toBeNull();
   });
 });

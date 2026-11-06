@@ -6,7 +6,6 @@ import { BUNDLE_FILES } from '@figma-drop/export-contract';
 import type { StagingId } from '../shared/library';
 import {
   discardStaging,
-  MAX_IDENTITY_CHARS,
   prepareExport,
   stageExport,
   type BundleFile,
@@ -14,6 +13,7 @@ import {
 } from './export-pipeline';
 import { exportBody, exportPayload, ONE_PIXEL_PNG_BASE64 } from './ingest-fixtures';
 import { MAX_JSON_VALUES } from './json-budget';
+import { MAX_IDENTITY_CHARS } from './receiver-protocol';
 
 const faults = vi.hoisted(() => ({
   mkdir: undefined as ((path: string) => void) | undefined,

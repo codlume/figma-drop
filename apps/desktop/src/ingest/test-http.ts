@@ -8,8 +8,6 @@ import type { CommitResult, ExportLookup, StagedExport } from '../shared/integra
 import type { RevisionId } from '../shared/library';
 import type { ReceiverBackend } from './receiver-protocol';
 
-// Test-only helpers. Real sockets, synthetic payloads, nothing near ~/figma-drop.
-
 export type HttpReply = { status: number; headers: IncomingHttpHeaders; body: string };
 
 export type RequestOptions = {
@@ -105,7 +103,6 @@ export function committed(revision: string): CommitResult {
   };
 }
 
-// Records every call and answers from the overrides, defaulting to a clean commit.
 export function fakeBackend(overrides: Partial<ReceiverBackend> = {}): FakeBackend {
   const backend: FakeBackend = {
     commits: [],

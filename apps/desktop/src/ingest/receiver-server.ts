@@ -37,9 +37,8 @@ export type ReceiverHandlerOptions = {
 
 export type ReceiverHandler = {
   handle(req: IncomingMessage, res: ServerResponse): void;
-  // Resolves once no /sync holds the in-flight slot.
   idle(): Promise<void>;
-  // Node's own request timeout must fire after our deadline, so ours answers first.
+  // Sits above headers plus our deadline, so a stalled body gets our reply, not Node's.
   requestTimeoutMs: number;
 };
 
@@ -62,7 +61,6 @@ type Responder = {
   send(status: number, headers: Record<string, string>, body?: string): void;
   json(status: number, body: object, headers?: Record<string, string>): void;
   reject(code: RejectionCode, headers?: Record<string, string>): void;
-  // The client left before any reply, so the slot and timer go with nothing written.
   abandon(): void;
 };
 
@@ -175,7 +173,7 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
   };
 }
 
-// An unhandled rejection would end the child, and the sender with no reply.
+// Replies now, because otherwise the sender waits out the whole deadline.
 function replyOnThrow(
   run: (req: IncomingMessage, responder: Responder) => Promise<void>,
   req: IncomingMessage,
@@ -208,14 +206,13 @@ function syncSuccess(result: Extract<CommitResult, { ok: true }>): SyncSuccess {
     : { path: result.path, preview: result.preview };
 }
 
-// A declared length over the cap is refused before a byte of body is read.
 function declaresMoreThan(req: IncomingMessage, cap: number): boolean {
   const declared = Number(header(req, 'content-length'));
   return Number.isFinite(declared) && declared > cap;
 }
 
-// Every byte past the cap stops the read. The reply closes the connection and
-// destroys the socket once flushed, so the rest of the body is never drained.
+// The reply closes the connection and destroys the socket once flushed, so the
+// rest of an oversized body is never drained.
 function readBody(req: IncomingMessage, cap: number): Promise<BodyRead> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];

@@ -1,8 +1,10 @@
 import type { CommitResult, ExportLookup, StagedExport } from '../shared/integration';
 import type { ReceiverStatus } from '../shared/receiver';
 
-// The child parses hostile bodies, so main treats every ChildMessage as untrusted
-// and validates it with `parseChildMessage` before acting.
+// These fields cross into main and persist in the receipt, which every launch
+// reads, so unlike bundle files they cannot be as large as the body.
+export const MAX_IDENTITY_CHARS = 4096;
+
 export type MainMessage =
   | { type: 'start'; port: number; stagingDir: string }
   | { type: 'stop' }
@@ -31,7 +33,6 @@ export type ChildMessage =
   | { type: 'parse-end' }
   | { type: 'call'; callId: number; call: BackendCall };
 
-// What the HTTP server needs from main, with the process boundary hidden.
 export interface ReceiverBackend {
   commit(staged: StagedExport): Promise<CommitResult>;
   findExport(lookup: ExportLookup): Promise<CommitResult | null>;

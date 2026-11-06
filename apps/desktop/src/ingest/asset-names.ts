@@ -11,7 +11,7 @@ function shortDigest(bytes: string | Buffer): string {
   return createHash('sha256').update(bytes).digest('hex').slice(0, 8);
 }
 
-// Slices before any pattern runs, so a hostile name of any length costs the same.
+// Slices before any pattern runs, so no pattern scales with a hostile name.
 function suffixedName(name: string, suffix: string): string {
   const extension = SAFE_EXTENSION.exec(name.slice(-LONGEST_EXTENSION))?.[0] ?? '';
   const room = MAX_NAME_LENGTH - extension.length - suffix.length - 1;
@@ -28,8 +28,7 @@ function safeAssetName(name: string): string {
   return SAFE_NAME.test(name) ? name : suffixedName(name, shortDigest(name));
 }
 
-// Gives each asset one safe path segment. Names compare lowercased because the
-// default APFS volume is case-insensitive. Different bytes never share a name,
+// Names compare lowercased because the default APFS volume is case-insensitive. Different bytes never share a name,
 // so a clash gets a suffix from its bytes, and a hostile name that already
 // equals that suffixed form gets a counter on top.
 export function placeAssets(assets: readonly NamedAsset[]): NamedAsset[] {

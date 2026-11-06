@@ -7,15 +7,11 @@ import type { StagingId } from '../shared/library';
 import { buildBundleFiles, type BundleResult } from './bundle';
 import { hashExport } from './content-hash';
 import { exceedsValueBudget } from './json-budget';
+import { MAX_IDENTITY_CHARS } from './receiver-protocol';
 import type { RejectionCode } from './rejections';
-
-// These fields cross into main and persist in the receipt, which every launch
-// reads, so unlike bundle files they cannot be as large as the body.
-export const MAX_IDENTITY_CHARS = 4096;
 
 const STAGING_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// Validated, hashed, decoded, and ready to write. Nothing here touches disk.
 export type PreparedExport = {
   lookup: ExportLookup;
   describe(stagingId: StagedExport['stagingId']): StagedExport;
@@ -80,7 +76,6 @@ export type StageResult =
   | { ok: true; staged: StagedExport }
   | { ok: false; rejection: Extract<RejectionCode, 'diskFull' | 'saveFailed'> };
 
-// Writes `<stagingDir>/<stagingId>/bundle/` complete, or removes what it wrote.
 export async function stageExport(
   prepared: PreparedExport,
   stagingDir: string,
@@ -103,8 +98,6 @@ export async function stageExport(
   }
 }
 
-// Never rejects, because a request past its deadline discards in the background
-// with nobody left to catch it.
 export async function discardStaging(stagingDir: string, stagingId: string): Promise<void> {
   if (STAGING_ID.test(stagingId)) await removeQuietly(join(stagingDir, stagingId));
 }
@@ -114,7 +107,7 @@ function isDiskFull(error: unknown): boolean {
   return code === 'ENOSPC' || code === 'EDQUOT';
 }
 
-// Opening the library sweeps staging, so an entry left behind here is not lost.
+// Opening the library sweeps staging, so an entry left behind here is not leaked.
 async function removeQuietly(path: string): Promise<void> {
   await rm(path, { recursive: true, force: true }).catch(() => undefined);
 }

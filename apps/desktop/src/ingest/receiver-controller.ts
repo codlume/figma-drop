@@ -10,6 +10,7 @@ import type {
 import type { Unsubscribe } from '../shared/ipc';
 import type { StagingId } from '../shared/library';
 import type { ReceiverStatus } from '../shared/receiver';
+import { MAX_IDENTITY_CHARS } from './receiver-protocol';
 import type {
   BackendCall,
   BackendResult,
@@ -21,7 +22,6 @@ import type {
 export type ControllerTuning = {
   // JSON.parse cannot be interrupted, so a parse that outlives this kills the child.
   parseDeadlineMs?: number;
-  // How long stop waits for the child to exit on its own before killing it.
   stopTimeoutMs?: number;
   restartWindowMs?: number;
   maxExitsInWindow?: number;
@@ -31,7 +31,7 @@ type Holder = { pid: number; command: string };
 
 type Child = { process: ForkedProcess; exited: boolean; watchdog: NodeJS.Timeout | null };
 
-// `off`, `port-conflict`, and `failed` hold no process. Every start forks anew.
+// `off`, `port-conflict`, and `failed` hold no process.
 type Phase =
   | { phase: 'off' }
   | { phase: 'starting'; child: Child }
@@ -125,7 +125,7 @@ export const createReceiverController = ((
       case 'listening':
         if (phase.phase === 'starting') setPhase({ phase: 'listening', child, port: status.port });
         return;
-      // The child stays alive until this kill, so its exit never reads as a crash.
+      // setPhase first, so the child is no longer current and its exit is no crash.
       case 'port-conflict':
         setPhase(
           status.holder
@@ -256,14 +256,9 @@ function toStatus(phase: Phase): ReceiverStatus {
   }
 }
 
-// A reply to a dead child is dropped. Electron throws on a closed port.
+// Electron drops a message to a closed port without throwing.
 function post(child: Child, message: MainMessage): void {
-  if (child.exited) return;
-  try {
-    child.process.postMessage(message);
-  } catch {
-    // The child went away between the exit check and the post.
-  }
+  child.process.postMessage(message);
 }
 
 function clearWatchdog(child: Child): void {
@@ -287,19 +282,21 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms).unref());
 }
 
-// Child messages are untrusted: the child parses hostile bodies, so a message
-// is rebuilt field by field and nothing unexpected reaches the library.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const isString = (value: unknown): value is string => typeof value === 'string';
+const isBoundedString = (value: unknown): value is string =>
+  isString(value) && value.length <= MAX_IDENTITY_CHARS;
 const isNullableString = (value: unknown): value is string | null =>
-  value === null || isString(value);
+  value === null || isBoundedString(value);
 const isPort = (value: unknown): value is number =>
   Number.isInteger(value) && (value as number) > 0 && (value as number) <= 65_535;
 
+// Child messages are untrusted because the child parses hostile bodies, so each one
+// is rebuilt field by field, with identity lengths enforced here as well as there.
 export function parseChildMessage(raw: unknown): ChildMessage | null {
   if (!isRecord(raw)) return null;
   switch (raw.type) {
@@ -361,7 +358,7 @@ function parseCall(value: unknown): BackendCall | null {
       return lookup ? { method: 'findExport', lookup } : null;
     }
     case 'focus':
-      return isString(value.path) ? { method: 'focus', path: value.path } : null;
+      return isBoundedString(value.path) ? { method: 'focus', path: value.path } : null;
     default:
       return null;
   }
@@ -369,7 +366,7 @@ function parseCall(value: unknown): BackendCall | null {
 
 function parseIdentity(value: unknown): StagedExport['identity'] | null {
   if (!isRecord(value)) return null;
-  if (value.kind === 'file' && isString(value.fileKey) && value.fileKey !== '') {
+  if (value.kind === 'file' && isBoundedString(value.fileKey) && value.fileKey !== '') {
     return { kind: 'file', fileKey: value.fileKey };
   }
   if (value.kind === 'unidentified' && isNullableString(value.claimedKey)) {
@@ -382,7 +379,7 @@ function parseLookup(value: unknown): ExportLookup | null {
   if (!isRecord(value)) return null;
   const identity = parseIdentity(value.identity);
   if (!identity) return null;
-  if (!isString(value.figmaNodeId) || value.figmaNodeId === '') return null;
+  if (!isBoundedString(value.figmaNodeId) || value.figmaNodeId === '') return null;
   if (!isString(value.contentHash) || !SHA256_HEX.test(value.contentHash)) return null;
   return { identity, figmaNodeId: value.figmaNodeId, contentHash: value.contentHash };
 }

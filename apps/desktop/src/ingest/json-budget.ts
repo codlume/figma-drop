@@ -1,8 +1,8 @@
 // A byte cap bounds neither parse time nor memory: 256 MiB of `[` or `[],` aborts
-// V8 inside JSON.parse with a fatal out-of-memory that no catch can contain, and
-// any local page can send it. The plugin caps a tree at 40,000 nodes, so this sits
-// far above a real export and far below what JSON.parse survives.
-export const MAX_JSON_VALUES = 16_000_000;
+// V8 inside JSON.parse with a fatal out-of-memory that no catch can contain, and a
+// sandboxed iframe on any site can send it. The plugin caps a tree at 40,000 nodes,
+// so this sits far above a real export.
+export const MAX_JSON_VALUES = 8_000_000;
 
 const QUOTE = 0x22;
 const COMMA = 0x2c;

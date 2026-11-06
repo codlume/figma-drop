@@ -43,7 +43,7 @@ function indented(value: unknown): string | null {
 
 // Indentation grows with depth, so a few megabytes nested 900 deep pretty-print to
 // gigabytes across the bundle's files. That exhausts the heap, which no catch can
-// recover from. Once the shared allowance runs out, the remaining files stay compact.
+// recover from. A file that would overdraw the shared allowance stays compact.
 function jsonEncoder(): (value: unknown) => string {
   let allowance = MAX_INDENTATION_CHARS;
   return (value) => {

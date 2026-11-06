@@ -2,8 +2,6 @@ import { execFile } from 'node:child_process';
 
 export type PortHolder = { pid: number; command: string };
 
-// Read-only: lsof names the listener so the conflict message can, and nothing
-// here signals it. Any failure, including a missing lsof, reports no holder.
 export function findPortHolder(port: number): Promise<PortHolder | undefined> {
   return new Promise((resolve) => {
     execFile(

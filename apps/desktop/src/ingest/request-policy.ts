@@ -7,7 +7,6 @@ import {
 
 import type { RejectionCode } from './rejections';
 
-// The header values a decision needs, lifted off the request at the boundary.
 export type RequestFacts = {
   method: string | undefined;
   url: string | undefined;
@@ -21,7 +20,7 @@ export type RequestFacts = {
 export type RouteName = keyof typeof ROUTES;
 
 export type PolicyDecision = {
-  // True for the one Origin the plugin iframe sends. Every reply then carries
+  // True for PLUGIN_ORIGIN, unverified until a real plugin run. Every reply then carries
   // the CORS headers, errors included, or the plugin reports the receiver down.
   cors: boolean;
   outcome:
@@ -86,12 +85,10 @@ export function preflightHeaders(privateNetwork: boolean): Record<string, string
   };
 }
 
-// Absolute-form targets and anything outside the route table fall to 404.
 function pathname(url: string | undefined): string {
   return (url ?? '').split('?', 1)[0] ?? '';
 }
 
-// `application/json` with an optional charset parameter, case-insensitive.
 // text/plain is the no-preflight attack, so nothing else passes.
 export function isJsonContentType(header: string | undefined): boolean {
   if (!header) return false;

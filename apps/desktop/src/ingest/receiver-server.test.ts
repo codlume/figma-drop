@@ -76,7 +76,6 @@ function expectCors(reply: HttpReply): void {
   expect(reply.headers.vary).toBe('Origin');
 }
 
-// Resolves once the directory holds `count` entries, driven by fs events rather than polling.
 async function waitForEntries(dir: string, count: number): Promise<void> {
   const controller = new AbortController();
   try {

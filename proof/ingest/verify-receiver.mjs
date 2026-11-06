@@ -400,6 +400,24 @@ async function main() {
       'bodies that abort V8 in JSON.parse are refused before parsing, and the receiver stays up',
     );
 
+    // The worst bodies the budget admits. Unique keys cost the most heap per value.
+    const budget = 7_990_000;
+    const worstBodies = {
+      'unique keys': () => {
+        const keys = Array.from({ length: budget }, (_, index) => `"k${index}":0`);
+        return `{"node":{${keys.join(',')}},"nodeId":"8:1"}`;
+      },
+      // Each `{},` costs two values, the brace and the comma.
+      'empty objects': () => `{"node":{"a":[${'{},'.repeat(budget / 2)}{}]},"nodeId":"8:2"}`,
+    };
+    for (const [shape, build] of Object.entries(worstBodies)) {
+      const [pidBefore] = await listenerPids(port);
+      const reply = await send({ port, body: build() });
+      assert(reply.status === 200, `${shape} at the budget is handled, got ${reply.status}`);
+      assert((await listenerPids(port)).includes(pidBefore), `${shape} did not kill the receiver`);
+    }
+    pass('the worst bodies under the value budget finish without killing the receiver');
+
     const total = await revisionCount(page);
     await app.hook(`clickTray('receiver-on')`);
     await waitForState(app, 'off');

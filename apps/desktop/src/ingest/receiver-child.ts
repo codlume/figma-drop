@@ -21,7 +21,6 @@ export type ChildHost = {
 
 export type ChildOptions = {
   limits?: Partial<ReceiverLimits>;
-  // How long `stop` waits for the in-flight request before cutting connections.
   stopGraceMs?: number;
 };
 
@@ -50,8 +49,6 @@ export function runReceiverChild(host: ChildHost, options: ChildOptions = {}): R
     });
   }
 
-  // A reply that answers a different method is main's bug, and surfaces as the
-  // same libraryUnavailable a missing reply does.
   const backend: ReceiverBackend = {
     commit: async (staged) => {
       const reply = await invoke({ method: 'commit', staged });
@@ -96,6 +93,7 @@ export function runReceiverChild(host: ChildHost, options: ChildOptions = {}): R
       } else {
         host.post({ type: 'status', status: { state: 'failed', message: bound.message } });
       }
+      if (binding.stopRequested) return host.exit(0);
       // Main ends this process once it has the status. An exit here could
       // outrun the message on the port and read as a crash.
       phase = { phase: 'idle' };
