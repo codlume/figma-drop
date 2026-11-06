@@ -148,7 +148,7 @@ Location is `<outputDir>/<fileKey segment>/<node segment>/`. The node segment co
 
 ## Gaps
 
-- The real `Origin` value from a Figma client, on desktop and in the browser. Unverified, since Figma is not installed here. [P]
+- The real `Origin` value from a Figma client, on desktop and in the browser. Unverified, because no real plugin run has recorded it. [P]
 - Whether the Figma client sends Private Network Access or Local Network Access preflight headers to loopback, or needs a reply to them. Upstream's server sends nothing specific for them. Not established.
 - The value of `figma.fileKey` inside a branch, and on plans other than the ones Figma documents. [P]
 - How often `figma.fileKey` is absent for a saved file, so how common the fallback forms are.
