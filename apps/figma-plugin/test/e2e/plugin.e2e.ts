@@ -418,7 +418,7 @@ describe('replies that are not a save', () => {
     ]);
     expect(panel.rows.map(({ detail }) => detail)).toEqual([
       'Synthetic refusal: bad export.',
-      'Synthetic refusal: too large.',
+      'Synthetic refusal: too large. Retrying will not help, so export a smaller part of the design.',
       'figma-drop could not save this export (HTTP 500).',
       `Something answered on port ${receiver.port} without confirming a save. Check that figma-drop is the app using that port.`,
     ]);
@@ -427,7 +427,7 @@ describe('replies that are not a save', () => {
       text: 'Nothing was saved. See each row for the reason, then retry.',
     });
     expect(panel.receiver.status).toBe('online');
-    expect(panel.primary.label).toBe('Retry 4 layers');
+    expect(panel.primary.label).toBe('Retry 3 layers');
     expect(receiver.nodeIdsPosted).toEqual(['1:1', '1:2', '1:3', '1:4']);
 
     await plugin.click('#dismiss');
