@@ -1,0 +1,25 @@
+scratch library and user data under the system temp dir, test port 56319
+PASS a window loads and renders the status view
+PASS StyleX CSS is linked and token colors reach the page
+PASS window.figmaDrop is frozen and matches the API, with no require
+PASS status reads unavailable and nothing listens on the test port
+PASS the placeholder never implies exports are being received
+PASS library commands answer unavailable without the library
+PASS IPC refuses a non-boolean setEnabled
+saved proof/shell/after-shell.png
+PASS setEnabled(false) writes settings.json and status reads off
+PASS closing the window leaves the process and tray alive with zero windows
+PASS reopening from the tray action creates a working window
+PASS a second launch exits and focuses the first
+PASS page and CSP errors stay empty across this launch
+PASS quit from the tray exits cleanly
+PASS relaunch keeps the persisted false
+PASS toggling through the tray menu persists and updates the window
+PASS the tray toggle persists with no window open
+PASS relaunch after a tray toggle reads the tray value
+PASS a corrupt settings.json falls back to on
+PASS quit exits cleanly
+PASS ~/figma-drop was not created or touched
+  listeners sampled at each checkpoint: 56320, 56321, 56354, 56355, 56378, 56379, 56384, 56385
+PASS neither port 3579 nor the test port was ever bound by the app
+ALL PASS
