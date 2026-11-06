@@ -51,7 +51,7 @@ Each export gets a row, and rows run one at a time.
 
 A run continues after a layer fails to read, a rejected export, or a reply with no path. A run stops when figma-drop cannot be reached or does not reply within 65 seconds, because later exports would fail the same way.
 
-When a run ends with failures, **Retry** sends the failed and not-sent rows again and leaves saved rows alone. **Done** clears the rows. A timed-out export may already be saved. A retry converges on that entry when the export's bytes match, and adds a revision when they differ. Whether Figma's export bytes stay the same across calls is not known yet.
+When a run ends with failures, **Retry** sends the failed and not-sent rows again and leaves saved rows alone. **Done** clears the rows. A row rejected as too large is never retried, because figma-drop would reject it again. When only such rows remain, the panel offers neither button, and the rows stay until the next export. A timed-out export may already be saved. A retry converges on that entry when the export's bytes match, and adds a revision when they differ. Whether Figma's export bytes stay the same across calls is not known yet.
 
 ## What stays unverified
 

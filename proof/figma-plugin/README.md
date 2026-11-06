@@ -44,5 +44,6 @@ The script builds `dist/`, then runs `test/e2e/*.e2e.ts`. One scenario waits out
 ## Files
 
 - `scenarios.txt` lists each scenario's result from the test runner's own verdict, with the observed `Origin` and the hung-receiver duration.
+- `real-receiver.txt` records a one-off run of the built plugin against the receiver from PR #6 and the library from PR #4, with `figma` still fake and Chrome still standing in for the iframe. Its driver is not in this repo, so this file does not regenerate.
 - `sample-payload.json` is one received `POST /sync` body. Base64 and the timestamp are elided, and node trees keep only `id`, `name`, and `type`.
 - `screenshots/` has the panel at 320 by 480, at 2x, in light and dark, for these states: no selection, ready, running, saved, partial failure, offline, and the Unidentified notice.
