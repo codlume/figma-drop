@@ -53,6 +53,8 @@ open apps/desktop/release/figma-drop.app
 
 `pnpm app:local` removes `apps/desktop/dist` and `apps/desktop/dist-electron`, builds the workspace, and writes `apps/desktop/release/figma-drop.app`, replacing any earlier build. Run it again to pick up a change. Quit a running copy first.
 
+To keep a copy outside the repository, run `pnpm app:install`. It runs `pnpm app:local`, copies the bundle to `~/Applications/figma-drop.app`, and prints that path. It replaces only a figma-drop bundle at that exact path, and refuses to touch anything else there.
+
 The first run uses the real library at `~/figma-drop` and port 3579, and keeps its settings in `~/Library/Application Support/figma-drop`. It ignores every variable in the table above.
 
 The app is an Electron bundle with an ad-hoc signature, which lets it run locally on arm64. It has no signing identity and no notarization, so it is not for distribution. The executable must keep a name other than `Electron`, because Electron derives `app.isPackaged` from it. Under the old name the app reads as a development build.
