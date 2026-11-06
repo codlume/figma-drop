@@ -1,0 +1,29 @@
+PASS a synthetic export commits as a new revision
+PASS the reply path is a real bundle
+PASS the reply preview is inside the bundle
+PASS two files with one name stay two projects
+PASS a byte-identical repeat is skipped and replies with the first path
+PASS A/B/A keeps three revisions, newest first
+PASS a fallback export lands in Unidentified and joins no project
+PASS an identical Unidentified re-send converges
+PASS replaying a staging id returns the first revision
+PASS the whole catalog survives a relaunch
+PASS a replay still converges after a relaunch
+PASS a preview is a contained image path
+PASS HTML never comes back as a preview
+PASS an unknown id reaches no path
+PASS Copy to folder writes a plain bundle with no receipt
+PASS a second copy never reuses the first folder
+PASS a destination inside the library is refused
+PASS Trash goes through the injected adapter with the revision directory
+PASS the bytes are still in the fake Trash
+PASS the child really died by SIGKILL at receipt-write
+PASS after a kill at receipt-write staging is swept and a retry leaves one revision
+PASS the child really died by SIGKILL at before-rename
+PASS after a kill at before-rename staging is swept and a retry leaves one revision
+PASS the child really died by SIGKILL at after-rename
+PASS after a kill at after-rename staging is swept and a retry leaves one revision
+PASS the focused suite passes, 290 tests
+PASS ~/figma-drop was not touched
+PASS every path the fake Trash saw was inside the temp sandbox
+ALL PASS
