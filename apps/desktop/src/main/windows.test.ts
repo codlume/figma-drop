@@ -4,15 +4,18 @@ import { createWindows } from './windows.ts';
 
 // Labelled fake: it stands in for Electron's BrowserWindow, which cannot run under Node. Like the
 // real one, it throws when touched after destruction.
-const { FakeWindow } = vi.hoisted(() => {
+const { FakeWindow } = await vi.hoisted(async () => {
+  const { EventEmitter } = await import('node:events');
   class FakeWindow {
     static created: FakeWindow[] = [];
     static load: () => Promise<void> = async () => {};
 
     sent: unknown[][] = [];
     crashed = false;
+    loading = false;
     destroyed = false;
     #closed = () => {};
+    #contents = new EventEmitter();
 
     constructor() {
       FakeWindow.created.push(this);
@@ -23,7 +26,17 @@ const { FakeWindow } = vi.hoisted(() => {
       return {
         send: (...args: unknown[]) => this.sent.push(args),
         isCrashed: () => this.crashed,
+        isLoading: () => this.loading,
+        on: (event: string, listener: () => void) => this.#contents.on(event, listener),
+        off: (event: string, listener: () => void) => this.#contents.off(event, listener),
       };
+    }
+
+    // Chromium reports a main-frame failure, if any, then stops loading.
+    finishLoad(failure?: { code: number }) {
+      this.loading = false;
+      if (failure) this.#contents.emit('did-fail-load', {}, failure.code, '', 'page', true);
+      this.#contents.emit('did-stop-loading');
     }
 
     on(_event: 'closed', listener: () => void) {
@@ -50,6 +63,7 @@ const { FakeWindow } = vi.hoisted(() => {
     destroy() {
       this.#assertAlive();
       this.destroyed = true;
+      this.#contents.emit('destroyed');
       this.#closed();
     }
 
@@ -118,6 +132,49 @@ describe('show', () => {
     await windows.show();
     expect(await windows.show()).toBe(true);
     expect(FakeWindow.created).toHaveLength(1);
+  });
+});
+
+describe('show during a reload', () => {
+  async function reloading() {
+    const windows = open();
+    await windows.show();
+    windowAt(0).loading = true;
+    let resolved = false;
+    const shown = windows.show().then((loaded) => {
+      resolved = true;
+      return loaded;
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    return { windows, shown, resolved: () => resolved };
+  }
+
+  it('waits for the reload to finish', async () => {
+    const { shown, resolved } = await reloading();
+    expect(resolved()).toBe(false);
+    windowAt(0).finishLoad();
+    expect(await shown).toBe(true);
+  });
+
+  it('counts a load replaced by a newer one as finished', async () => {
+    const { shown } = await reloading();
+    windowAt(0).finishLoad({ code: -3 });
+    expect(await shown).toBe(true);
+  });
+
+  it('resolves false and rebuilds after a failed reload', async () => {
+    const { windows, shown } = await reloading();
+    windowAt(0).finishLoad({ code: -6 });
+    expect(await shown).toBe(false);
+    expect(windowAt(0).destroyed).toBe(true);
+    expect(await windows.show()).toBe(true);
+    expect(FakeWindow.created).toHaveLength(2);
+  });
+
+  it('resolves false when the window closes during the reload', async () => {
+    const { shown } = await reloading();
+    windowAt(0).destroy();
+    expect(await shown).toBe(false);
   });
 });
 

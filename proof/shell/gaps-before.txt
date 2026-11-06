@@ -504,3 +504,21 @@ FAIL assertion failed: every quit path exits by itself
 PASS present: previews render as images under the page CSP, and SVG scripts stay inert
 PASS present: onFocus resolves false for an unknown path and opens no window
 FAIL assertion failed: a page that cannot load: got true
+
+=== Item 8, real Electron at 681d99d: webContents.reload(), wait delay ms, then onFocus(/known) ===
+page-focus=none means the reloaded page never got the target, though onFocus reported delivered.
+Reachable: the default View menu has reload (CmdOrCtrl+R), because the app sets no menu of its own.
+RELOAD delay=0 {"isLoading":true,"delivered":true} page-focus=none
+RELOAD delay=0 {"isLoading":true,"delivered":true} page-focus=none
+RELOAD delay=0 {"isLoading":true,"delivered":true} page-focus=none
+RELOAD delay=1 {"isLoading":true,"delivered":true} page-focus=none
+RELOAD delay=2 {"isLoading":true,"delivered":true} page-focus=none
+RELOAD delay=5 {"isLoading":true,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=5 {"isLoading":true,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=10 {"isLoading":true,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=20 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=50 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=100 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=200 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=400 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}
+RELOAD delay=700 {"isLoading":false,"delivered":true} page-focus={"kind":"revision","revisionId":"png"}

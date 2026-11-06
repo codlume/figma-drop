@@ -306,6 +306,25 @@ async function main() {
     );
     pass('present: onFocus recreates a closed window and delivers the target to its page');
 
+    for (const reloads of [1, 1, 1, 2]) {
+      await page.evaluate('window.beforeReload = true');
+      const focused = await app.evaluateInMain(`(async () => {
+        const { BrowserWindow } = process.mainModule.require('electron');
+        const { webContents } = BrowserWindow.getAllWindows()[0];
+        for (let reload = 0; reload < ${reloads}; reload += 1) webContents.reload();
+        return throwawayController.onFocus('/known');
+      })()`);
+      assert(focused === true, `onFocus during ${reloads} reloads resolved ${focused}`);
+      await waitUntil(
+        () =>
+          page.evaluate(
+            `!window.beforeReload && document.querySelector('#focus')?.textContent.includes('revision')`,
+          ),
+        'the target to reach the reloaded page',
+      );
+    }
+    pass('present: a target sent during a reload reaches the reloaded page');
+
     await app.hook(`clickTray('quit')`).catch(() => {});
     const exit = await app.exitWithin(QUIT_DEADLINE_MS);
     assert(exit?.code === 0, `exit ${JSON.stringify(exit)}`);

@@ -15,6 +15,7 @@ import {
 import { IPC } from '../shared/ipc.ts';
 import { PREVIEW_SCHEME } from '../shared/library.ts';
 import { type Commands, createCommands } from './commands.ts';
+import { focusExport } from './focus.ts';
 import { createLibrary, createReceiverController, receiverEntry } from './integrations.ts';
 import { denyPermissions, lockNavigation, pageUrl } from './lockdown.ts';
 import { previewResponse } from './preview.ts';
@@ -77,14 +78,7 @@ async function main() {
               serviceName: 'figma-drop receiver',
               stdio: 'inherit',
             }),
-          // `path` is client-supplied. It only ever reaches `library.locate`, never `shell` or the OS.
-          async onFocus(path) {
-            const target = await library.locate(path);
-            if (!target) return false;
-            await windows.show();
-            windows.send(IPC.appFocusExport, target);
-            return true;
-          },
+          onFocus: (path) => focusExport(path, { library, windows }),
         })
       : null;
 
