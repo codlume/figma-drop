@@ -8,7 +8,7 @@ import type { ReceiverController } from '../shared/integration.ts';
 import type { ReceiverStatus } from '../shared/receiver.ts';
 import { createReceiverSwitch, parseSettings } from './receiver-switch.ts';
 
-// Labelled fake: it stands in for A-INGEST's controller and exists only in this test.
+// Labelled fake: it stands in for the receiver controller and exists only in this test.
 function fakeController(initial: ReceiverStatus = { state: 'off' }) {
   const calls: string[] = [];
   const listeners = new Set<(status: ReceiverStatus) => void>();

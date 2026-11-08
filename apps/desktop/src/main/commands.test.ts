@@ -13,7 +13,7 @@ import { createReceiverSwitch, type ReceiverSwitch } from './receiver-switch.ts'
 const REVISION = 'revision-1';
 const BUNDLE = '/library/bundle';
 
-// Labelled fakes: they stand in for B-LIBRARY and the desktop shell in this test only.
+// Labelled fakes: they stand in for the library and the desktop shell in this test only.
 function fakeLibrary(overrides: Partial<Library> = {}) {
   return {
     bundlePath: vi.fn(async () => ({ ok: true, path: BUNDLE }) as const),
@@ -137,7 +137,7 @@ describe('receiver commands', () => {
   });
 });
 
-// Labelled fake: it stands in for A-INGEST's controller in this test only.
+// Labelled fake: it stands in for the receiver controller in this test only.
 function fakeController(start: (report: (status: ReceiverStatus) => void) => Promise<void>) {
   const listeners = new Set<(status: ReceiverStatus) => void>();
   let current: ReceiverStatus = { state: 'off' };
