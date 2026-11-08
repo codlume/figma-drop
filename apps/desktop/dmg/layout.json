@@ -1,0 +1,10 @@
+{
+  "window": { "width": 640, "height": 400 },
+  "iconSize": 128,
+  "textSize": 13,
+  "icons": {
+    "figma-drop.app": { "x": 170, "y": 180 },
+    "Applications": { "x": 470, "y": 180 }
+  },
+  "hint": "Drag figma-drop to Applications"
+}
