@@ -1,14 +1,14 @@
-head 01ac0be93e5e4088c23138dd850b85222127266c, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
+head adf16f9973ac6ce358162e73bab2e43800b499c4, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
 
 $ pnpm test:release
 $ node --test scripts/release-artifacts.test.mjs
-✔ release-please bumps every app package.json exactly once (1.221333ms)
-✔ readReleaseVersion returns the release-please manifest version (0.511375ms)
-✔ readReleaseVersion names the package whose version disagrees (2.037ms)
-✔ artifactNames for a release (0.08625ms)
-✔ artifactNames for a dry run mark every name (0.121375ms)
-✔ parseReleaseMode accepts a dry run and both tag forms (0.48925ms)
-✔ parseReleaseMode rejects anything but one mode (0.219042ms)
+✔ release-please bumps every app package.json exactly once (1.934459ms)
+✔ readReleaseVersion returns the release-please manifest version (0.587417ms)
+✔ readReleaseVersion names the package whose version disagrees (2.014667ms)
+✔ artifactNames for a release (0.085416ms)
+✔ artifactNames for a dry run mark every name (0.118958ms)
+✔ parseReleaseMode accepts a dry run and both tag forms (0.47325ms)
+✔ parseReleaseMode rejects anything but one mode (0.206709ms)
 ℹ tests 7
 ℹ suites 0
 ℹ pass 7
@@ -16,7 +16,7 @@ $ node --test scripts/release-artifacts.test.mjs
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 56.387291
+ℹ duration_ms 56.872625
 exit=0
 
 $ node scripts/release-package.mjs
@@ -45,7 +45,7 @@ $ vp run -r build
 ℹ Cleaning 2 files
 ℹ dist/code.js  12.45 kB │ gzip: 4.68 kB
 ℹ 1 files, total: 12.45 kB
-✔ Build complete in 19ms
+✔ Build complete in 21ms
 
 ~/apps/figma-plugin$ vp build ⊘ cache disabled
 transforming...
@@ -57,7 +57,7 @@ dist/ui.html                    1.55 kB │ gzip: 0.61 kB
 dist/assets/style-DyXthL2N.css  4.85 kB │ gzip: 1.50 kB
 dist/assets/ui-qxPkw-eJ.js      9.99 kB │ gzip: 4.02 kB
 
-✓ built in 48ms
+✓ built in 41ms
 
 ~/apps/figma-plugin$ node scripts/inline-ui.mjs dist ⊘ cache disabled
 
@@ -71,7 +71,7 @@ dist/renderer/index.html                   0.55 kB │ gzip:  0.32 kB
 dist/renderer/assets/index-7-B2Rvwl.css   14.18 kB │ gzip:  4.03 kB
 dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 
-✓ built in 350ms
+✓ built in 354ms
 
 ~/apps/desktop$ vp pack ⊘ cache disabled
 ℹ entry: src/main/index.ts
@@ -84,32 +84,32 @@ dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 ℹ dist-electron/preload.cjs      2.06 kB │ gzip: 0.71 kB
 ℹ dist-electron/preload.cjs.map  4.87 kB │ gzip: 1.64 kB
 ℹ 2 files, total: 6.92 kB
-✔ Build complete in 13ms
+✔ Build complete in 12ms
 ℹ dist-electron/main.cjs       64.52 kB │ gzip: 16.88 kB
 ℹ dist-electron/main.cjs.map  141.66 kB │ gzip: 36.20 kB
 ℹ 2 files, total: 206.18 kB
-✔ Build complete in 28ms
+✔ Build complete in 24ms
 ℹ dist-electron/receiver.cjs      199.37 kB │ gzip:  46.92 kB
 ℹ dist-electron/receiver.cjs.map  575.70 kB │ gzip: 123.89 kB
 ℹ 2 files, total: 775.06 kB
-✔ Build complete in 61ms
+✔ Build complete in 56ms
 
 ---
 vp run: 0/6 cache hit (0%). (Run `vp run --last-details` for full details)
 <repo>/apps/desktop/release/.staging/figma-drop.app: replacing existing signature
 Built <repo>/apps/desktop/release/figma-drop.app
 Dry run of 0.0.0: this publishes nothing. The desktop zip is unsigned (ad-hoc signature, no Developer ID, not notarized).
-  figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip  127559130 bytes  sha256 f0dfb4f13d54937c8171dca7f285fdd383a9504662441ab0e2e9c7a54b5ba2e4  (9 checks passed)
-  figma-drop-figma-plugin-0.0.0-dry-run.zip  11685 bytes  sha256 94c9f4b058259ec67b7d918e4860e3738c2110777196e6c74230971ad21d1e13  (6 checks passed)
+  figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip  127559130 bytes  sha256 62057f16a98252c1d905ebb310c71c5d06110c7fe6d2ed64dc6c5a228ae3fbf7  (9 checks passed)
+  figma-drop-figma-plugin-0.0.0-dry-run.zip  11685 bytes  sha256 0f34b8a8452bcc0b0cf3ba4677f77abe82be9dc0c59650574d910725a288c162  (6 checks passed)
 Wrote <repo>/release-artifacts
 exit=0
 
 $ ls -l release-artifacts
 total 262848
--rw-r--r--@ 1 <user>  staff        222 Nov  8 16:06 SHA256SUMS-dry-run.txt
--rw-r--r--@ 1 <user>  staff  127559130 Nov  8 16:06 figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip
--rw-r--r--@ 1 <user>  staff      11685 Nov  8 16:06 figma-drop-figma-plugin-0.0.0-dry-run.zip
--rw-r--r--@ 1 <user>  staff       1522 Nov  8 16:06 release-plan.json
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 16:12 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  127559130 Nov  8 16:12 figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 16:12 figma-drop-figma-plugin-0.0.0-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       1522 Nov  8 16:12 release-plan.json
 exit=0
 
 $ cat release-artifacts/release-plan.json
@@ -123,7 +123,7 @@ $ cat release-artifacts/release-plan.json
     {
       "name": "figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip",
       "bytes": 127559130,
-      "sha256": "f0dfb4f13d54937c8171dca7f285fdd383a9504662441ab0e2e9c7a54b5ba2e4",
+      "sha256": "62057f16a98252c1d905ebb310c71c5d06110c7fe6d2ed64dc6c5a228ae3fbf7",
       "checks": [
         "top entry = figma-drop.app",
         "CFBundleShortVersionString = 0.0.0",
@@ -139,7 +139,7 @@ $ cat release-artifacts/release-plan.json
     {
       "name": "figma-drop-figma-plugin-0.0.0-dry-run.zip",
       "bytes": 11685,
-      "sha256": "94c9f4b058259ec67b7d918e4860e3738c2110777196e6c74230971ad21d1e13",
+      "sha256": "0f34b8a8452bcc0b0cf3ba4677f77abe82be9dc0c59650574d910725a288c162",
       "checks": [
         "zip file entries = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
         "extracted files = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
@@ -238,18 +238,18 @@ Internal requirements count=0 size=12
 exit=0
 
 $ codesign --verify --deep --strict --verbose=2 <scratch>/desktop/figma-drop.app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
 --validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
 --validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
 --validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
 --validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
 --prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
