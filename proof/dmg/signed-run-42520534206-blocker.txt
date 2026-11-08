@@ -1,0 +1,63 @@
+# Signed package test on main: blocked before notarization
+
+Run: https://github.com/codlume/figma-drop/actions/runs/42520534206 (workflow_dispatch of package-macos.yml on main)
+Tested commit: 12f8076aebe531ac1fb4921f1c0787d9a55c2691 (squash merge of PR #21; tree identical to approved head 1bce55ed3e2b2ba56db3f50f7766bcdf24489d1c)
+Result: failure. Artifacts uploaded: none. Notary submissions made: none.
+
+## Step results
+success	Set up job
+success	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+success	Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+success	Run corepack enable
+success	Run pnpm install --frozen-lockfile
+success	Run pnpm typecheck
+success	Run pnpm test
+success	Run node scripts/dmg.mjs --setup
+success	Run pnpm test:release
+success	Run pnpm build
+success	Import the signing and notary credentials
+failure	Sign, notarize, and staple the app
+skipped	Build, sign, notarize, and staple the DMG
+skipped	Record the signing and notarization evidence
+success	Delete the signing keychain
+skipped	Run echo "version=$(node -p 'require("./package.json").version')" >> "${GITHUB_OUTPUT}"
+skipped	Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+skipped	Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+skipped	Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+skipped	Post Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+success	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+success	Complete job
+
+## Key log lines (secret values are masked by Actions and none are printed)
+Imported one Developer ID Application identity and stored the notary profile figma-drop-notary.
+Removed the signing keychain, if any.
+codesign operations in 'Sign, notarize, and staple the app': 34
+notarytool submissions in the run log: 0
+
+## Failure (scripts/package-local.mjs:88)
+Error: Wrong entitlements:
+/Users/runner/work/figma-drop/figma-drop/apps/desktop/release/.staging/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/MacOS/Electron Helper (GPU) has {"com.apple.security.cs.allow-jit":true}, expected none.
+/Users/runner/work/figma-drop/figma-drop/apps/desktop/release/.staging/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/MacOS/Electron Helper (Plugin) has {"com.apple.security.cs.allow-jit":true}, expected none.
+/Users/runner/work/figma-drop/figma-drop/apps/desktop/release/.staging/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer) has {"com.apple.security.cs.allow-jit":true}, expected none.
+/Users/runner/work/figma-drop/figma-drop/apps/desktop/release/.staging/figma-drop.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper has {"com.apple.security.cs.allow-jit":true}, expected none.
+/Users/runner/work/figma-drop/figma-drop/apps/desktop/release/.staging/figma-drop.app/Contents/MacOS/figma-drop has {"com.apple.security.cs.allow-jit":true}, expected none.
+    at file:///Users/runner/work/figma-drop/figma-drop/scripts/package-local.mjs:88:34
+
+## Diagnosis (measured locally, ad-hoc, macOS 27.2)
+signInsideOut signs each bundle's main executable bare, then signs the .app bundle with entitlements.mac.plist.
+A bundle's signature is stored in its main executable, so after the bundle is signed, reading the executable's
+path reports the bundle's entitlements. entitlementProblems classifies those five main executables as plain code
+(expected none). The five flagged paths are exactly Contents/MacOS/<exe> of the five .app bundles; no framework,
+dylib, crashpad handler, or ShipIt was flagged. The signatures were correct; the check is wrong.
+
+Reproduction on a copy of the locally built app:
+  codesign --force --options runtime --sign - "Electron Helper.app/Contents/MacOS/Electron Helper"
+  codesign -d --entitlements - --xml <executable>     -> (empty)
+  codesign --force --options runtime --entitlements apps/desktop/entitlements.mac.plist --sign - "Electron Helper.app"
+  codesign -d --entitlements - --xml <executable>     -> <dict><key>com.apple.security.cs.allow-jit</key><true/></dict>
+  codesign -d --entitlements - --xml <bundle>         -> <dict><key>com.apple.security.cs.allow-jit</key><true/></dict>
+  codesign -dv <bundle> and <executable> both report Executable=.../Contents/MacOS/Electron Helper
+
+## Not proven by this run
+App and DMG notarization (Accepted logs), stapling, stapler validate, spctl assessments, the DMG signature,
+and the release-style artifact handoff. None ran.
