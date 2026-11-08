@@ -1,0 +1,629 @@
+[
+  {
+    "viewport": {
+      "width": 800,
+      "height": 560
+    },
+    "scheme": "light",
+    "gridWidth": 296,
+    "columns": 2,
+    "tracks": 2,
+    "occupiedColumns": 2,
+    "cards": [
+      {
+        "name": "Mobile Home",
+        "cardWidth": 130,
+        "cardHeight": 160.8,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 1624
+          },
+          "element": {
+            "left": 243,
+            "top": 114.8,
+            "right": 359,
+            "bottom": 201.8,
+            "width": 116,
+            "height": 87
+          },
+          "painted": {
+            "left": 280.9,
+            "top": 114.8,
+            "right": 321.1,
+            "bottom": 201.8,
+            "width": 40.2,
+            "height": 87
+          },
+          "visible": {
+            "left": 280.9,
+            "top": 114.8,
+            "right": 321.1,
+            "bottom": 201.8,
+            "width": 40.2,
+            "height": 87
+          },
+          "frameWidth": 116,
+          "frameHeight": 87,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Empty Frame",
+        "cardWidth": 130,
+        "cardHeight": 160.8,
+        "image": null
+      },
+      {
+        "name": "Wide Banner",
+        "cardWidth": 130,
+        "cardHeight": 160.8,
+        "image": {
+          "natural": {
+            "width": 1600,
+            "height": 400
+          },
+          "element": {
+            "left": 243,
+            "top": 287.6,
+            "right": 359,
+            "bottom": 374.6,
+            "width": 116,
+            "height": 87
+          },
+          "painted": {
+            "left": 243,
+            "top": 316.6,
+            "right": 359,
+            "bottom": 345.6,
+            "width": 116,
+            "height": 29
+          },
+          "visible": {
+            "left": 243,
+            "top": 316.6,
+            "right": 359,
+            "bottom": 345.6,
+            "width": 116,
+            "height": 29
+          },
+          "frameWidth": 116,
+          "frameHeight": 87,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Desktop Dashboard",
+        "cardWidth": 130,
+        "cardHeight": 160.8,
+        "image": {
+          "natural": {
+            "width": 2880,
+            "height": 1800
+          },
+          "element": {
+            "left": 385,
+            "top": 287.6,
+            "right": 501,
+            "bottom": 374.6,
+            "width": 116,
+            "height": 87
+          },
+          "painted": {
+            "left": 385,
+            "top": 294.8,
+            "right": 501,
+            "bottom": 367.3,
+            "width": 116,
+            "height": 72.5
+          },
+          "visible": {
+            "left": 385,
+            "top": 294.8,
+            "right": 501,
+            "bottom": 367.3,
+            "width": 116,
+            "height": 72.5
+          },
+          "frameWidth": 116,
+          "frameHeight": 87,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Long Page",
+        "cardWidth": 130,
+        "cardHeight": 160.8,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 4200
+          },
+          "element": {
+            "left": 243,
+            "top": 460.4,
+            "right": 359,
+            "bottom": 547.4,
+            "width": 116,
+            "height": 87
+          },
+          "painted": {
+            "left": 293.2,
+            "top": 460.4,
+            "right": 308.8,
+            "bottom": 547.4,
+            "width": 15.5,
+            "height": 87
+          },
+          "visible": {
+            "left": 293.2,
+            "top": 460.4,
+            "right": 308.8,
+            "bottom": 547.4,
+            "width": 15.6,
+            "height": 87
+          },
+          "frameWidth": 116,
+          "frameHeight": 87,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      }
+    ],
+    "detail": {
+      "natural": {
+        "width": 750,
+        "height": 1624
+      },
+      "element": {
+        "left": 537,
+        "top": 38,
+        "right": 784,
+        "bottom": 223.3,
+        "width": 247,
+        "height": 185.3
+      },
+      "painted": {
+        "left": 617.7,
+        "top": 38,
+        "right": 703.3,
+        "bottom": 223.3,
+        "width": 85.6,
+        "height": 185.3
+      },
+      "visible": {
+        "left": 617.7,
+        "top": 38,
+        "right": 703.3,
+        "bottom": 223,
+        "width": 85.6,
+        "height": 185
+      },
+      "frameWidth": 247,
+      "frameHeight": 185,
+      "objectFit": "contain",
+      "loaded": true
+    }
+  },
+  {
+    "viewport": {
+      "width": 1600,
+      "height": 1000
+    },
+    "scheme": "light",
+    "gridWidth": 1000,
+    "columns": 7,
+    "tracks": 7,
+    "occupiedColumns": 5,
+    "cards": [
+      {
+        "name": "Mobile Home",
+        "cardWidth": 128,
+        "cardHeight": 159.3,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 1624
+          },
+          "element": {
+            "left": 263,
+            "top": 118.8,
+            "right": 377,
+            "bottom": 204.3,
+            "width": 114,
+            "height": 85.5
+          },
+          "painted": {
+            "left": 300.3,
+            "top": 118.8,
+            "right": 339.7,
+            "bottom": 204.3,
+            "width": 39.5,
+            "height": 85.5
+          },
+          "visible": {
+            "left": 300.3,
+            "top": 118.8,
+            "right": 339.7,
+            "bottom": 204.3,
+            "width": 39.4,
+            "height": 85.5
+          },
+          "frameWidth": 114,
+          "frameHeight": 86,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Empty Frame",
+        "cardWidth": 128,
+        "cardHeight": 159.3,
+        "image": null
+      },
+      {
+        "name": "Wide Banner",
+        "cardWidth": 128,
+        "cardHeight": 159.3,
+        "image": {
+          "natural": {
+            "width": 1600,
+            "height": 400
+          },
+          "element": {
+            "left": 543,
+            "top": 118.8,
+            "right": 657,
+            "bottom": 204.3,
+            "width": 114,
+            "height": 85.5
+          },
+          "painted": {
+            "left": 543,
+            "top": 147.3,
+            "right": 657,
+            "bottom": 175.8,
+            "width": 114,
+            "height": 28.5
+          },
+          "visible": {
+            "left": 543,
+            "top": 147.3,
+            "right": 657,
+            "bottom": 175.8,
+            "width": 114,
+            "height": 28.5
+          },
+          "frameWidth": 114,
+          "frameHeight": 86,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Desktop Dashboard",
+        "cardWidth": 128,
+        "cardHeight": 159.3,
+        "image": {
+          "natural": {
+            "width": 2880,
+            "height": 1800
+          },
+          "element": {
+            "left": 683,
+            "top": 118.8,
+            "right": 797,
+            "bottom": 204.3,
+            "width": 114,
+            "height": 85.5
+          },
+          "painted": {
+            "left": 683,
+            "top": 125.9,
+            "right": 797,
+            "bottom": 197.2,
+            "width": 114,
+            "height": 71.3
+          },
+          "visible": {
+            "left": 683,
+            "top": 125.9,
+            "right": 797,
+            "bottom": 197.2,
+            "width": 114,
+            "height": 71.3
+          },
+          "frameWidth": 114,
+          "frameHeight": 86,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Long Page",
+        "cardWidth": 128,
+        "cardHeight": 159.3,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 4200
+          },
+          "element": {
+            "left": 823,
+            "top": 118.8,
+            "right": 937,
+            "bottom": 204.3,
+            "width": 114,
+            "height": 85.5
+          },
+          "painted": {
+            "left": 872.4,
+            "top": 118.8,
+            "right": 887.6,
+            "bottom": 204.3,
+            "width": 15.3,
+            "height": 85.5
+          },
+          "visible": {
+            "left": 872.4,
+            "top": 118.8,
+            "right": 887.6,
+            "bottom": 204.3,
+            "width": 15.2,
+            "height": 85.5
+          },
+          "frameWidth": 114,
+          "frameHeight": 86,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      }
+    ],
+    "detail": {
+      "natural": {
+        "width": 750,
+        "height": 1624
+      },
+      "element": {
+        "left": 1257,
+        "top": 38,
+        "right": 1584,
+        "bottom": 278,
+        "width": 327,
+        "height": 240
+      },
+      "painted": {
+        "left": 1365.1,
+        "top": 38,
+        "right": 1475.9,
+        "bottom": 278,
+        "width": 110.8,
+        "height": 240
+      },
+      "visible": {
+        "left": 1365.1,
+        "top": 38,
+        "right": 1475.9,
+        "bottom": 278,
+        "width": 110.8,
+        "height": 240
+      },
+      "frameWidth": 327,
+      "frameHeight": 240,
+      "objectFit": "contain",
+      "loaded": true
+    }
+  },
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "scheme": "dark",
+    "gridWidth": 680,
+    "columns": 4,
+    "tracks": 4,
+    "occupiedColumns": 4,
+    "cards": [
+      {
+        "name": "Mobile Home",
+        "cardWidth": 153,
+        "cardHeight": 178,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 1624
+          },
+          "element": {
+            "left": 263,
+            "top": 118.8,
+            "right": 402,
+            "bottom": 223,
+            "width": 139,
+            "height": 104.3
+          },
+          "painted": {
+            "left": 308.4,
+            "top": 118.8,
+            "right": 356.6,
+            "bottom": 223,
+            "width": 48.1,
+            "height": 104.2
+          },
+          "visible": {
+            "left": 308.4,
+            "top": 118.8,
+            "right": 356.6,
+            "bottom": 222.8,
+            "width": 48.2,
+            "height": 104
+          },
+          "frameWidth": 139,
+          "frameHeight": 104,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Empty Frame",
+        "cardWidth": 153,
+        "cardHeight": 178,
+        "image": null
+      },
+      {
+        "name": "Wide Banner",
+        "cardWidth": 153,
+        "cardHeight": 178,
+        "image": {
+          "natural": {
+            "width": 1600,
+            "height": 400
+          },
+          "element": {
+            "left": 593,
+            "top": 118.8,
+            "right": 732,
+            "bottom": 223,
+            "width": 139,
+            "height": 104.3
+          },
+          "painted": {
+            "left": 593,
+            "top": 153.5,
+            "right": 732,
+            "bottom": 188.3,
+            "width": 139,
+            "height": 34.8
+          },
+          "visible": {
+            "left": 593,
+            "top": 153.5,
+            "right": 732,
+            "bottom": 188.3,
+            "width": 139,
+            "height": 34.8
+          },
+          "frameWidth": 139,
+          "frameHeight": 104,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Desktop Dashboard",
+        "cardWidth": 153,
+        "cardHeight": 178,
+        "image": {
+          "natural": {
+            "width": 2880,
+            "height": 1800
+          },
+          "element": {
+            "left": 758,
+            "top": 118.8,
+            "right": 897,
+            "bottom": 223,
+            "width": 139,
+            "height": 104.3
+          },
+          "painted": {
+            "left": 758,
+            "top": 127.5,
+            "right": 897,
+            "bottom": 214.4,
+            "width": 139,
+            "height": 86.9
+          },
+          "visible": {
+            "left": 758,
+            "top": 127.5,
+            "right": 897,
+            "bottom": 214.4,
+            "width": 139,
+            "height": 86.9
+          },
+          "frameWidth": 139,
+          "frameHeight": 104,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      },
+      {
+        "name": "Long Page",
+        "cardWidth": 153,
+        "cardHeight": 178,
+        "image": {
+          "natural": {
+            "width": 750,
+            "height": 4200
+          },
+          "element": {
+            "left": 263,
+            "top": 308.8,
+            "right": 402,
+            "bottom": 413.1,
+            "width": 139,
+            "height": 104.3
+          },
+          "painted": {
+            "left": 323.2,
+            "top": 308.8,
+            "right": 341.8,
+            "bottom": 413.1,
+            "width": 18.6,
+            "height": 104.3
+          },
+          "visible": {
+            "left": 323.2,
+            "top": 308.8,
+            "right": 341.8,
+            "bottom": 412.8,
+            "width": 18.6,
+            "height": 104
+          },
+          "frameWidth": 139,
+          "frameHeight": 104,
+          "objectFit": "contain",
+          "loaded": true
+        }
+      }
+    ],
+    "detail": {
+      "natural": {
+        "width": 750,
+        "height": 1624
+      },
+      "element": {
+        "left": 937,
+        "top": 38,
+        "right": 1264,
+        "bottom": 278,
+        "width": 327,
+        "height": 240
+      },
+      "painted": {
+        "left": 1045.1,
+        "top": 38,
+        "right": 1155.9,
+        "bottom": 278,
+        "width": 110.8,
+        "height": 240
+      },
+      "visible": {
+        "left": 1045.1,
+        "top": 38,
+        "right": 1155.9,
+        "bottom": 278,
+        "width": 110.8,
+        "height": 240
+      },
+      "frameWidth": 327,
+      "frameHeight": 240,
+      "objectFit": "contain",
+      "loaded": true
+    }
+  }
+]

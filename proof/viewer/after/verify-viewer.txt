@@ -1,0 +1,57 @@
+mode after: scratch library and user data, test port 59255, synthetic exports only
+seeded 5 exports, Mobile Home has 2 revisions in its history
+  800x560 light: 1 columns (tracks 1, occupied 1), grid 296.0px wide
+    Mobile Home        card 272.0  frame 258.0x323.0  img box 258.0x558.6  painted 258.0x558.6  visible 258.0x323.0  natural 750x1624  fit fill  fills 100% of frame width
+    Empty Frame        card 272.0  no image
+    Wide Banner        card 272.0  frame 258.0x323.0  img box 258.0x64.5  painted 258.0x64.5  visible 258.0x0.0  natural 1600x400  fit fill  fills 100% of frame width
+    Desktop Dashboard  card 272.0  frame 258.0x323.0  img box 258.0x161.3  painted 258.0x161.3  visible 258.0x0.0  natural 2880x1800  fit fill  fills 100% of frame width
+    Long Page          card 272.0  frame 258.0x323.0  img box 258.0x1444.8  painted 258.0x1444.8  visible 258.0x0.0  natural 750x4200  fit fill  fills 100% of frame width
+    detail preview     card -  frame 247.0x185.0  img box 247.0x185.3  painted 85.6x185.3  visible 85.6x185.0  natural 750x1624  fit contain  fills 35% of frame width
+  1600x1000 light: 4 columns (tracks 4, occupied 4), grid 1000.0px wide
+    Mobile Home        card 233.0  frame 219.0x274.0  img box 219.0x474.2  painted 219.0x474.2  visible 219.0x274.0  natural 750x1624  fit fill  fills 100% of frame width
+    Empty Frame        card 233.0  no image
+    Wide Banner        card 233.0  frame 219.0x274.0  img box 219.0x54.8  painted 219.0x54.8  visible 219.0x54.7  natural 1600x400  fit fill  fills 100% of frame width
+    Desktop Dashboard  card 233.0  frame 219.0x274.0  img box 219.0x136.9  painted 219.0x136.9  visible 219.0x136.9  natural 2880x1800  fit fill  fills 100% of frame width
+    Long Page          card 233.0  frame 219.0x274.0  img box 219.0x1226.4  painted 219.0x1226.4  visible 219.0x274.0  natural 750x4200  fit fill  fills 100% of frame width
+    detail preview     card -  frame 327.0x240.0  img box 327.0x240.0  painted 110.8x240.0  visible 110.8x240.0  natural 750x1624  fit contain  fills 34% of frame width
+  1280x800 dark: 3 columns (tracks 3, occupied 3), grid 680.0px wide
+    Mobile Home        card 208.0  frame 194.0x243.0  img box 194.0x420.1  painted 194.0x420.1  visible 194.0x243.0  natural 750x1624  fit fill  fills 100% of frame width
+    Empty Frame        card 208.0  no image
+    Wide Banner        card 208.0  frame 194.0x243.0  img box 194.0x48.5  painted 194.0x48.5  visible 194.0x48.5  natural 1600x400  fit fill  fills 100% of frame width
+    Desktop Dashboard  card 208.0  frame 194.0x243.0  img box 194.0x121.3  painted 194.0x121.3  visible 194.0x121.3  natural 2880x1800  fit fill  fills 100% of frame width
+    Long Page          card 208.0  frame 194.0x243.0  img box 194.0x1086.4  painted 194.0x1086.4  visible 194.0x243.0  natural 750x4200  fit fill  fills 100% of frame width
+    detail preview     card -  frame 327.0x240.0  img box 327.0x240.0  painted 110.8x240.0  visible 110.8x240.0  natural 750x1624  fit contain  fills 34% of frame width
+PASS G1 the grid gains columns from 800x560 to 1600x1000
+PASS G2 every card preview keeps its natural aspect ratio
+PASS G3 the tall mobile card preview fills the card preview width
+a "Open image viewer" button is present in this build
+  fit readout 40%, image 303.0x657.0 in stage 1214.0x689.0
+PASS V1 the sidebar preview opens the viewer in Fit with the whole image inside
+PASS V2 Chrome's accessibility tree exposes the contract's roles and names
+PASS V3 100% renders the image at its natural CSS width and reads 100%
+  fit 40%/303.0 -> zoomIn 50%/375.0 -> zoomIn 67%/502.0 -> zoomOut 50%/375.0 -> zoomOut 33%/247.0
+PASS V4 zoom in and zoom out move the readout and image width monotonically
+  top reached, bottom reached, horizontal fits
+PASS V5 at 100% every edge of Mobile Home scrolls into the stage
+  top reached, bottom reached, horizontal fits
+PASS V6 at 100% every edge of Long Page scrolls into the stage
+  top reached, bottom reached, left reached, right reached
+PASS V7 at 100% every edge of Desktop Dashboard scrolls into the stage
+  a 240px upward drag scrolled 240px
+PASS V8 dragging the image pans it and keeps the viewer open
+PASS V14 repeating 100% leaves no stale anchor for a later render
+  fit 40%, + 50%, 1 100%, 0 back to fit
+PASS V9 keys + - 1 0 zoom in, zoom out, show 100%, and fit
+PASS V10 Escape closes the viewer and focus returns to the trigger
+PASS V11 a click on the backdrop closes the viewer and focus returns to the trigger
+PASS V12 five open and close cycles leave zero dialogs and focus on the trigger
+  1600x1000: 53%, image 395.0x857.0 in stage 1534.0x889.0
+  800x560: 27%, image 199.0x433.0 in stage 750.0x465.0
+PASS V13 resizing the window in Fit keeps the whole image inside the stage
+PASS M1 the recorded flow: open, zoom in, 100%, drag down, Fit, Escape, reopen, backdrop
+  125 frames, 20.5s, 300774 bytes
+PASS M2 interaction.mp4 encodes at 12 to 30 seconds
+PASS Z1 no console errors, exceptions, or CSP violations over the run
+PASS Z2 quit exits cleanly
+PASS Z3 the real library and real port stayed untouched
+ALL PASS

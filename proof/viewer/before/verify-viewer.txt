@@ -1,0 +1,33 @@
+mode before: scratch library and user data, test port 57733, synthetic exports only
+seeded 5 exports, Mobile Home has 2 revisions in its history
+  800x560 light: 2 columns (tracks 2, occupied 2), grid 296.0px wide
+    Mobile Home        card 130.0  frame 116.0x87.0  img box 116.0x87.0  painted 40.2x87.0  visible 40.2x87.0  natural 750x1624  fit contain  fills 35% of frame width
+    Empty Frame        card 130.0  no image
+    Wide Banner        card 130.0  frame 116.0x87.0  img box 116.0x87.0  painted 116.0x29.0  visible 116.0x29.0  natural 1600x400  fit contain  fills 100% of frame width
+    Desktop Dashboard  card 130.0  frame 116.0x87.0  img box 116.0x87.0  painted 116.0x72.5  visible 116.0x72.5  natural 2880x1800  fit contain  fills 100% of frame width
+    Long Page          card 130.0  frame 116.0x87.0  img box 116.0x87.0  painted 15.5x87.0  visible 15.6x87.0  natural 750x4200  fit contain  fills 13% of frame width
+    detail preview     card -  frame 247.0x185.0  img box 247.0x185.3  painted 85.6x185.3  visible 85.6x185.0  natural 750x1624  fit contain  fills 35% of frame width
+  1600x1000 light: 7 columns (tracks 7, occupied 5), grid 1000.0px wide
+    Mobile Home        card 128.0  frame 114.0x86.0  img box 114.0x85.5  painted 39.5x85.5  visible 39.4x85.5  natural 750x1624  fit contain  fills 35% of frame width
+    Empty Frame        card 128.0  no image
+    Wide Banner        card 128.0  frame 114.0x86.0  img box 114.0x85.5  painted 114.0x28.5  visible 114.0x28.5  natural 1600x400  fit contain  fills 100% of frame width
+    Desktop Dashboard  card 128.0  frame 114.0x86.0  img box 114.0x85.5  painted 114.0x71.3  visible 114.0x71.3  natural 2880x1800  fit contain  fills 100% of frame width
+    Long Page          card 128.0  frame 114.0x86.0  img box 114.0x85.5  painted 15.3x85.5  visible 15.2x85.5  natural 750x4200  fit contain  fills 13% of frame width
+    detail preview     card -  frame 327.0x240.0  img box 327.0x240.0  painted 110.8x240.0  visible 110.8x240.0  natural 750x1624  fit contain  fills 34% of frame width
+  1280x800 dark: 4 columns (tracks 4, occupied 4), grid 680.0px wide
+    Mobile Home        card 153.0  frame 139.0x104.0  img box 139.0x104.3  painted 48.1x104.2  visible 48.2x104.0  natural 750x1624  fit contain  fills 35% of frame width
+    Empty Frame        card 153.0  no image
+    Wide Banner        card 153.0  frame 139.0x104.0  img box 139.0x104.3  painted 139.0x34.8  visible 139.0x34.8  natural 1600x400  fit contain  fills 100% of frame width
+    Desktop Dashboard  card 153.0  frame 139.0x104.0  img box 139.0x104.3  painted 139.0x86.9  visible 139.0x86.9  natural 2880x1800  fit contain  fills 100% of frame width
+    Long Page          card 153.0  frame 139.0x104.0  img box 139.0x104.3  painted 18.6x104.3  visible 18.6x104.0  natural 750x4200  fit contain  fills 13% of frame width
+    detail preview     card -  frame 327.0x240.0  img box 327.0x240.0  painted 110.8x240.0  visible 110.8x240.0  natural 750x1624  fit contain  fills 34% of frame width
+PASS G1 the grid gains columns from 800x560 to 1600x1000
+PASS G2 every card preview keeps its natural aspect ratio
+FAIL G3 the tall mobile card preview fills the card preview width
+  assertion failed: 800x560 shows 40.2 of 116.0px (35%); 1600x1000 shows 39.4 of 114.0px (35%); 1280x800 shows 48.2 of 139.0px (35%)
+  see /var/folders/9w/z1wvlzl10t1fpbtjqmp5lql00000gn/T/figma-drop-viewer-fail-G3.png
+a "Open image viewer" button is absent in this build
+PASS Z1 no console errors, exceptions, or CSP violations over the run
+PASS Z2 quit exits cleanly
+PASS Z3 the real library and real port stayed untouched
+1 FAILED
