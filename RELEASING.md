@@ -106,7 +106,7 @@ release-please reads the Conventional Commit types merged since the last release
 - A breaking change, written as `feat!:` or with a `BREAKING CHANGE:` footer, bumps the major version. The config does not set `bump-minor-pre-major`, so a breaking change on `0.x` bumps to `1.0.0`.
 - `chore`, `docs`, `ci`, `build`, `refactor`, `style`, and `test` do not start a release by themselves.
 
-The manifest starts at `0.0.0`, and the config sets no `initial-version`. So the first release is `1.0.0`.
+The manifest starts at `0.0.0`, which release-please reads as "never released". The config sets `initial-version` to `0.1.0`, so the first release is `0.1.0`.
 
 To force a version, merge a commit to `main` with this footer in its message:
 
