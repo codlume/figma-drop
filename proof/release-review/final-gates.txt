@@ -1,4 +1,4 @@
-Final local gates on head 71d3054b0e4af5cabe7ecedffb4ecbdcacf57ef8
+Final local gates on head 71c005b70a8028d1de9a3cb924b056beb660ce53
 
 $ pnpm test:release
 ℹ tests 14
@@ -11,11 +11,8 @@ exit=0
 
 $ pnpm test
  Test Files  1 passed (1)
-      Tests  20 passed (20)
  Test Files  16 passed (16)
-      Tests  322 passed (322)
  Test Files  30 passed (30)
-      Tests  904 passed (904)
 exit=0
 
 $ pnpm lint
@@ -43,6 +40,7 @@ build waits for release-pr: exit 1 caught by "build does not depend on release-p
 setup-vp returns: exit 1 caught by "no workflow uses setup-vp"
 install not frozen: exit 1 caught by "keeps the lockfile frozen"
 marker check removed: exit 1 caught by "second run leaves the body unchanged"
+CRLF marker missed: exit 1 caught by "a CRLF body that already carries the marker stays unchanged"
 marker matched anywhere: exit 1 caught by "a marker inside a line keeps the notice"
 checksums not rechecked: exit 1 caught by "verify rejects a changed zip"
 extra files uploaded: exit 1 caught by "verify rejects a file SHA256SUMS.txt does not list"
