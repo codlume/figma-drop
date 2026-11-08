@@ -13,7 +13,12 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { artifactNames, parseReleaseMode, readReleaseVersion } from './release-artifacts.mjs';
+import {
+  artifactNames,
+  isAppleMetadataEntry,
+  parseReleaseMode,
+  readReleaseVersion,
+} from './release-artifacts.mjs';
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const readJson = (path) => JSON.parse(readFileSync(join(repoDir, path), 'utf8'));
@@ -37,25 +42,64 @@ test('release-please bumps every app package.json exactly once', () => {
   }
 });
 
-test('readReleaseVersion returns the release-please manifest version', () => {
-  assert.equal(readReleaseVersion(repoDir), readJson('.release-please-manifest.json')['.']);
-});
-
-test('readReleaseVersion names the package whose version disagrees', () => {
+function withReleaseFixture(versions, use) {
+  const {
+    root,
+    desktop = root,
+    plugin = root,
+    manifest = root,
+    config = readJson('release-please-config.json'),
+  } = versions;
   const dir = mkdtempSync(join(tmpdir(), 'figma-drop-release-test-'));
   try {
     const write = (path, value) => {
       mkdirSync(dirname(join(dir, path)), { recursive: true });
       writeFileSync(join(dir, path), JSON.stringify(value));
     };
-    write('package.json', { version: '1.2.3' });
-    write('apps/desktop/package.json', { version: '1.2.3' });
-    write('apps/figma-plugin/package.json', { version: '1.2.4' });
-    write('.release-please-manifest.json', { '.': '1.2.3' });
-    write('release-please-config.json', readJson('release-please-config.json'));
-    assert.throws(() => readReleaseVersion(dir), /apps\/figma-plugin\/package\.json: "1\.2\.4"/);
+    write('package.json', { version: root });
+    write('apps/desktop/package.json', { version: desktop });
+    write('apps/figma-plugin/package.json', { version: plugin });
+    write('.release-please-manifest.json', { '.': manifest });
+    write('release-please-config.json', config);
+    return use(dir);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('readReleaseVersion returns the version every file agrees on', () => {
+  withReleaseFixture({ root: '1.2.3' }, (dir) => assert.equal(readReleaseVersion(dir), '1.2.3'));
+});
+
+test('readReleaseVersion names the package whose version disagrees', () => {
+  withReleaseFixture({ root: '1.2.3', plugin: '1.2.4' }, (dir) =>
+    assert.throws(() => readReleaseVersion(dir), /apps\/figma-plugin\/package\.json: "1\.2\.4"/),
+  );
+});
+
+test('readReleaseVersion compares the release-please manifest', () => {
+  withReleaseFixture({ root: '1.2.3', manifest: '1.2.4' }, (dir) =>
+    assert.throws(() => readReleaseVersion(dir), /\.release-please-manifest\.json "\.": "1\.2\.4"/),
+  );
+});
+
+test('readReleaseVersion rejects a shared version that is not X.Y.Z', () => {
+  for (const version of ['1.2', 'v1.2.3', '1.2.3-rc.1', ' 1.2.3']) {
+    withReleaseFixture({ root: version }, (dir) =>
+      assert.throws(() => readReleaseVersion(dir), /one X\.Y\.Z value/, `rejects "${version}"`),
+    );
+  }
+});
+
+test('readReleaseVersion names the config when it lists no extra-files', () => {
+  for (const config of [{}, { packages: {} }, { packages: { '.': {} } }]) {
+    withReleaseFixture({ root: '1.2.3', config }, (dir) =>
+      assert.throws(
+        () => readReleaseVersion(dir),
+        (error) => error.constructor === Error && /release-please-config\.json/.test(error.message),
+        `rejects ${JSON.stringify(config)}`,
+      ),
+    );
   }
 });
 
@@ -94,5 +138,28 @@ test('parseReleaseMode rejects anything but one mode', () => {
     ['v1.2.3'],
   ]) {
     assert.throws(() => parseReleaseMode(argv), /Usage:/, `rejects ${JSON.stringify(argv)}`);
+  }
+});
+
+test('isAppleMetadataEntry flags AppleDouble and Finder entries only', () => {
+  for (const entry of [
+    '._figma-drop.app',
+    'figma-drop.app/Contents/._Info.plist',
+    '__MACOSX/',
+    '__MACOSX/figma-drop.app/._Contents',
+    'figma-drop.app/.DS_Store',
+    '.DS_Store',
+  ]) {
+    assert.equal(isAppleMetadataEntry(entry), true, `flags ${entry}`);
+  }
+  for (const entry of [
+    'figma-drop.app/',
+    'figma-drop.app/Contents/Info.plist',
+    'figma-drop-figma-plugin/dist/ui.html',
+    'figma-drop.app/Contents/Resources/app/dist/a._b.js',
+    'figma-drop.app/Contents/Resources/x__MACOSX/y',
+    'figma-drop.app/.DS_Store.bak',
+  ]) {
+    assert.equal(isAppleMetadataEntry(entry), false, `keeps ${entry}`);
   }
 });

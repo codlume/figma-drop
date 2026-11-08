@@ -33,7 +33,10 @@ export function parseReleaseMode(argv) {
 
 export function readReleaseVersion(repoDir) {
   const readJson = (path) => JSON.parse(readFileSync(join(repoDir, path), 'utf8'));
-  const extraFiles = readJson(RELEASE_CONFIG).packages['.']['extra-files'];
+  const extraFiles = readJson(RELEASE_CONFIG).packages?.['.']?.['extra-files'];
+  if (!Array.isArray(extraFiles)) {
+    throw new Error(`${RELEASE_CONFIG} must list packages["."]["extra-files"].`);
+  }
   const versioned = ['package.json', ...extraFiles.map((file) => file.path)];
   const found = [
     ...versioned.map((path) => ({ source: path, version: readJson(path).version })),
@@ -56,3 +59,5 @@ export function artifactNames(version, mode) {
     checksums: `SHA256SUMS${suffix}.txt`,
   };
 }
+
+export const isAppleMetadataEntry = (entry) => /(^|\/)(\._|__MACOSX\/|\.DS_Store$)/.test(entry);

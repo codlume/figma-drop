@@ -8,6 +8,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -16,7 +17,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { artifactNames, parseReleaseMode, readReleaseVersion } from './release-artifacts.mjs';
+import {
+  artifactNames,
+  isAppleMetadataEntry,
+  parseReleaseMode,
+  readReleaseVersion,
+} from './release-artifacts.mjs';
 
 const APP_NAME = 'figma-drop';
 const BUNDLE_ID = 'com.codlume.figma-drop';
@@ -26,8 +32,13 @@ const SIGNING = 'ad-hoc signature, no Developer ID, not notarized';
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const outDir = join(repoDir, 'release-artifacts');
+// Artifacts are written here and renamed to `outDir` only once complete, so an interrupted
+// run never leaves a release-named zip in `outDir`.
+const stagingDir = join(repoDir, 'release-artifacts.staging');
 const builtApp = join(repoDir, 'apps/desktop/release', `${APP_NAME}.app`);
 const pluginDir = join(repoDir, 'apps/figma-plugin');
+const desktopBuildDir = join(repoDir, 'apps/desktop');
+const BUNDLED_BUILDS = ['dist', 'dist-electron'];
 
 const capture = (command, ...args) =>
   execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -53,14 +64,24 @@ function checkList(artifact) {
       `${label} = ${expected}`,
       `Got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}.`,
     );
-  return { passed, expect, equal };
+  const noAppleMetadata = (entries) => {
+    const found = entries.filter(isAppleMetadataEntry);
+    expect(
+      found.length === 0,
+      'zip holds no AppleDouble or Finder metadata entries',
+      `Found ${found.length}, such as ${found.slice(0, 3).join(', ')}.`,
+    );
+  };
+  return { passed, expect, equal, noAppleMetadata };
 }
 
-function verifyDesktop(zipPath, version) {
-  const { passed, expect, equal } = checkList(zipPath);
-  const stray = capture('zipinfo', '-1', zipPath)
-    .split('\n')
-    .filter((entry) => !entry.startsWith(`${APP_NAME}.app/`));
+const zipEntries = (zipPath) => capture('zipinfo', '-1', zipPath).split('\n');
+
+export function verifyDesktop(zipPath, version, buildDir = desktopBuildDir) {
+  const { passed, expect, equal, noAppleMetadata } = checkList(zipPath);
+  const entries = zipEntries(zipPath);
+  noAppleMetadata(entries);
+  const stray = entries.filter((entry) => !entry.startsWith(`${APP_NAME}.app/`));
   equal('zip entries outside figma-drop.app', stray.join(', '), '');
   withTempDir('figma-drop-verify-desktop-', (dir) => {
     execFileSync('ditto', ['-x', '-k', zipPath, dir]);
@@ -74,8 +95,31 @@ function verifyDesktop(zipPath, version) {
     equal('CFBundleExecutable', plistValue('CFBundleExecutable'), APP_NAME);
     const executable = join(app, 'Contents/MacOS', APP_NAME);
     expect(existsSync(executable), 'bundle executable exists', `Missing ${executable}.`);
-    const appPackage = JSON.parse(readFileSync(join(app, 'Contents/Resources/app/package.json')));
+    equal('lipo -archs of the executable', capture('lipo', '-archs', executable), 'arm64');
+    const appDir = join(app, 'Contents/Resources/app');
+    const appPackage = JSON.parse(readFileSync(join(appDir, 'package.json')));
     equal('Contents/Resources/app/package.json version', appPackage.version, version);
+    expect(
+      typeof appPackage.main === 'string' && existsSync(join(appDir, appPackage.main)),
+      'Contents/Resources/app/package.json main exists',
+      `main is ${JSON.stringify(appPackage.main)}.`,
+    );
+    const rendererIndex = 'dist/renderer/index.html';
+    expect(
+      existsSync(join(appDir, rendererIndex)),
+      `Contents/Resources/app/${rendererIndex} exists`,
+      `Missing ${rendererIndex}.`,
+    );
+    for (const build of BUNDLED_BUILDS) {
+      const diff = spawnSync('diff', ['-rq', join(buildDir, build), join(appDir, build)], {
+        encoding: 'utf8',
+      });
+      expect(
+        diff.status === 0,
+        `Contents/Resources/app/${build} is byte-identical to apps/desktop/${build}`,
+        `The bundle is stale. Run pnpm app:local.\n${diff.stdout}${diff.stderr}`.trim(),
+      );
+    }
     const verify = spawnSync('codesign', ['--verify', '--deep', '--strict', app], {
       encoding: 'utf8',
     });
@@ -87,16 +131,15 @@ function verifyDesktop(zipPath, version) {
   return passed;
 }
 
-function verifyPlugin(zipPath) {
-  const { passed, expect, equal } = checkList(zipPath);
+export function verifyPlugin(zipPath) {
+  const { passed, expect, equal, noAppleMetadata } = checkList(zipPath);
   const expected = PLUGIN_FILES.map((file) => `${PLUGIN_FOLDER}/${file}`).toSorted();
   // A zip entry such as `__MACOSX/` survives into Windows and non-ditto extractors, so the
   // archive listing is checked as well as the extracted tree.
-  const entries = capture('zipinfo', '-1', zipPath)
-    .split('\n')
-    .filter((entry) => !entry.endsWith('/'))
-    .toSorted();
-  equal('zip file entries', entries.join(', '), expected.join(', '));
+  const entries = zipEntries(zipPath);
+  noAppleMetadata(entries);
+  const fileEntries = entries.filter((entry) => !entry.endsWith('/')).toSorted();
+  equal('zip file entries', fileEntries.join(', '), expected.join(', '));
   withTempDir('figma-drop-verify-plugin-', (dir) => {
     execFileSync('ditto', ['-x', '-k', zipPath, dir]);
     const files = readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -154,7 +197,7 @@ function zipPlugin(zipPath) {
 }
 
 function describe(name, checks) {
-  const path = join(outDir, name);
+  const path = join(stagingDir, name);
   const sha256 = createHash('sha256').update(readFileSync(path)).digest('hex');
   return { name, bytes: statSync(path).size, sha256, checks };
 }
@@ -213,10 +256,10 @@ function main() {
   }
 
   const names = artifactNames(version, mode);
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir);
+  for (const dir of [outDir, stagingDir]) rmSync(dir, { recursive: true, force: true });
+  mkdirSync(stagingDir);
   try {
-    const desktopZip = join(outDir, names.desktop);
+    const desktopZip = join(stagingDir, names.desktop);
     // `ditto` keeps the framework symlinks the signature seals, which `zip` without `-y` flattens.
     execFileSync('ditto', [
       '-c',
@@ -229,7 +272,7 @@ function main() {
       desktopZip,
     ]);
     const desktopChecks = verifyDesktop(desktopZip, version);
-    const pluginZip = join(outDir, names.plugin);
+    const pluginZip = join(stagingDir, names.plugin);
     zipPlugin(pluginZip);
     const pluginChecks = verifyPlugin(pluginZip);
 
@@ -238,7 +281,7 @@ function main() {
       describe(names.plugin, pluginChecks),
     ];
     const sums = artifacts.map((artifact) => `${artifact.sha256}  ${artifact.name}\n`).join('');
-    writeFileSync(join(outDir, names.checksums), sums);
+    writeFileSync(join(stagingDir, names.checksums), sums);
     const plan = {
       mode: mode.kind,
       version,
@@ -247,17 +290,20 @@ function main() {
       signing: SIGNING,
       artifacts,
     };
-    writeFileSync(join(outDir, 'release-plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
+    writeFileSync(join(stagingDir, 'release-plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
+    renameSync(stagingDir, outDir);
     writeSummary(plan, headline(mode, version));
   } catch (error) {
-    rmSync(outDir, { recursive: true, force: true });
+    rmSync(stagingDir, { recursive: true, force: true });
     throw error;
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exit(1);
+if (import.meta.main) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 }

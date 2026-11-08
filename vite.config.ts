@@ -12,6 +12,7 @@ const ignorePatterns = [
   'node_modules',
   'pnpm-lock.yaml',
   'release-artifacts/**',
+  'release-artifacts.staging/**',
   '*.tsbuildinfo',
 ];
 
