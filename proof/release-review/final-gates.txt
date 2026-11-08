@@ -1,0 +1,51 @@
+Final local gates on head 71d3054b0e4af5cabe7ecedffb4ecbdcacf57ef8
+
+$ pnpm test:release
+ℹ tests 14
+ℹ pass 14
+ℹ fail 0
+exit=0
+
+$ pnpm typecheck
+exit=0
+
+$ pnpm test
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+ Test Files  16 passed (16)
+      Tests  322 passed (322)
+ Test Files  30 passed (30)
+      Tests  904 passed (904)
+exit=0
+
+$ pnpm lint
+proof/shell/verify-bundle.mjs:102:5: warning eslint(preserve-caught-error): There is no cause error attached to this new thrown error. help: Preserve the original error by using the `cause` property when re-throwing errors.
+exit=0
+
+$ pnpm fmt:check
+All matched files use the correct format.
+exit=0
+
+$ actionlint .github/workflows/release.yml .github/workflows/release-dry-run.yml
+exit=0
+
+$ node <scratch>/check-workflows.mjs <repo>
+all workflow checks passed
+exit=0
+
+$ node <scratch>/mutate.mjs <repo>
+build gets write: exit 1 caught by "only release-please, release-pr, and upload write"
+release-please loses issues write: exit 1 caught by "release-please can label the release PR with issues: write"
+release-pr loses issues write: exit 1 caught by "release-pr can label the release PR with issues: write"
+release-please also opens the PR: exit 1 caught by "release-please sets skip-github-pull-request: true"
+release-pr also creates releases: exit 1 caught by "release-pr sets skip-github-release: true"
+build waits for release-pr: exit 1 caught by "build does not depend on release-pr"
+setup-vp returns: exit 1 caught by "no workflow uses setup-vp"
+install not frozen: exit 1 caught by "keeps the lockfile frozen"
+marker check removed: exit 1 caught by "second run leaves the body unchanged"
+marker matched anywhere: exit 1 caught by "a marker inside a line keeps the notice"
+checksums not rechecked: exit 1 caught by "verify rejects a changed zip"
+extra files uploaded: exit 1 caught by "verify rejects a file SHA256SUMS.txt does not list"
+dry run uploads: exit 1 caught by "dry run uploads no artifacts"
+exit=0
+

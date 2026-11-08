@@ -1,4 +1,10 @@
-Gates on head 9dacfcd138b3c324e603e7af449482f4b9b438ca.
+Final local gates on head 71d3054b0e4af5cabe7ecedffb4ecbdcacf57ef8
+
+$ pnpm test:release
+ℹ tests 14
+ℹ pass 14
+ℹ fail 0
+exit=0
 
 $ pnpm typecheck
 exit=0
@@ -13,6 +19,7 @@ $ pnpm test
 exit=0
 
 $ pnpm lint
+proof/shell/verify-bundle.mjs:102:5: warning eslint(preserve-caught-error): There is no cause error attached to this new thrown error. help: Preserve the original error by using the `cause` property when re-throwing errors.
 exit=0
 
 $ pnpm fmt:check
@@ -21,4 +28,3 @@ exit=0
 
 $ actionlint .github/workflows/release.yml .github/workflows/release-dry-run.yml
 exit=0
-
