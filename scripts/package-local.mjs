@@ -141,7 +141,23 @@ function notarize(app, { appleId, password, teamId }) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  run('xcrun', 'stapler', 'staple', app);
+  staple(app);
+}
+
+// Right after Apple accepts a submission, fetching its ticket can fail: the ticket may not be
+// published yet, or the connection to Apple's ticket service drops (a release run once failed on
+// NSURLErrorDomain -1005). Both clear on a later attempt.
+function staple(app, attempts = 5) {
+  for (let attempt = 1; ; attempt += 1) {
+    const { status } = spawnSync('xcrun', ['stapler', 'staple', app], { stdio: 'inherit' });
+    if (status === 0) return;
+    if (attempt === attempts) {
+      throw new Error(`xcrun stapler staple exited ${status} on all ${attempts} attempts.`);
+    }
+    const seconds = 15 * attempt;
+    console.error(`Stapling failed with exit ${status}. Attempt ${attempt + 1} in ${seconds}s.`);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, seconds * 1000);
+  }
 }
 
 // The credentials travel in argv, and an execFileSync error would quote them, so this reports
