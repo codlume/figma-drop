@@ -1,0 +1,156 @@
+
+$ sw_vers
+ProductName:		macOS
+ProductVersion:		27.2
+BuildVersion:		26B123
+[exit 0]
+
+$ shasum -a 256 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+[exit 0]
+
+$ hdiutil imageinfo -format figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+hdiutil: WARNING: 'hdiutil imageinfo ...' is deprecated. Please use 'diskutil image info ...' instead.
+UDZO
+[exit 0]
+
+$ hdiutil verify figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+Checksumming Protective Master Boot Record (MBR : 0)…
+Protective Master Boot Record (MBR :: verified CRC32 $542C63F5
+Checksumming GPT Header (Primary GPT Header : 1)…
+ GPT Header (Primary GPT Header : 1): verified CRC32 $B05A1039
+Checksumming GPT Partition Data (Primary GPT Table : 2)…
+GPT Partition Data (Primary GPT Tabl: verified CRC32 $AA9FB025
+Checksumming  (Apple_Free : 3)…
+                    (Apple_Free : 3): verified CRC32 $00000000
+Checksumming disk image (Apple_HFS : 4)…
+          disk image (Apple_HFS : 4): verified CRC32 $65C9A8E7
+Checksumming GPT Partition Data (Backup GPT Table : 5)…
+GPT Partition Data (Backup GPT Table: verified CRC32 $AA9FB025
+Checksumming GPT Header (Backup GPT Header : 6)…
+  GPT Header (Backup GPT Header : 6): verified CRC32 $4007FC83
+verified CRC32 $1A029BB7
+hdiutil: verify: checksum of "figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg" is VALID
+[exit 0]
+
+$ codesign -dv --verbose=4 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg: code object is not signed at all
+[exit 1]
+
+$ codesign --verify --strict --verbose=2 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg: code object is not signed at all
+[exit 1]
+
+$ xcrun stapler validate figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+Processing: ./figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg does not have a ticket stapled to it.
+[exit 65]
+
+$ spctl -a -t open --context context:primary-signature -vvv figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg: rejected
+source=no usable signature
+[exit 3]
+
+$ hdiutil attach -readonly -nobrowse -noautoopen -mountpoint <tmp>/volume figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+hdiutil: WARNING: 'hdiutil attach -readonly -nobrowse -mountpoint ...' is deprecated. Please use 'diskutil image attach --readOnly --mountOptions nobrowse --mountPoint ...' instead.
+[exit 0]
+
+$ ls -la <tmp>/volume
+total 696
+drwxr-xr-x@ 7 <user>  staff     306 Nov  8 20:49 .
+drwx------@ 3 <user>  staff      96 Nov  8 20:54 ..
+-rw-r--r--@ 1 <user>  staff   16388 Nov  8 20:49 .DS_Store
+-rw-r--r--@ 1 <user>  staff  272259 Nov  8 20:49 .VolumeIcon.icns
+-rw-r--r--@ 1 <user>  staff   53456 Nov  8 20:49 .background.tiff
+lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 20:49 Applications -> /Applications
+drwxr-xr-x@ 3 <user>  staff     102 Jan  1  1980 figma-drop.app
+[exit 0]
+
+$ readlink <tmp>/volume/Applications
+/Applications
+[exit 0]
+
+$ codesign -dv --verbose=4 <tmp>/volume/figma-drop.app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/MacOS/figma-drop
+Identifier=com.codlume.figma-drop
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=303 flags=0x2(adhoc) hashes=3+3 location=embedded
+VersionPlatform=1
+VersionMin=851968
+VersionSDK=1705216
+Hash type=sha256 size=32
+CandidateCDHash sha256=558f5759b5353b8fbdd3b606238f5c54c42d2a47
+CandidateCDHashFull sha256=558f5759b5353b8fbdd3b606238f5c54c42d2a474998d29744102358ee1f2ceb
+Hash choices=sha256
+CMSDigest=558f5759b5353b8fbdd3b606238f5c54c42d2a474998d29744102358ee1f2ceb
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=16384
+Executable Segment flags=0x1
+Page size=16384
+CDHash=558f5759b5353b8fbdd3b606238f5c54c42d2a47
+Signature=adhoc
+Info.plist entries=30
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=19
+Internal requirements count=0 size=12
+Total signatures=1
+Chosen signature=1
+[exit 0]
+
+$ codesign --verify --deep --strict --verbose=2 <tmp>/volume/figma-drop.app
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+<tmp>/volume/figma-drop.app: valid on disk
+<tmp>/volume/figma-drop.app: satisfies its Designated Requirement
+[exit 0]
+
+$ xcrun stapler validate <tmp>/volume/figma-drop.app
+Processing: <tmp>/volume/figma-drop.app
+figma-drop.app does not have a ticket stapled to it.
+[exit 65]
+
+$ spctl -a -t exec -vvv <tmp>/volume/figma-drop.app
+<tmp>/volume/figma-drop.app: rejected
+[exit 3]
+
+$ codesign -d --entitlements - --xml <tmp>/volume/figma-drop.app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/MacOS/figma-drop
+[exit 0]
+
+
+$ codesign -d --entitlements - --xml <tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app/Contents/MacOS/Electron Helper (GPU)
+[exit 0]
+
+
+$ codesign -d --entitlements - --xml <tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app/Contents/MacOS/Electron Helper (Plugin)
+[exit 0]
+
+
+$ codesign -d --entitlements - --xml <tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer)
+[exit 0]
+
+
+$ codesign -d --entitlements - --xml <tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app
+Executable=/private<tmp>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper
+[exit 0]
+
