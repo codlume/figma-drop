@@ -5,9 +5,21 @@ cd "${repo}" || exit 1
 out="${repo}/proof/release/local-proof.txt"
 version="$(node -p 'require("./package.json").version')"
 scratch="$(cd "$(mktemp -d)" && pwd -P)"
+volume="${scratch}/volume"
 partial="$(mktemp)"
-trap 'rm -rf -- "${scratch:?}" "${partial:?}"' EXIT
-dry="release-artifacts/figma-drop-${version}-mac-arm64-unsigned-dry-run.zip"
+cleanup() {
+  if mount | grep -qF " on ${volume} ("; then
+    hdiutil detach "${volume}" > /dev/null 2>&1 || hdiutil detach -force "${volume}" > /dev/null 2>&1
+  fi
+  if mount | grep -qF " on ${volume} ("; then
+    echo "${volume} is still mounted, so ${scratch} stays." >&2
+  else
+    rm -rf -- "${scratch:?}"
+  fi
+  rm -f -- "${partial:?}"
+}
+trap cleanup EXIT
+dry="release-artifacts/figma-drop-${version}-mac-arm64-unsigned-dry-run.dmg"
 dry_plugin="release-artifacts/figma-drop-figma-plugin-${version}-dry-run.zip"
 sanitize() {
   REPO="${repo}" SCRATCH="${scratch}" SCRATCH_LINK="${scratch#/private}" USER_NAME="$(id -un)" \
@@ -32,13 +44,19 @@ step() {
   step cat release-artifacts/release-plan.json
   step bash -c 'cd release-artifacts && shasum -a 256 -c SHA256SUMS-dry-run.txt'
   step zipinfo -1 "${dry_plugin}"
-  step bash -c "zipinfo -1 ${dry} | cut -d/ -f1-3 | sort -u"
   step ditto -x -k "${dry_plugin}" "${scratch}/plugin"
   step cmp "${scratch}/plugin/figma-drop-figma-plugin/manifest.json" apps/figma-plugin/manifest.json
-  step ditto -x -k "${dry}" "${scratch}/desktop"
-  step plutil -p "${scratch}/desktop/figma-drop.app/Contents/Info.plist"
-  step codesign -dv "${scratch}/desktop/figma-drop.app"
-  step codesign --verify --deep --strict --verbose=2 "${scratch}/desktop/figma-drop.app"
+  step bash -c "hdiutil imageinfo '${dry}' 2>/dev/null | grep -E '^Format'"
+  step hdiutil verify "${dry}"
+  step hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "${volume}" "${dry}"
+  step ls -lA "${volume}"
+  step readlink "${volume}/Applications"
+  step plutil -p "${volume}/figma-drop.app/Contents/Info.plist"
+  step codesign -dv "${volume}/figma-drop.app"
+  step codesign --verify --deep --strict --verbose=2 "${volume}/figma-drop.app"
+  step codesign -dv "${dry}"
+  step ditto "${volume}/figma-drop.app" "${scratch}/desktop/figma-drop.app"
+  step hdiutil detach "${volume}"
   step xattr -w com.apple.quarantine '0081;00000000;Safari;' "${scratch}/desktop/figma-drop.app"
   step spctl --assess --type execute -vv "${scratch}/desktop/figma-drop.app"
   step node scripts/release-package.mjs --tag "v${version}"

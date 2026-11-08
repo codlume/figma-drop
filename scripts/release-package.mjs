@@ -1,48 +1,75 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import {
   appendFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  APPLICATIONS_LINK,
+  buildDmg,
+  DMG_FORMAT,
+  dmgFormat,
+  sha256File,
+  withAttachedDmg,
+} from './dmg.mjs';
+import { notarize, readNotaryLog } from './notary.mjs';
+import {
   artifactNames,
+  dmgSigning,
   isAppleMetadataEntry,
+  NOTARY_DIR,
+  NOTARY_LOGS,
   parseReleaseMode,
   readReleaseVersion,
   requireReleaseSigning,
 } from './release-artifacts.mjs';
-import { inspectSigning, SIGNING_MODES } from './signing.mjs';
+import { developerIdDmgChecks, inspectSigning, SIGNING_MODES, teamIdentifier } from './signing.mjs';
 
 const APP_NAME = 'figma-drop';
 const BUNDLE_ID = 'com.codlume.figma-drop';
+const DMG_IDENTIFIER = `${BUNDLE_ID}.dmg`;
 const PLUGIN_FOLDER = 'figma-drop-figma-plugin';
 const PLUGIN_FILES = ['manifest.json', 'dist/code.js', 'dist/ui.html'];
+// The hidden entries are the Finder layout dmgbuild writes: window settings, volume icon, and
+// background picture.
+const VOLUME_ENTRIES = [
+  '.DS_Store',
+  '.VolumeIcon.icns',
+  '.background.tiff',
+  'Applications',
+  `${APP_NAME}.app`,
+].toSorted();
+// fseventsd may create its log while the image is mounted writable during the build.
+const OPTIONAL_VOLUME_ENTRIES = new Set(['.fseventsd']);
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const outDir = join(repoDir, 'release-artifacts');
 // Artifacts are written here and renamed to `outDir` only once complete, so an interrupted
-// run never leaves a release-named zip in `outDir`.
+// run never leaves a release-named artifact in `outDir`.
 const stagingDir = join(repoDir, 'release-artifacts.staging');
 const builtApp = join(repoDir, 'apps/desktop/release', `${APP_NAME}.app`);
+const builtAppNotaryLog = join(repoDir, 'apps/desktop/release', NOTARY_LOGS.app);
 const pluginDir = join(repoDir, 'apps/figma-plugin');
 const desktopBuildDir = join(repoDir, 'apps/desktop');
 const BUNDLED_BUILDS = ['dist', 'dist-electron'];
 
 const capture = (command, ...args) =>
   execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const output = (command, ...args) => spawnSync(command, args, { encoding: 'utf8' });
 
 function withTempDir(prefix, use) {
   const dir = mkdtempSync(join(tmpdir(), prefix));
@@ -78,62 +105,109 @@ function checkList(artifact) {
 
 const zipEntries = (zipPath) => capture('zipinfo', '-1', zipPath).split('\n');
 
-export function verifyDesktop(
-  zipPath,
-  version,
-  buildDir = desktopBuildDir,
-  signing = inspectSigning(builtApp),
-) {
-  const { passed, expect, equal, noAppleMetadata } = checkList(zipPath);
-  const entries = zipEntries(zipPath);
-  noAppleMetadata(entries);
-  const stray = entries.filter((entry) => !entry.startsWith(`${APP_NAME}.app/`));
-  equal('zip entries outside figma-drop.app', stray.join(', '), '');
-  withTempDir('figma-drop-verify-desktop-', (dir) => {
-    execFileSync('ditto', ['-x', '-k', zipPath, dir]);
-    equal('top entry', readdirSync(dir).join(', '), `${APP_NAME}.app`);
-    const app = join(dir, `${APP_NAME}.app`);
-    const plist = join(app, 'Contents/Info.plist');
-    const plistValue = (key) => capture('plutil', '-extract', key, 'raw', '-o', '-', plist);
-    equal('CFBundleShortVersionString', plistValue('CFBundleShortVersionString'), version);
-    equal('CFBundleVersion', plistValue('CFBundleVersion'), version);
-    equal('CFBundleIdentifier', plistValue('CFBundleIdentifier'), BUNDLE_ID);
-    equal('CFBundleExecutable', plistValue('CFBundleExecutable'), APP_NAME);
-    const executable = join(app, 'Contents/MacOS', APP_NAME);
-    expect(existsSync(executable), 'bundle executable exists', `Missing ${executable}.`);
-    equal('lipo -archs of the executable', capture('lipo', '-archs', executable), 'arm64');
-    const appDir = join(app, 'Contents/Resources/app');
-    const appPackage = JSON.parse(readFileSync(join(appDir, 'package.json')));
-    equal('Contents/Resources/app/package.json version', appPackage.version, version);
+export function appIcon(app) {
+  const plist = join(app, 'Contents/Info.plist');
+  const name = capture('plutil', '-extract', 'CFBundleIconFile', 'raw', '-o', '-', plist);
+  return join(app, 'Contents/Resources', name.endsWith('.icns') ? name : `${name}.icns`);
+}
+
+function verifyApp(app, version, buildDir, signing, { expect, equal }) {
+  const plist = join(app, 'Contents/Info.plist');
+  const plistValue = (key) => capture('plutil', '-extract', key, 'raw', '-o', '-', plist);
+  equal('CFBundleShortVersionString', plistValue('CFBundleShortVersionString'), version);
+  equal('CFBundleVersion', plistValue('CFBundleVersion'), version);
+  equal('CFBundleIdentifier', plistValue('CFBundleIdentifier'), BUNDLE_ID);
+  equal('CFBundleExecutable', plistValue('CFBundleExecutable'), APP_NAME);
+  const executable = join(app, 'Contents/MacOS', APP_NAME);
+  expect(existsSync(executable), 'bundle executable exists', `Missing ${executable}.`);
+  equal('lipo -archs of the executable', capture('lipo', '-archs', executable), 'arm64');
+  const appDir = join(app, 'Contents/Resources/app');
+  const appPackage = JSON.parse(readFileSync(join(appDir, 'package.json')));
+  equal('Contents/Resources/app/package.json version', appPackage.version, version);
+  expect(
+    typeof appPackage.main === 'string' && existsSync(join(appDir, appPackage.main)),
+    'Contents/Resources/app/package.json main exists',
+    `main is ${JSON.stringify(appPackage.main)}.`,
+  );
+  const rendererIndex = 'dist/renderer/index.html';
+  expect(
+    existsSync(join(appDir, rendererIndex)),
+    `Contents/Resources/app/${rendererIndex} exists`,
+    `Missing ${rendererIndex}.`,
+  );
+  for (const build of BUNDLED_BUILDS) {
+    const diff = output('diff', '-rq', join(buildDir, build), join(appDir, build));
     expect(
-      typeof appPackage.main === 'string' && existsSync(join(appDir, appPackage.main)),
-      'Contents/Resources/app/package.json main exists',
-      `main is ${JSON.stringify(appPackage.main)}.`,
+      diff.status === 0,
+      `Contents/Resources/app/${build} is byte-identical to apps/desktop/${build}`,
+      `The bundle is stale. Run pnpm app:local.\n${diff.stdout}${diff.stderr}`.trim(),
     );
-    const rendererIndex = 'dist/renderer/index.html';
+  }
+  const verify = output('codesign', '--verify', '--deep', '--strict', app);
+  expect(verify.status === 0, 'codesign --verify --deep --strict passes', verify.stderr.trim());
+  // For a Developer ID app this requires the app's own stapled ticket and Gatekeeper's
+  // Notarized Developer ID verdict, independent of the DMG's ticket.
+  equal('signing mode of the app in the DMG', inspectSigning(app), signing);
+}
+
+function inspectDmgSignature(dmg, teamId) {
+  return {
+    codesign: output('codesign', '-dv', '--verbose=4', dmg).stderr,
+    verified: output('codesign', '--verify', '--strict', dmg).status === 0,
+    stapled: output('xcrun', 'stapler', 'validate', dmg).status === 0,
+    gatekeeper: output(
+      'spctl',
+      '-a',
+      '-t',
+      'open',
+      '--context',
+      'context:primary-signature',
+      '-vv',
+      dmg,
+    ).stderr,
+    identifier: DMG_IDENTIFIER,
+    teamId,
+  };
+}
+
+// Only reads the image. Its SHA-256 before and after proves that.
+export function verifyDesktopDmg(dmg, { version, signing, buildDir = desktopBuildDir }) {
+  const check = checkList(dmg);
+  const { expect, equal } = check;
+  const before = sha256File(dmg);
+  equal('hdiutil imageinfo Format', dmgFormat(dmg), DMG_FORMAT);
+  const verify = output('hdiutil', 'verify', dmg);
+  expect(verify.status === 0, 'hdiutil verify passes', `${verify.stdout}${verify.stderr}`.trim());
+  const appTeam = withAttachedDmg(dmg, (volume) => {
+    const entries = readdirSync(volume).filter((entry) => !OPTIONAL_VOLUME_ENTRIES.has(entry));
+    equal('volume entries', entries.toSorted().join(', '), VOLUME_ENTRIES.join(', '));
+    const link = join(volume, 'Applications');
+    expect(lstatSync(link).isSymbolicLink(), 'Applications is a symlink', 'It is not a symlink.');
+    equal('Applications symlink target', readlinkSync(link), APPLICATIONS_LINK);
+    const app = join(volume, `${APP_NAME}.app`);
     expect(
-      existsSync(join(appDir, rendererIndex)),
-      `Contents/Resources/app/${rendererIndex} exists`,
-      `Missing ${rendererIndex}.`,
+      readFileSync(join(volume, '.VolumeIcon.icns')).equals(readFileSync(appIcon(app))),
+      "volume icon is the app's icon",
+      `.VolumeIcon.icns differs from ${relative(volume, appIcon(app))}.`,
     );
-    for (const build of BUNDLED_BUILDS) {
-      const diff = spawnSync('diff', ['-rq', join(buildDir, build), join(appDir, build)], {
-        encoding: 'utf8',
-      });
-      expect(
-        diff.status === 0,
-        `Contents/Resources/app/${build} is byte-identical to apps/desktop/${build}`,
-        `The bundle is stale. Run pnpm app:local.\n${diff.stdout}${diff.stderr}`.trim(),
-      );
-    }
-    const verify = spawnSync('codesign', ['--verify', '--deep', '--strict', app], {
-      encoding: 'utf8',
-    });
-    expect(verify.status === 0, 'codesign --verify --deep --strict passes', verify.stderr.trim());
-    const found = inspectSigning(app);
-    equal('signing mode of the extracted app', found, signing);
+    verifyApp(app, version, buildDir, signing, check);
+    return teamIdentifier(app);
   });
-  return passed;
+  if (signing === 'developer-id') {
+    const evidence = inspectDmgSignature(dmg, appTeam);
+    for (const { ok, label } of developerIdDmgChecks(evidence)) {
+      expect(ok, label, `${evidence.codesign.trim()}\n${evidence.gatekeeper.trim()}`);
+    }
+  } else {
+    const codesign = output('codesign', '-dv', dmg).stderr;
+    expect(
+      codesign.includes('code object is not signed at all'),
+      'DMG carries no code signature',
+      codesign.trim(),
+    );
+  }
+  equal('DMG SHA-256 after verification', sha256File(dmg), before);
+  return check.passed;
 }
 
 export function verifyPlugin(zipPath) {
@@ -201,14 +275,48 @@ function zipPlugin(zipPath) {
   });
 }
 
-function describe(name, checks) {
-  const path = join(stagingDir, name);
-  const sha256 = createHash('sha256').update(readFileSync(path)).digest('hex');
-  return { name, bytes: statSync(path).size, sha256, checks };
+// Hashes the file as it is now, so it runs after the last write to the artifact.
+export function describeArtifact(path, checks) {
+  return { name: basename(path), bytes: statSync(path).size, sha256: sha256File(path), checks };
 }
 
-function headline(mode, version, signing) {
-  const desktop = `Desktop signing mode ${signing}: ${SIGNING_MODES[signing].summary}.`;
+export const checksumsText = (artifacts) =>
+  artifacts.map((artifact) => `${artifact.sha256}  ${artifact.name}\n`).join('');
+
+function readAppNotaryLog() {
+  if (!existsSync(builtAppNotaryLog)) {
+    throw new Error(
+      `The app is a Developer ID build, but ${builtAppNotaryLog} is missing. Run pnpm app:local.`,
+    );
+  }
+  const { id, status } = readNotaryLog(builtAppNotaryLog);
+  return { id, status };
+}
+
+// Signs the DMG with the app's identity, notarizes it, and staples it. Both notary logs land in
+// `notaryDir`, which a failed run keeps as evidence.
+function signAndNotarizeDmg(dmg, { identity, notary }, notaryDir) {
+  mkdirSync(notaryDir, { recursive: true });
+  cpSync(builtAppNotaryLog, join(notaryDir, NOTARY_LOGS.app));
+  execFileSync(
+    'codesign',
+    ['--sign', identity, '--timestamp', '--identifier', DMG_IDENTIFIER, dmg],
+    { stdio: 'inherit' },
+  );
+  const { id, status } = notarize({
+    submission: dmg,
+    stapleTarget: dmg,
+    notary,
+    logPath: join(notaryDir, NOTARY_LOGS.dmg),
+  });
+  return { id, status };
+}
+
+function headline(mode, version, signing, notary) {
+  const notarized = notary
+    ? ` Notary submissions: app ${notary.app.id} ${notary.app.status}, DMG ${notary.dmg.id} ${notary.dmg.status}.`
+    : '';
+  const desktop = `Desktop signing mode ${signing}: ${SIGNING_MODES[signing].summary}.${notarized}`;
   return mode.kind === 'dry-run'
     ? `Dry run of ${version}: this publishes nothing. ${desktop}`
     : `Release ${mode.tag}: artifacts for GitHub release ${mode.tag}. ${desktop}`;
@@ -260,47 +368,50 @@ function main() {
     if (!existsSync(source)) throw new Error(`Missing ${source}. Run pnpm app:local first.`);
   }
 
-  const signing = inspectSigning(builtApp);
-  requireReleaseSigning(mode, signing);
-  const names = artifactNames(version, mode, signing);
+  const appSigning = inspectSigning(builtApp);
+  requireReleaseSigning(mode, appSigning);
+  const signing = dmgSigning(appSigning, process.env);
+  const appNotary = signing.mode === 'developer-id' ? readAppNotaryLog() : null;
+  const names = artifactNames(version, mode, appSigning);
   for (const dir of [outDir, stagingDir]) rmSync(dir, { recursive: true, force: true });
   mkdirSync(stagingDir);
+  const notaryDir = join(stagingDir, NOTARY_DIR);
   try {
-    const desktopZip = join(stagingDir, names.desktop);
-    // `ditto` keeps the framework symlinks the signature seals, which `zip` without `-y` flattens.
-    execFileSync('ditto', [
-      '-c',
-      '-k',
-      '--norsrc',
-      '--noextattr',
-      '--noacl',
-      '--keepParent',
-      builtApp,
-      desktopZip,
-    ]);
-    const desktopChecks = verifyDesktop(desktopZip, version, desktopBuildDir, signing);
+    const dmg = join(stagingDir, names.desktop);
+    buildDmg({ app: builtApp, dmg, volumeName: APP_NAME, icon: appIcon(builtApp) });
+    const notary =
+      signing.mode === 'developer-id'
+        ? { app: appNotary, dmg: signAndNotarizeDmg(dmg, signing, notaryDir) }
+        : null;
+    // Nothing writes the DMG after this point, so its checksum covers the released bytes.
+    const desktopChecks = verifyDesktopDmg(dmg, { version, signing: appSigning });
     const pluginZip = join(stagingDir, names.plugin);
     zipPlugin(pluginZip);
     const pluginChecks = verifyPlugin(pluginZip);
 
     const artifacts = [
-      describe(names.desktop, desktopChecks),
-      describe(names.plugin, pluginChecks),
+      describeArtifact(dmg, desktopChecks),
+      describeArtifact(pluginZip, pluginChecks),
     ];
-    const sums = artifacts.map((artifact) => `${artifact.sha256}  ${artifact.name}\n`).join('');
-    writeFileSync(join(stagingDir, names.checksums), sums);
+    writeFileSync(join(stagingDir, names.checksums), checksumsText(artifacts));
     const plan = {
       mode: mode.kind,
       version,
       tag: mode.kind === 'release' ? mode.tag : null,
       publishes: mode.kind === 'release' ? `GitHub release ${mode.tag}` : false,
-      signing,
+      signing: appSigning,
+      notary,
       artifacts,
     };
     writeFileSync(join(stagingDir, 'release-plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
     renameSync(stagingDir, outDir);
-    writeSummary(plan, headline(mode, version, signing));
+    writeSummary(plan, headline(mode, version, appSigning, notary));
   } catch (error) {
+    if (existsSync(notaryDir)) {
+      mkdirSync(outDir, { recursive: true });
+      renameSync(notaryDir, join(outDir, NOTARY_DIR));
+      console.error(`Kept the notary logs in ${join(outDir, NOTARY_DIR)}`);
+    }
     rmSync(stagingDir, { recursive: true, force: true });
     throw error;
   }

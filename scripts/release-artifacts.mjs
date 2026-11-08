@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { SIGNING_MODES } from './signing.mjs';
+import { SIGNING_MODES, SIGNING_VARIABLES, signingFromEnv } from './signing.mjs';
 
 export const USAGE = 'Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z';
 
@@ -56,18 +56,36 @@ export function readReleaseVersion(repoDir) {
 export function requireReleaseSigning(mode, signing) {
   if (mode.kind === 'release' && signing !== 'developer-id') {
     throw new Error(
-      `Release ${mode.tag} needs a Developer ID build, notarized and stapled, and this app is ${signing}: ${SIGNING_MODES[signing].summary}. Set FIGMA_DROP_SIGN_IDENTITY, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID, then run pnpm app:local.`,
+      `Release ${mode.tag} needs a Developer ID build, notarized and stapled, and this app is ${signing}: ${SIGNING_MODES[signing].summary}. Set ${SIGNING_VARIABLES.identity} and ${SIGNING_VARIABLES.profile}, then run pnpm app:local.`,
     );
   }
+}
+
+// The DMG is signed the way the app inside it is. A Developer ID app goes only into a signed,
+// notarized DMG, so its credentials must be present before any DMG is built.
+export function dmgSigning(appSigning, env) {
+  const signing = signingFromEnv(env);
+  if (signing.mode === appSigning) return signing;
+  const { identity, profile } = SIGNING_VARIABLES;
+  throw new Error(
+    appSigning === 'developer-id'
+      ? `The app is a notarized Developer ID build, so its DMG is signed and notarized too, which needs ${identity} and ${profile}. ${identity} is not set.`
+      : `${identity} is set, but the app is ad-hoc signed. Run pnpm app:local with the same environment, or unset ${identity}.`,
+  );
 }
 
 export function artifactNames(version, mode, signing) {
   const suffix = mode.kind === 'dry-run' ? '-dry-run' : '';
   return {
-    desktop: `figma-drop-${version}-mac-arm64${SIGNING_MODES[signing].assetSuffix}${suffix}.zip`,
+    desktop: `figma-drop-${version}-mac-arm64${SIGNING_MODES[signing].assetSuffix}${suffix}.dmg`,
     plugin: `figma-drop-figma-plugin-${version}${suffix}.zip`,
     checksums: `SHA256SUMS${suffix}.txt`,
   };
 }
+
+// Notary logs are evidence for a Developer ID build. They are not release assets, so they are
+// neither listed in the checksums file nor uploaded to the GitHub release.
+export const NOTARY_DIR = 'notary';
+export const NOTARY_LOGS = { app: 'notary-log-app.json', dmg: 'notary-log-dmg.json' };
 
 export const isAppleMetadataEntry = (entry) => /(^|\/)(\._|__MACOSX\/|\.DS_Store$)/.test(entry);

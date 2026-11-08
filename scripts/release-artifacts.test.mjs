@@ -15,12 +15,20 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactNames,
+  dmgSigning,
   isAppleMetadataEntry,
+  NOTARY_DIR,
+  NOTARY_LOGS,
   parseReleaseMode,
   readReleaseVersion,
   requireReleaseSigning,
 } from './release-artifacts.mjs';
-import { readSigningMode, signingFromEnv } from './signing.mjs';
+import {
+  developerIdDmgChecks,
+  entitlementProblems,
+  readSigningMode,
+  signingFromEnv,
+} from './signing.mjs';
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const readJson = (path) => JSON.parse(readFileSync(join(repoDir, path), 'utf8'));
@@ -108,25 +116,25 @@ test('readReleaseVersion names the config when it lists no extra-files', () => {
 const release = { kind: 'release', tag: 'v1.2.3' };
 const dryRun = { kind: 'dry-run' };
 
-test('artifactNames for a Developer ID release name the desktop zip without unsigned', () => {
+test('artifactNames for a Developer ID release name the desktop DMG without unsigned', () => {
   assert.deepEqual(artifactNames('1.2.3', release, 'developer-id'), {
-    desktop: 'figma-drop-1.2.3-mac-arm64.zip',
+    desktop: 'figma-drop-1.2.3-mac-arm64.dmg',
     plugin: 'figma-drop-figma-plugin-1.2.3.zip',
     checksums: 'SHA256SUMS.txt',
   });
 });
 
-test('artifactNames for an ad-hoc build mark the desktop zip unsigned', () => {
+test('artifactNames for an ad-hoc build mark the desktop DMG unsigned', () => {
   assert.equal(
     artifactNames('1.2.3', release, 'ad-hoc').desktop,
-    'figma-drop-1.2.3-mac-arm64-unsigned.zip',
+    'figma-drop-1.2.3-mac-arm64-unsigned.dmg',
   );
 });
 
 test('artifactNames for a dry run mark every name, in both signing modes', () => {
   for (const [signing, desktop] of [
-    ['ad-hoc', 'figma-drop-1.2.3-mac-arm64-unsigned-dry-run.zip'],
-    ['developer-id', 'figma-drop-1.2.3-mac-arm64-dry-run.zip'],
+    ['ad-hoc', 'figma-drop-1.2.3-mac-arm64-unsigned-dry-run.dmg'],
+    ['developer-id', 'figma-drop-1.2.3-mac-arm64-dry-run.dmg'],
   ]) {
     const names = artifactNames('1.2.3', dryRun, signing);
     assert.deepEqual(names, {
@@ -141,46 +149,88 @@ test('artifactNames for a dry run mark every name, in both signing modes', () =>
 test('requireReleaseSigning refuses an ad-hoc release and accepts every dry run', () => {
   assert.throws(
     () => requireReleaseSigning(release, 'ad-hoc'),
-    /Release v1\.2\.3 needs a Developer ID build.*FIGMA_DROP_SIGN_IDENTITY/,
+    /Release v1\.2\.3 needs a Developer ID build.*FIGMA_DROP_SIGN_IDENTITY and FIGMA_DROP_NOTARY_PROFILE/,
   );
   assert.doesNotThrow(() => requireReleaseSigning(release, 'developer-id'));
   assert.doesNotThrow(() => requireReleaseSigning(dryRun, 'ad-hoc'));
   assert.doesNotThrow(() => requireReleaseSigning(dryRun, 'developer-id'));
 });
 
-const notary = {
-  APPLE_ID: 'dev@example.com',
-  APPLE_APP_SPECIFIC_PASSWORD: 'abcd-efgh-ijkl-mnop',
-  APPLE_TEAM_ID: 'TEAM123456',
+const identity = 'Developer ID Application: Example (TEAM123456)';
+const developerIdEnv = {
+  FIGMA_DROP_SIGN_IDENTITY: identity,
+  FIGMA_DROP_NOTARY_PROFILE: 'figma-drop-notary',
 };
 
 test('signingFromEnv is ad-hoc without an identity, whatever else is set', () => {
   assert.deepEqual(signingFromEnv({}), { mode: 'ad-hoc' });
-  assert.deepEqual(signingFromEnv(notary), { mode: 'ad-hoc' });
+  const { FIGMA_DROP_SIGN_IDENTITY: _, ...notaryOnly } = developerIdEnv;
+  assert.deepEqual(
+    signingFromEnv({ ...notaryOnly, FIGMA_DROP_NOTARY_KEYCHAIN: '/tmp/k.keychain-db' }),
+    { mode: 'ad-hoc' },
+  );
 });
 
-test('signingFromEnv with an identity carries the notary credentials', () => {
-  const identity = 'Developer ID Application: Example (TEAM123456)';
-  assert.deepEqual(signingFromEnv({ ...notary, FIGMA_DROP_SIGN_IDENTITY: identity }), {
+test('signingFromEnv with an identity carries the notary profile, and the keychain if set', () => {
+  assert.deepEqual(signingFromEnv(developerIdEnv), {
     mode: 'developer-id',
     identity,
-    notary: {
-      appleId: notary.APPLE_ID,
-      password: notary.APPLE_APP_SPECIFIC_PASSWORD,
-      teamId: notary.APPLE_TEAM_ID,
-    },
+    notary: { profile: 'figma-drop-notary' },
   });
+  assert.deepEqual(
+    signingFromEnv({ ...developerIdEnv, FIGMA_DROP_NOTARY_KEYCHAIN: '/tmp/k.keychain-db' }),
+    {
+      mode: 'developer-id',
+      identity,
+      notary: { profile: 'figma-drop-notary', keychain: '/tmp/k.keychain-db' },
+    },
+  );
 });
 
-test('signingFromEnv names every missing variable instead of signing without notarizing', () => {
-  const identity = { FIGMA_DROP_SIGN_IDENTITY: 'Developer ID Application: Example (TEAM123456)' };
+test('signingFromEnv names each missing or empty variable instead of signing without notarizing', () => {
+  for (const [env, named] of [
+    [{ ...developerIdEnv, FIGMA_DROP_SIGN_IDENTITY: '' }, 'FIGMA_DROP_SIGN_IDENTITY'],
+    [{ FIGMA_DROP_SIGN_IDENTITY: identity }, 'FIGMA_DROP_NOTARY_PROFILE'],
+    [{ ...developerIdEnv, FIGMA_DROP_NOTARY_PROFILE: '' }, 'FIGMA_DROP_NOTARY_PROFILE'],
+    [{ ...developerIdEnv, FIGMA_DROP_NOTARY_KEYCHAIN: '' }, 'FIGMA_DROP_NOTARY_KEYCHAIN'],
+    [
+      { FIGMA_DROP_SIGN_IDENTITY: '', FIGMA_DROP_NOTARY_PROFILE: '' },
+      'FIGMA_DROP_SIGN_IDENTITY, FIGMA_DROP_NOTARY_PROFILE',
+    ],
+  ]) {
+    assert.throws(
+      () => signingFromEnv(env),
+      new RegExp(`Missing or empty: ${named}\\.`),
+      JSON.stringify(env),
+    );
+  }
+});
+
+test('signingFromEnv ignores the Apple ID variables the scripts no longer read', () => {
+  const apple = { APPLE_ID: 'a@example.com', APPLE_APP_SPECIFIC_PASSWORD: 'x', APPLE_TEAM_ID: 'T' };
   assert.throws(
-    () => signingFromEnv({ ...identity, APPLE_ID: notary.APPLE_ID, APPLE_TEAM_ID: '' }),
-    /Missing or empty: APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID\./,
+    () => signingFromEnv({ ...apple, FIGMA_DROP_SIGN_IDENTITY: identity }),
+    /Missing or empty: FIGMA_DROP_NOTARY_PROFILE\./,
+  );
+});
+
+test('dmgSigning refuses a Developer ID app without the credentials to sign its DMG', () => {
+  assert.throws(
+    () => dmgSigning('developer-id', {}),
+    /Developer ID build.*FIGMA_DROP_SIGN_IDENTITY is not set/,
   );
   assert.throws(
-    () => signingFromEnv({ ...notary, FIGMA_DROP_SIGN_IDENTITY: '' }),
-    /Missing or empty: FIGMA_DROP_SIGN_IDENTITY\./,
+    () => dmgSigning('developer-id', { FIGMA_DROP_SIGN_IDENTITY: identity }),
+    /Missing or empty: FIGMA_DROP_NOTARY_PROFILE\./,
+  );
+  assert.deepEqual(dmgSigning('developer-id', developerIdEnv), signingFromEnv(developerIdEnv));
+});
+
+test('dmgSigning keeps an ad-hoc app in an unsigned DMG and refuses mixed modes', () => {
+  assert.deepEqual(dmgSigning('ad-hoc', {}), { mode: 'ad-hoc' });
+  assert.throws(
+    () => dmgSigning('ad-hoc', developerIdEnv),
+    /FIGMA_DROP_SIGN_IDENTITY is set, but the app is ad-hoc signed/,
   );
 });
 
@@ -247,6 +297,95 @@ test('readSigningMode rejects each half-finished Developer ID build by what it l
   }
 });
 
+const developerIdDmg = {
+  codesign: [
+    'Executable=/tmp/figma-drop-1.2.3-mac-arm64.dmg',
+    'Identifier=com.codlume.figma-drop.dmg',
+    'Format=disk image',
+    'CodeDirectory v=20100 size=179 flags=0x0(none) hashes=1+7 location=embedded',
+    'Authority=Developer ID Application: Example (TEAM123456)',
+    'Authority=Developer ID Certification Authority',
+    'Authority=Apple Root CA',
+    'Timestamp=8 Nov 2026 at 18:00:00',
+    'TeamIdentifier=TEAM123456',
+  ].join('\n'),
+  verified: true,
+  stapled: true,
+  gatekeeper:
+    '/tmp/figma-drop-1.2.3-mac-arm64.dmg: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Example (TEAM123456)\n',
+  identifier: 'com.codlume.figma-drop.dmg',
+  teamId: 'TEAM123456',
+};
+const failedDmgChecks = (evidence) =>
+  developerIdDmgChecks(evidence)
+    .filter(({ ok }) => !ok)
+    .map(({ label }) => label);
+
+test('developerIdDmgChecks passes a signed, notarized, stapled DMG of the app team', () => {
+  assert.deepEqual(failedDmgChecks(developerIdDmg), []);
+});
+
+test('developerIdDmgChecks names what an unfinished or foreign DMG lacks', () => {
+  for (const [change, failed] of [
+    [{ stapled: false }, ['xcrun stapler validate passes on the DMG']],
+    [{ verified: false }, ['codesign --verify --strict passes on the DMG']],
+    [
+      { gatekeeper: '/tmp/x.dmg: rejected\nsource=Unnotarized Developer ID\n' },
+      ['Gatekeeper accepts the DMG as Notarized Developer ID'],
+    ],
+    [{ teamId: 'OTHER12345' }, ["DMG TeamIdentifier = OTHER12345, the app's team"]],
+    [
+      { codesign: developerIdDmg.codesign.replace(/^Timestamp=.*$/m, 'Signed Time=today') },
+      ['DMG signature has a secure timestamp'],
+    ],
+    [
+      { codesign: developerIdDmg.codesign.replace('.figma-drop.dmg', '.figma-drop') },
+      ['DMG signature identifier = com.codlume.figma-drop.dmg'],
+    ],
+    [
+      { codesign: 'code object is not signed at all' },
+      [
+        'DMG codesign format is disk image',
+        'DMG signature identifier = com.codlume.figma-drop.dmg',
+        'DMG is signed by a Developer ID Application authority',
+        "DMG TeamIdentifier = TEAM123456, the app's team",
+        'DMG signature has a secure timestamp',
+      ],
+    ],
+  ]) {
+    assert.deepEqual(failedDmgChecks({ ...developerIdDmg, ...change }), failed);
+  }
+});
+
+test('entitlementProblems allows only allow-jit, and only on app bundles', () => {
+  const jit = { 'com.apple.security.cs.allow-jit': true };
+  const helper = 'figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app';
+  const framework = 'figma-drop.app/Contents/Frameworks/Electron Framework.framework';
+  assert.deepEqual(
+    entitlementProblems([
+      { path: helper, app: true, entitlements: jit },
+      { path: framework, app: false, entitlements: {} },
+    ]),
+    [],
+  );
+  for (const [item, problem] of [
+    [{ path: helper, app: true, entitlements: {} }, /Renderer\)\.app has \{\}/],
+    [
+      {
+        path: helper,
+        app: true,
+        entitlements: { ...jit, 'com.apple.security.get-task-allow': true },
+      },
+      /get-task-allow/,
+    ],
+    [{ path: framework, app: false, entitlements: jit }, /framework has .*expected none/],
+  ]) {
+    const problems = entitlementProblems([item]);
+    assert.equal(problems.length, 1, item.path);
+    assert.match(problems[0], problem);
+  }
+});
+
 test('parseReleaseMode accepts a dry run and both tag forms', () => {
   assert.deepEqual(parseReleaseMode(['--dry-run']), { kind: 'dry-run' });
   assert.deepEqual(parseReleaseMode(['--tag', 'v1.2.3']), { kind: 'release', tag: 'v1.2.3' });
@@ -305,27 +444,49 @@ test('release.yml install notice names the release artifacts', () => {
   const notice = jobText('upload').match(/<<NOTICE\n([\s\S]*?)\n\s*NOTICE\n/);
   assert.ok(notice, 'the upload job writes the notice with a NOTICE heredoc');
   const named = new Set(
-    [...notice[1].matchAll(/\\`(figma-drop-[^`\\]+\.zip)\\`/g)].map(([, name]) =>
+    [...notice[1].matchAll(/\\`(figma-drop-[^`\\]+\.(?:zip|dmg))\\`/g)].map(([, name]) =>
       name.replaceAll('${version}', '1.2.3'),
     ),
   );
   assert.deepEqual(named, new Set([releaseNames.desktop, releaseNames.plugin]));
 });
 
-test('release.yml build uploads every zip and the checksums file', () => {
-  const build = jobText('build');
-  const upload = build.match(
-    /uses: actions\/upload-artifact@[\s\S]*?\n {10}path: \|\n((?: {12}.*\n)+)/,
-  );
-  assert.ok(upload, 'the build job uploads a workflow artifact with a path block');
-  const patterns = upload[1]
+const packageWorkflow = readFileSync(join(repoDir, '.github/workflows/package-macos.yml'), 'utf8');
+
+function uploadPaths(artifactName) {
+  const step = packageWorkflow
+    .split(/\n(?= {6}- )/)
+    .find((text) => text.includes(`name: ${artifactName}\n`));
+  assert.ok(step, `package-macos.yml uploads an artifact named ${artifactName}`);
+  const block = step.match(/\n {10}path: \|\n((?: {12}.*\n?)+)/);
+  assert.ok(block, `the ${artifactName} upload lists its paths`);
+  return block[1]
     .trim()
     .split('\n')
-    .map((line) => line.trim());
-  assert.deepEqual(patterns, [
-    'release-artifacts/*.zip',
-    `release-artifacts/${releaseNames.checksums}`,
-  ]);
+    .map((line) => line.trim().replaceAll('${{ steps.version.outputs.version }}', '1.2.3'));
+}
+
+// The release upload job accepts exactly the files SHA256SUMS.txt lists, so a notary log or the
+// plan in this artifact would fail the release after the tag exists.
+test('package-macos.yml stores exactly the release assets for a tag', () => {
+  assert.deepEqual(
+    uploadPaths('release-${{ inputs.tag }}').toSorted(),
+    Object.values(releaseNames)
+      .map((name) => `release-artifacts/${name}`)
+      .toSorted(),
+  );
+});
+
+test('package-macos.yml stores the dry-run assets, plan, and notary logs for a dispatch', () => {
+  const names = artifactNames('1.2.3', dryRun, 'developer-id');
+  assert.deepEqual(
+    uploadPaths('package-test-${{ github.run_id }}').toSorted(),
+    [
+      ...Object.values(names).map((name) => `release-artifacts/${name}`),
+      'release-artifacts/release-plan.json',
+      `release-artifacts/${NOTARY_DIR}/`,
+    ].toSorted(),
+  );
 });
 
 test('release.yml names one checksums file, the one release-package.mjs writes', () => {

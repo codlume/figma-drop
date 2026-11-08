@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import {
   closeSync,
   cpSync,
@@ -16,7 +16,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { signingFromEnv } from './signing.mjs';
+import { notarize } from './notary.mjs';
+import { NOTARY_LOGS } from './release-artifacts.mjs';
+import { entitlementProblems, readEntitlements, signingFromEnv } from './signing.mjs';
 
 const APP_NAME = 'figma-drop';
 const BUNDLE_ID = 'com.codlume.figma-drop';
@@ -29,6 +31,7 @@ const stagingDir = join(releaseDir, '.staging');
 const stagedApp = join(stagingDir, `${APP_NAME}.app`);
 const finalApp = join(releaseDir, `${APP_NAME}.app`);
 const entitlements = join(desktopDir, 'entitlements.mac.plist');
+const appNotaryLog = join(releaseDir, NOTARY_LOGS.app);
 const { version } = JSON.parse(readFileSync(join(desktopDir, 'package.json'), 'utf8'));
 
 if (process.platform !== 'darwin' || process.arch !== 'arm64') {
@@ -44,7 +47,10 @@ const setPlistString = (key, value) => run('plutil', '-replace', key, '-string',
 const electronBinary = createRequire(join(desktopDir, 'package.json'))('electron');
 const electronApp = dirname(dirname(dirname(electronBinary)));
 
-rmSync(stagingDir, { recursive: true, force: true });
+// A failed build leaves no app and no notary log behind, so neither can be mistaken for this one.
+for (const path of [stagingDir, finalApp, appNotaryLog]) {
+  rmSync(path, { recursive: true, force: true });
+}
 mkdirSync(stagingDir, { recursive: true });
 // `ditto` keeps the framework symlinks that a plain recursive copy would flatten.
 run('ditto', electronApp, stagedApp);
@@ -73,13 +79,17 @@ run('plutil', '-remove', 'ElectronAsarIntegrity', plist);
 // even before these edits, so the whole bundle is signed again.
 if (signing.mode === 'ad-hoc') {
   run('codesign', '--force', '--deep', '--sign', '-', stagedApp);
+  run('codesign', '--verify', '--deep', '--strict', stagedApp);
 } else {
-  signInsideOut(stagedApp, signing.identity);
-  notarize(stagedApp, signing.notary);
+  const code = signInsideOut(stagedApp, signing.identity);
+  const problems = entitlementProblems(
+    code.map(({ path, app }) => ({ path, app, entitlements: readEntitlements(path) })),
+  );
+  if (problems.length > 0) throw new Error(`Wrong entitlements:\n${problems.join('\n')}`);
+  run('codesign', '--verify', '--deep', '--strict', stagedApp);
+  notarizeApp(stagedApp, signing.notary);
 }
-run('codesign', '--verify', '--deep', '--strict', stagedApp);
 
-rmSync(finalApp, { recursive: true, force: true });
 renameSync(stagedApp, finalApp);
 rmSync(stagingDir, { recursive: true, force: true });
 console.log(`Built ${finalApp}`);
@@ -99,19 +109,21 @@ function signInsideOut(app, identity) {
       app: entry.name.endsWith('.app'),
     }))
     .toSorted((a, b) => b.path.split('/').length - a.path.split('/').length);
-  for (const code of [...nested, { path: app, app: true }]) {
+  const code = [...nested, { path: app, app: true }];
+  for (const { path, app: isApp } of code) {
     run(
       'codesign',
       '--force',
       '--options',
       'runtime',
       '--timestamp',
-      ...(code.app ? ['--entitlements', entitlements] : []),
+      ...(isApp ? ['--entitlements', entitlements] : []),
       '--sign',
       identity,
-      code.path,
+      path,
     );
   }
+  return code;
 }
 
 function isMachO(path) {
@@ -124,54 +136,14 @@ function isMachO(path) {
   }
 }
 
-function notarize(app, { appleId, password, teamId }) {
-  const credentials = ['--apple-id', appleId, '--password', password, '--team-id', teamId];
+// Apple notarizes a zip of the app. The ticket is stapled to the app itself.
+function notarizeApp(app, notary) {
   const dir = mkdtempSync(join(tmpdir(), 'figma-drop-notarize-'));
   try {
     const zip = join(dir, `${APP_NAME}.zip`);
     run('ditto', '-c', '-k', '--keepParent', app, zip);
-    const submit = notarytool('submit', zip, ...credentials, '--wait', '--timeout', '30m');
-    // A failure before Apple assigns a submission id prints no JSON, only its stderr above.
-    const result = submit.stdout.trim() ? JSON.parse(submit.stdout) : {};
-    if (result.id) console.log(`Notarization ${result.id}: ${result.status}. ${result.message}`);
-    if (result.status !== 'Accepted') {
-      if (result.id) console.error(notarytool('log', result.id, ...credentials).stdout);
-      throw new Error(`Apple did not notarize the app. notarytool submit exited ${submit.status}.`);
-    }
+    notarize({ submission: zip, stapleTarget: app, notary, logPath: appNotaryLog });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  staple(app);
-}
-
-// Right after Apple accepts a submission, fetching its ticket can fail: the ticket may not be
-// published yet, or the connection to Apple's ticket service drops (a release run once failed on
-// NSURLErrorDomain -1005). Both clear on a later attempt.
-function staple(app, attempts = 5) {
-  for (let attempt = 1; ; attempt += 1) {
-    const { status } = spawnSync('xcrun', ['stapler', 'staple', app], { stdio: 'inherit' });
-    if (status === 0) return;
-    if (attempt === attempts) {
-      throw new Error(`xcrun stapler staple exited ${status} on all ${attempts} attempts.`);
-    }
-    const seconds = 15 * attempt;
-    console.error(`Stapling failed with exit ${status}. Attempt ${attempt + 1} in ${seconds}s.`);
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, seconds * 1000);
-  }
-}
-
-// The credentials travel in argv, and an execFileSync error would quote them, so this reports
-// only the subcommand and its exit status.
-function notarytool(subcommand, ...args) {
-  const result = spawnSync(
-    'xcrun',
-    ['notarytool', subcommand, ...args, '--output-format', 'json'],
-    {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'inherit'],
-    },
-  );
-  if (result.error)
-    throw new Error(`xcrun notarytool ${subcommand} did not run: ${result.error.code}`);
-  return result;
 }
