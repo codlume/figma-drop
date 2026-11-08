@@ -22,13 +22,14 @@ import {
   isAppleMetadataEntry,
   parseReleaseMode,
   readReleaseVersion,
+  requireReleaseSigning,
 } from './release-artifacts.mjs';
+import { inspectSigning, SIGNING_MODES } from './signing.mjs';
 
 const APP_NAME = 'figma-drop';
 const BUNDLE_ID = 'com.codlume.figma-drop';
 const PLUGIN_FOLDER = 'figma-drop-figma-plugin';
 const PLUGIN_FILES = ['manifest.json', 'dist/code.js', 'dist/ui.html'];
-const SIGNING = 'ad-hoc signature, no Developer ID, not notarized';
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const outDir = join(repoDir, 'release-artifacts');
@@ -77,7 +78,12 @@ function checkList(artifact) {
 
 const zipEntries = (zipPath) => capture('zipinfo', '-1', zipPath).split('\n');
 
-export function verifyDesktop(zipPath, version, buildDir = desktopBuildDir) {
+export function verifyDesktop(
+  zipPath,
+  version,
+  buildDir = desktopBuildDir,
+  signing = inspectSigning(builtApp),
+) {
   const { passed, expect, equal, noAppleMetadata } = checkList(zipPath);
   const entries = zipEntries(zipPath);
   noAppleMetadata(entries);
@@ -124,9 +130,8 @@ export function verifyDesktop(zipPath, version, buildDir = desktopBuildDir) {
       encoding: 'utf8',
     });
     expect(verify.status === 0, 'codesign --verify --deep --strict passes', verify.stderr.trim());
-    // `codesign -dv` reports on stderr.
-    const details = spawnSync('codesign', ['-dv', app], { encoding: 'utf8' }).stderr;
-    expect(/^Signature=adhoc$/m.test(details), 'codesign reports Signature=adhoc', details.trim());
+    const found = inspectSigning(app);
+    equal('signing mode of the extracted app', found, signing);
   });
   return passed;
 }
@@ -202,11 +207,11 @@ function describe(name, checks) {
   return { name, bytes: statSync(path).size, sha256, checks };
 }
 
-function headline(mode, version) {
-  const unsigned = `The desktop zip is unsigned (${SIGNING}).`;
+function headline(mode, version, signing) {
+  const desktop = `Desktop signing mode ${signing}: ${SIGNING_MODES[signing].summary}.`;
   return mode.kind === 'dry-run'
-    ? `Dry run of ${version}: this publishes nothing. ${unsigned}`
-    : `Release ${mode.tag}: artifacts for GitHub release ${mode.tag}. ${unsigned}`;
+    ? `Dry run of ${version}: this publishes nothing. ${desktop}`
+    : `Release ${mode.tag}: artifacts for GitHub release ${mode.tag}. ${desktop}`;
 }
 
 function writeSummary(plan, title) {
@@ -255,7 +260,9 @@ function main() {
     if (!existsSync(source)) throw new Error(`Missing ${source}. Run pnpm app:local first.`);
   }
 
-  const names = artifactNames(version, mode);
+  const signing = inspectSigning(builtApp);
+  requireReleaseSigning(mode, signing);
+  const names = artifactNames(version, mode, signing);
   for (const dir of [outDir, stagingDir]) rmSync(dir, { recursive: true, force: true });
   mkdirSync(stagingDir);
   try {
@@ -271,7 +278,7 @@ function main() {
       builtApp,
       desktopZip,
     ]);
-    const desktopChecks = verifyDesktop(desktopZip, version);
+    const desktopChecks = verifyDesktop(desktopZip, version, desktopBuildDir, signing);
     const pluginZip = join(stagingDir, names.plugin);
     zipPlugin(pluginZip);
     const pluginChecks = verifyPlugin(pluginZip);
@@ -287,12 +294,12 @@ function main() {
       version,
       tag: mode.kind === 'release' ? mode.tag : null,
       publishes: mode.kind === 'release' ? `GitHub release ${mode.tag}` : false,
-      signing: SIGNING,
+      signing,
       artifacts,
     };
     writeFileSync(join(stagingDir, 'release-plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
     renameSync(stagingDir, outDir);
-    writeSummary(plan, headline(mode, version));
+    writeSummary(plan, headline(mode, version, signing));
   } catch (error) {
     rmSync(stagingDir, { recursive: true, force: true });
     throw error;

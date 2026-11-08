@@ -57,7 +57,7 @@ To keep a copy outside the repository, run `pnpm app:install`. It runs `pnpm app
 
 The first run uses the real library at `~/figma-drop` and port 3579, and keeps its settings in `~/Library/Application Support/figma-drop`. It ignores every variable in the table above.
 
-The app is an Electron bundle with an ad-hoc signature, which lets it run locally on arm64. It has no signing identity and no notarization. A release attaches this unsigned bundle to its GitHub release, with "unsigned" in the file name. See `RELEASING.md`. The executable must keep a name other than `Electron`, because Electron derives `app.isPackaged` from it. Under the old name the app reads as a development build.
+By default the app is an Electron bundle with an ad-hoc signature, which lets it run locally on arm64. With `FIGMA_DROP_SIGN_IDENTITY` and the notary variables set, `pnpm app:local` signs it with a Developer ID under the hardened runtime and `entitlements.mac.plist`, has Apple notarize it, and staples the ticket. A release attaches only that notarized bundle. See the signing modes in `RELEASING.md`. The executable must keep a name other than `Electron`, because Electron derives `app.isPackaged` from it. Under the old name the app reads as a development build.
 
 ## Ownership
 

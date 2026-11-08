@@ -64,7 +64,13 @@ jobs:
       - run: pnpm release:dry-run
       - run: ls -la release-artifacts
       - run: cat release-artifacts/release-plan.json
-      - name: Package in release mode, uploading nothing
+      # This workflow holds no signing secrets, so its build is ad-hoc, and release mode must refuse it.
+      - name: Release mode refuses the ad-hoc build
         run: |
-          node scripts/release-package.mjs --tag "v$(node -p 'require("./package.json").version')"
-          ls -la release-artifacts
+          tag="v$(node -p 'require("./package.json").version')"
+          if node scripts/release-package.mjs --tag "${tag}" 2> refusal.txt; then
+            echo "release-package.mjs --tag ${tag} accepted an ad-hoc build."
+            exit 1
+          fi
+          cat refusal.txt
+          grep -qF "Release ${tag} needs a Developer ID build" refusal.txt

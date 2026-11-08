@@ -18,7 +18,9 @@ import {
   isAppleMetadataEntry,
   parseReleaseMode,
   readReleaseVersion,
+  requireReleaseSigning,
 } from './release-artifacts.mjs';
+import { readSigningMode, signingFromEnv } from './signing.mjs';
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const readJson = (path) => JSON.parse(readFileSync(join(repoDir, path), 'utf8'));
@@ -103,22 +105,146 @@ test('readReleaseVersion names the config when it lists no extra-files', () => {
   }
 });
 
-test('artifactNames for a release', () => {
-  assert.deepEqual(artifactNames('1.2.3', { kind: 'release', tag: 'v1.2.3' }), {
-    desktop: 'figma-drop-1.2.3-mac-arm64-unsigned.zip',
+const release = { kind: 'release', tag: 'v1.2.3' };
+const dryRun = { kind: 'dry-run' };
+
+test('artifactNames for a Developer ID release name the desktop zip without unsigned', () => {
+  assert.deepEqual(artifactNames('1.2.3', release, 'developer-id'), {
+    desktop: 'figma-drop-1.2.3-mac-arm64.zip',
     plugin: 'figma-drop-figma-plugin-1.2.3.zip',
     checksums: 'SHA256SUMS.txt',
   });
 });
 
-test('artifactNames for a dry run mark every name', () => {
-  const names = artifactNames('1.2.3', { kind: 'dry-run' });
-  assert.deepEqual(names, {
-    desktop: 'figma-drop-1.2.3-mac-arm64-unsigned-dry-run.zip',
-    plugin: 'figma-drop-figma-plugin-1.2.3-dry-run.zip',
-    checksums: 'SHA256SUMS-dry-run.txt',
+test('artifactNames for an ad-hoc build mark the desktop zip unsigned', () => {
+  assert.equal(
+    artifactNames('1.2.3', release, 'ad-hoc').desktop,
+    'figma-drop-1.2.3-mac-arm64-unsigned.zip',
+  );
+});
+
+test('artifactNames for a dry run mark every name, in both signing modes', () => {
+  for (const [signing, desktop] of [
+    ['ad-hoc', 'figma-drop-1.2.3-mac-arm64-unsigned-dry-run.zip'],
+    ['developer-id', 'figma-drop-1.2.3-mac-arm64-dry-run.zip'],
+  ]) {
+    const names = artifactNames('1.2.3', dryRun, signing);
+    assert.deepEqual(names, {
+      desktop,
+      plugin: 'figma-drop-figma-plugin-1.2.3-dry-run.zip',
+      checksums: 'SHA256SUMS-dry-run.txt',
+    });
+    for (const name of Object.values(names)) assert.match(name, /dry-run/);
+  }
+});
+
+test('requireReleaseSigning refuses an ad-hoc release and accepts every dry run', () => {
+  assert.throws(
+    () => requireReleaseSigning(release, 'ad-hoc'),
+    /Release v1\.2\.3 needs a Developer ID build.*FIGMA_DROP_SIGN_IDENTITY/,
+  );
+  assert.doesNotThrow(() => requireReleaseSigning(release, 'developer-id'));
+  assert.doesNotThrow(() => requireReleaseSigning(dryRun, 'ad-hoc'));
+  assert.doesNotThrow(() => requireReleaseSigning(dryRun, 'developer-id'));
+});
+
+const notary = {
+  APPLE_ID: 'dev@example.com',
+  APPLE_APP_SPECIFIC_PASSWORD: 'abcd-efgh-ijkl-mnop',
+  APPLE_TEAM_ID: 'TEAM123456',
+};
+
+test('signingFromEnv is ad-hoc without an identity, whatever else is set', () => {
+  assert.deepEqual(signingFromEnv({}), { mode: 'ad-hoc' });
+  assert.deepEqual(signingFromEnv(notary), { mode: 'ad-hoc' });
+});
+
+test('signingFromEnv with an identity carries the notary credentials', () => {
+  const identity = 'Developer ID Application: Example (TEAM123456)';
+  assert.deepEqual(signingFromEnv({ ...notary, FIGMA_DROP_SIGN_IDENTITY: identity }), {
+    mode: 'developer-id',
+    identity,
+    notary: {
+      appleId: notary.APPLE_ID,
+      password: notary.APPLE_APP_SPECIFIC_PASSWORD,
+      teamId: notary.APPLE_TEAM_ID,
+    },
   });
-  for (const name of Object.values(names)) assert.match(name, /dry-run/);
+});
+
+test('signingFromEnv names every missing variable instead of signing without notarizing', () => {
+  const identity = { FIGMA_DROP_SIGN_IDENTITY: 'Developer ID Application: Example (TEAM123456)' };
+  assert.throws(
+    () => signingFromEnv({ ...identity, APPLE_ID: notary.APPLE_ID, APPLE_TEAM_ID: '' }),
+    /Missing or empty: APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID\./,
+  );
+  assert.throws(
+    () => signingFromEnv({ ...notary, FIGMA_DROP_SIGN_IDENTITY: '' }),
+    /Missing or empty: FIGMA_DROP_SIGN_IDENTITY\./,
+  );
+});
+
+const developerIdCodesign = [
+  'Executable=/tmp/figma-drop.app/Contents/MacOS/figma-drop',
+  'CodeDirectory v=20500 size=505 flags=0x10000(runtime) hashes=5+7 location=embedded',
+  'Authority=Developer ID Application: Example (TEAM123456)',
+  'Authority=Developer ID Certification Authority',
+  'Authority=Apple Root CA',
+  'Timestamp=8 Nov 2026 at 18:00:00',
+  'TeamIdentifier=TEAM123456',
+].join('\n');
+const notarized = {
+  codesign: developerIdCodesign,
+  stapled: true,
+  gatekeeper:
+    '/tmp/figma-drop.app: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Example (TEAM123456)\n',
+};
+
+test('readSigningMode reads an ad-hoc signature', () => {
+  assert.equal(
+    readSigningMode({
+      codesign:
+        'CodeDirectory v=20400 size=303 flags=0x2(adhoc) hashes=3+3\nSignature=adhoc\nTeamIdentifier=not set',
+      stapled: false,
+      gatekeeper: '/tmp/figma-drop.app: rejected\n',
+    }),
+    'ad-hoc',
+  );
+});
+
+test('readSigningMode reads a notarized Developer ID build', () => {
+  assert.equal(readSigningMode(notarized), 'developer-id');
+});
+
+test('readSigningMode rejects each half-finished Developer ID build by what it lacks', () => {
+  for (const [label, signature, lacks] of [
+    ['not stapled', { stapled: false }, /a stapled notarization ticket/],
+    [
+      'not notarized',
+      {
+        stapled: false,
+        gatekeeper: '/tmp/figma-drop.app: rejected\nsource=Unnotarized Developer ID\n',
+      },
+      /a stapled notarization ticket, Gatekeeper acceptance/,
+    ],
+    [
+      'no hardened runtime',
+      { codesign: developerIdCodesign.replace('flags=0x10000(runtime)', 'flags=0x0(none)') },
+      /the hardened runtime/,
+    ],
+    [
+      'no secure timestamp',
+      { codesign: developerIdCodesign.replace(/^Timestamp=.*$/m, 'Signed Time=8 Nov 2026') },
+      /a secure timestamp/,
+    ],
+    [
+      'another kind of identity',
+      { codesign: developerIdCodesign.replaceAll('Developer ID Application', 'Apple Development') },
+      /a Developer ID Application authority/,
+    ],
+  ]) {
+    assert.throws(() => readSigningMode({ ...notarized, ...signature }), lacks, label);
+  }
 });
 
 test('parseReleaseMode accepts a dry run and both tag forms', () => {
@@ -165,7 +291,7 @@ test('isAppleMetadataEntry flags AppleDouble and Finder entries only', () => {
 });
 
 const releaseWorkflow = readFileSync(join(repoDir, '.github/workflows/release.yml'), 'utf8');
-const releaseNames = artifactNames('1.2.3', { kind: 'release', tag: 'v1.2.3' });
+const releaseNames = artifactNames('1.2.3', release, 'developer-id');
 
 function jobText(job) {
   const lines = releaseWorkflow.split('\n');

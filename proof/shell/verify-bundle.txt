@@ -1,6 +1,7 @@
 PASS Info.plist names figma-drop and the renamed executable
 PASS the bundle holds the current build and no default app
-PASS the binary is arm64 with a valid ad-hoc signature and no identity
+  signing mode: developer-id
+PASS the binary is arm64, ad-hoc signed or notarized with a Developer ID
   HOME alone moved app.getPath('home'): false
   HOME alone moved app.getPath('appData'): false
 PASS RECORDED: whether HOME alone moves app.getPath, on unbundled Electron
