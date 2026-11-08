@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/codlume/figma-drop/compare/v0.1.1...v0.2.0) (2026-11-08)
+
+
+### Features
+
+* **release:** ship the desktop app as a notarized drag-to-install DMG ([#21](https://github.com/codlume/figma-drop/issues/21)) ([12f8076](https://github.com/codlume/figma-drop/commit/12f8076aebe531ac1fb4921f1c0787d9a55c2691))
+
+
+### Bug Fixes
+
+* **release:** expect a bundle's entitlements on its main executable ([#23](https://github.com/codlume/figma-drop/issues/23)) ([3cff227](https://github.com/codlume/figma-drop/commit/3cff227d3bf9cd742bfc7d6acc65fa7855114205))
+
 ## [0.1.1](https://github.com/codlume/figma-drop/compare/v0.1.0...v0.1.1) (2026-11-08)
 
 
