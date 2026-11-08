@@ -1,12 +1,22 @@
 import { execFile } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir, userInfo } from 'node:os';
 import { join, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
+import { inspectSigning } from '../../scripts/signing.mjs';
 import {
   App,
   assert,
@@ -124,6 +134,16 @@ async function sideEffects(home) {
   return { shallow: shallow.toSorted(), total: paths.length };
 }
 
+// The probe copy carries its own signature, so both binaries get the same ad-hoc one before the
+// comparison, and only a difference in code shows.
+async function adHocBytes(binary, name) {
+  const resigned = join(scratch, name);
+  await copyFile(binary, resigned);
+  await execFileAsync('codesign', ['--remove-signature', resigned]);
+  await execFileAsync('codesign', ['--sign', '-', '--identifier', 'probe', resigned]);
+  return readFile(resigned);
+}
+
 async function runProbe(binary, args, env) {
   const clean = { ...process.env, ...env, PROBE_USER_DATA: join(scratch, 'probe-user-data') };
   delete clean.ELECTRON_RUN_AS_NODE;
@@ -169,13 +189,11 @@ async function main() {
     assert(packed === hasIngest, `receiver.cjs ${packed}, src/ingest ${hasIngest}`);
   });
 
-  await step('the binary is arm64 with a valid ad-hoc signature and no identity', async () => {
+  await step('the binary is arm64, ad-hoc signed or notarized with a Developer ID', async () => {
     const { stdout: archs } = await execFileAsync('lipo', ['-archs', bundleBinary]);
     assert(archs.trim() === 'arm64', `archs ${archs}`);
     await execFileAsync('codesign', ['--verify', '--deep', '--strict', bundle]);
-    const { stderr } = await execFileAsync('codesign', ['-dv', bundle]);
-    assert(stderr.includes('Signature=adhoc'), `signature ${stderr}`);
-    assert(stderr.includes('TeamIdentifier=not set'), `team ${stderr}`);
+    log.write(`  signing mode: ${inspectSigning(bundle)}`);
   });
 
   const copy = join(scratch, 'probe.app');
@@ -192,6 +210,9 @@ async function main() {
     join(copyApp, 'probe-utility.cjs'),
     `process.parentPort.postMessage('utility ran');\n`,
   );
+  // macOS kills a Developer ID app whose seal no longer matches its files, so the edited copy is
+  // signed again, ad-hoc.
+  await execFileAsync('codesign', ['--force', '--deep', '--sign', '-', copy]);
 
   await step('RECORDED: whether HOME alone moves app.getPath, on unbundled Electron', async () => {
     const home = join(scratch, 'home-only');
@@ -247,7 +268,9 @@ async function launchTheRealBundle(copyBinary) {
   const realBefore = realState();
 
   await preflight('the probe copy runs the same binary as the bundle', async () => {
-    const [copied, shipped] = await Promise.all([readFile(copyBinary), readFile(bundleBinary)]);
+    const [copied, shipped] = await Promise.all(
+      [copyBinary, bundleBinary].map((binary, index) => adHocBytes(binary, `binary-${index}`)),
+    );
     assert(copied.equals(shipped), 'the probe binary differs from the bundle binary');
   });
   await preflight("that env moves app.getPath('home') and 'appData' into scratch", async () => {

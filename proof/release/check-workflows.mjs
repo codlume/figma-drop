@@ -22,7 +22,28 @@ for (const [id, job] of Object.entries(dry.jobs))
   assert(!('permissions' in job), `dry-run job ${id} raises no permissions`);
 
 assert.deepEqual(rel.permissions, { contents: 'read' }, 'release top-level is read-only');
-assert(!relText.includes('secrets.'), 'release references no secrets');
+const secretReaders = Object.entries(rel.jobs)
+  .filter(([, job]) => JSON.stringify(job).includes('secrets.'))
+  .map(([id]) => id);
+assert.deepEqual(secretReaders, ['build'], 'only build reads secrets');
+assert.equal(
+  rel.jobs.build.environment,
+  'release',
+  'build reads them from the release environment',
+);
+assert(
+  !JSON.stringify({ ...rel.jobs.build, steps: [] }).includes('secrets.'),
+  'build hands no secret to the whole job',
+);
+for (const { env: _env, ...step } of rel.jobs.build.steps)
+  assert(
+    !JSON.stringify(step).includes('secrets.'),
+    `build step ${step.name ?? step.run ?? step.uses} reads secrets only through env`,
+  );
+const keychainCleanup = rel.jobs.build.steps.find((s) =>
+  s.run?.includes('security delete-keychain'),
+);
+assert.equal(keychainCleanup?.if, 'always()', 'build deletes the keychain after a failure too');
 const writers = Object.entries(rel.jobs)
   .filter(([, job]) => Object.values(job.permissions ?? {}).includes('write'))
   .map(([id]) => id);
@@ -113,9 +134,9 @@ runNotice();
 const once = readFileSync(body, 'utf8');
 runNotice();
 assert.equal(readFileSync(body, 'utf8'), once, 'second run leaves the body unchanged');
-assert.equal(once.split('<!-- figma-drop-unsigned-notice -->').length, 2, 'marker appears once');
+assert.equal(once.split('<!-- figma-drop-install-notice -->').length, 2, 'marker appears once');
 assert(once.startsWith('## Changelog'), 'original notes kept');
-assert(once.includes('`figma-drop-1.2.3-mac-arm64-unsigned.zip`'), 'version substituted');
+assert(once.includes('`figma-drop-1.2.3-mac-arm64.zip`'), 'version substituted');
 assert(
   once.includes('shasum -a 256 -c --ignore-missing SHA256SUMS.txt'),
   'partial download checks',
@@ -126,7 +147,7 @@ assert(
 );
 assert(/^NOTICE$/m.test(notice), 'heredoc terminator at column 0');
 
-writeFileSync(body, '* **fix:** a fix <!-- figma-drop-unsigned-notice --> ([#99](x))\n');
+writeFileSync(body, '* **fix:** a fix <!-- figma-drop-install-notice --> ([#99](x))\n');
 runNotice();
 const inline = readFileSync(body, 'utf8');
 assert.equal(inline.match(/^## Install$/gm)?.length, 1, 'a marker inside a line keeps the notice');

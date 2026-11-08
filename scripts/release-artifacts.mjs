@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
+import { SIGNING_MODES } from './signing.mjs';
+
 export const USAGE = 'Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z';
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -51,10 +53,18 @@ export function readReleaseVersion(repoDir) {
   return version;
 }
 
-export function artifactNames(version, mode) {
+export function requireReleaseSigning(mode, signing) {
+  if (mode.kind === 'release' && signing !== 'developer-id') {
+    throw new Error(
+      `Release ${mode.tag} needs a Developer ID build, notarized and stapled, and this app is ${signing}: ${SIGNING_MODES[signing].summary}. Set FIGMA_DROP_SIGN_IDENTITY, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID, then run pnpm app:local.`,
+    );
+  }
+}
+
+export function artifactNames(version, mode, signing) {
   const suffix = mode.kind === 'dry-run' ? '-dry-run' : '';
   return {
-    desktop: `figma-drop-${version}-mac-arm64-unsigned${suffix}.zip`,
+    desktop: `figma-drop-${version}-mac-arm64${SIGNING_MODES[signing].assetSuffix}${suffix}.zip`,
     plugin: `figma-drop-figma-plugin-${version}${suffix}.zip`,
     checksums: `SHA256SUMS${suffix}.txt`,
   };

@@ -62,7 +62,10 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: macos-15
-    timeout-minutes: 30
+    # Notarization waits on Apple, which usually takes a few minutes.
+    timeout-minutes: 60
+    # The signing and notary secrets live in this environment, which only `main` may deploy to.
+    environment: release
     permissions:
       contents: read
     env:
@@ -82,8 +85,46 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:release
-      - run: pnpm app:local
+      # The build runs before any secret is in reach. Only the signing step sees the credentials.
+      - run: pnpm build
+      - name: Import the Developer ID certificate into a throwaway keychain
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          keychain="${RUNNER_TEMP}/figma-drop-signing.keychain-db"
+          certificate="${RUNNER_TEMP}/figma-drop-signing.p12"
+          trap 'rm -f "${certificate}"' EXIT
+          keychain_password="$(openssl rand -base64 32)"
+          security create-keychain -p "${keychain_password}" "${keychain}"
+          security set-keychain-settings -lut 3600 "${keychain}"
+          security unlock-keychain -p "${keychain_password}" "${keychain}"
+          printf '%s' "${MACOS_CERTIFICATE_P12_BASE64}" | base64 --decode > "${certificate}"
+          security import "${certificate}" -k "${keychain}" -P "${MACOS_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          rm -f "${certificate}"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${keychain_password}" "${keychain}" > /dev/null
+          security list-keychains -d user -s "${keychain}" login.keychain-db
+          identity="$(security find-identity -v -p codesigning "${keychain}" | sed -nE "s/^ *[0-9]+\) [0-9A-F]{40} \"(Developer ID Application: .* \(${APPLE_TEAM_ID}\))\"$/\1/p" | head -n 1)"
+          if [ -z "${identity}" ]; then
+            echo "The certificate holds no Developer ID Application identity for team ${APPLE_TEAM_ID}."
+            exit 1
+          fi
+          echo "FIGMA_DROP_SIGN_IDENTITY=${identity}" >> "${GITHUB_ENV}"
+      - name: Sign, notarize, and staple the app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: node scripts/package-local.mjs
       - run: node scripts/release-package.mjs --tag "${TAG}"
+      - name: Delete the signing keychain
+        if: always()
+        run: |
+          keychain="${RUNNER_TEMP}/figma-drop-signing.keychain-db"
+          if [ -f "${keychain}" ]; then
+            security delete-keychain "${keychain}"
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ needs.release-please.outputs.tag_name }}
@@ -122,7 +163,7 @@ jobs:
         run: gh release upload "${TAG}" release-artifacts/* --clobber
       - name: Add the install notice to the release notes
         run: |
-          marker='<!-- figma-drop-unsigned-notice -->'
+          marker='<!-- figma-drop-install-notice -->'
           version="${TAG#v}"
           gh release view "${TAG}" --json body --jq .body > notes.md
           if tr -d '\r' < notes.md | grep -qxF -- "${marker}"; then
@@ -134,7 +175,7 @@ jobs:
           ${marker}
           ## Install
 
-          \`figma-drop-${version}-mac-arm64-unsigned.zip\` is unsigned. It has an ad-hoc signature, Apple has not notarized it, and it runs only on Apple silicon. macOS blocks it the first time. After you unzip it, run \`xattr -dr com.apple.quarantine figma-drop.app\`. Or try to open it once, then select **Open Anyway** in System Settings > Privacy & Security.
+          \`figma-drop-${version}-mac-arm64.zip\` is signed with a Developer ID and notarized by Apple, and it runs only on Apple silicon. Unzip it, move \`figma-drop.app\` to your Applications folder, and open it.
 
           \`figma-drop-figma-plugin-${version}.zip\` is a Figma development plugin. Unzip it. In the Figma desktop app, select **Plugins > Development > Import plugin from manifest**, then select its \`manifest.json\`.
 
