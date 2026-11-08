@@ -131,6 +131,14 @@ runNotice();
 const inline = readFileSync(body, 'utf8');
 assert.equal(inline.match(/^## Install$/gm)?.length, 1, 'a marker inside a line keeps the notice');
 
+writeFileSync(body, once.replaceAll('\n', '\r\n'));
+runNotice();
+assert.equal(
+  readFileSync(body, 'utf8'),
+  once.replaceAll('\n', '\r\n'),
+  'a CRLF body that already carries the marker stays unchanged',
+);
+
 const verifyStep = step('Verify the downloaded assets');
 assert.equal(verifyStep['working-directory'], 'release-artifacts', 'verify runs in the artifact');
 if (spawnSync('bash', ['-c', 'command -v sha256sum']).status !== 0) {

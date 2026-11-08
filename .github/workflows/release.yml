@@ -125,7 +125,7 @@ jobs:
           marker='<!-- figma-drop-unsigned-notice -->'
           version="${TAG#v}"
           gh release view "${TAG}" --json body --jq .body > notes.md
-          if grep -qxF -- "${marker}" notes.md; then
+          if tr -d '\r' < notes.md | grep -qxF -- "${marker}"; then
             echo "The release notes already carry the install notice."
             exit 0
           fi

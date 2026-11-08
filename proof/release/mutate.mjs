@@ -62,12 +62,21 @@ const mutations = {
   'marker check removed': [
     'release.yml',
     'second run leaves the body unchanged',
-    (t) => t.replace('if grep -qxF', 'if false && grep -qxF'),
+    (t) => t.replace("if tr -d '\\r'", "if false && tr -d '\\r'"),
+  ],
+  'CRLF marker missed': [
+    'release.yml',
+    'a CRLF body that already carries the marker stays unchanged',
+    (t) =>
+      t.replace(
+        `tr -d '\\r' < notes.md | grep -qxF -- "\${marker}"`,
+        `grep -qxF -- "\${marker}" notes.md`,
+      ),
   ],
   'marker matched anywhere': [
     'release.yml',
     'a marker inside a line keeps the notice',
-    (t) => t.replace('if grep -qxF', 'if grep -qF'),
+    (t) => t.replace('grep -qxF', 'grep -qF'),
   ],
   'checksums not rechecked': [
     'release.yml',
