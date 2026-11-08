@@ -59,10 +59,10 @@ const styles = stylex.create({
   skeletonCards: {
     display: 'grid',
     gap: space.md,
-    gridTemplateColumns: 'repeat(auto-fill, minmax(124px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
     padding: { default: space.lg, '@media (max-width: 960px)': space.md },
   },
-  skeletonCard: { aspectRatio: '1' },
+  skeletonCard: { aspectRatio: '2 / 3' },
   block: {
     backgroundColor: `color-mix(in srgb, ${color.text} 7%, transparent)`,
     borderRadius: radius.md,

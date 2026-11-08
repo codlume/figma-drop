@@ -43,10 +43,20 @@ const styles = stylex.create({
     backgroundSize: '16px 16px',
   },
   large: { aspectRatio: '4 / 3', maxHeight: '240px' },
-  card: { aspectRatio: '4 / 3' },
+  card: { aspectRatio: '4 / 5', flexDirection: 'column' },
   row: { aspectRatio: '1' },
   smallCheckerboard: { backgroundSize: '8px 8px' },
+  // Auto block margins center a frame shorter than the card and collapse to zero for a taller
+  // one, which then overflows only at the bottom, so tall mobile frames show their top.
+  cardFill: { justifyContent: 'flex-start' },
   image: { display: 'block', height: '100%', objectFit: 'contain', width: '100%' },
+  cardImage: {
+    display: 'block',
+    flexShrink: 0,
+    height: 'auto',
+    marginBlock: 'auto',
+    width: '100%',
+  },
   notice: {
     alignItems: 'center',
     display: 'flex',
@@ -111,10 +121,11 @@ export function PreviewImage({
         styles[size],
         styles.checkerboard,
         size === 'row' && styles.smallCheckerboard,
+        size === 'card' && styles.cardFill,
       )}
     >
       <img
-        {...stylex.props(styles.image)}
+        {...stylex.props(size === 'card' ? styles.cardImage : styles.image)}
         src={url}
         alt={alt}
         referrerPolicy="no-referrer"
