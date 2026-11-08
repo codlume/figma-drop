@@ -451,30 +451,41 @@ test('release.yml install notice names the release artifacts', () => {
   assert.deepEqual(named, new Set([releaseNames.desktop, releaseNames.plugin]));
 });
 
-const glob = (pattern) =>
-  new RegExp(`^${pattern.replaceAll('.', '\\.').replaceAll('*', '[^/]*')}$`);
+const packageWorkflow = readFileSync(join(repoDir, '.github/workflows/package-macos.yml'), 'utf8');
 
-// The build job's upload must carry exactly the release assets: no notary log, no plan.
-test('release.yml build uploads every release asset and nothing else from the release run', () => {
-  const build = jobText('build');
-  const upload = build.match(
-    /uses: actions\/upload-artifact@[\s\S]*?\n {10}path: \|\n((?: {12}.*\n)+)/,
-  );
-  assert.ok(upload, 'the build job uploads a workflow artifact with a path block');
-  const patterns = upload[1]
+function uploadPaths(artifactName) {
+  const step = packageWorkflow
+    .split(/\n(?= {6}- )/)
+    .find((text) => text.includes(`name: ${artifactName}\n`));
+  assert.ok(step, `package-macos.yml uploads an artifact named ${artifactName}`);
+  const block = step.match(/\n {10}path: \|\n((?: {12}.*\n?)+)/);
+  assert.ok(block, `the ${artifactName} upload lists its paths`);
+  return block[1]
     .trim()
     .split('\n')
-    .map((line) => line.trim());
-  const written = [
-    ...Object.values(releaseNames),
-    'release-plan.json',
-    `${NOTARY_DIR}/${NOTARY_LOGS.app}`,
-    `${NOTARY_DIR}/${NOTARY_LOGS.dmg}`,
-  ].map((name) => `release-artifacts/${name}`);
-  const uploaded = written.filter((path) => patterns.some((pattern) => glob(pattern).test(path)));
+    .map((line) => line.trim().replaceAll('${{ steps.version.outputs.version }}', '1.2.3'));
+}
+
+// The release upload job accepts exactly the files SHA256SUMS.txt lists, so a notary log or the
+// plan in this artifact would fail the release after the tag exists.
+test('package-macos.yml stores exactly the release assets for a tag', () => {
   assert.deepEqual(
-    uploaded,
-    Object.values(releaseNames).map((name) => `release-artifacts/${name}`),
+    uploadPaths('release-${{ inputs.tag }}').toSorted(),
+    Object.values(releaseNames)
+      .map((name) => `release-artifacts/${name}`)
+      .toSorted(),
+  );
+});
+
+test('package-macos.yml stores the dry-run assets, plan, and notary logs for a dispatch', () => {
+  const names = artifactNames('1.2.3', dryRun, 'developer-id');
+  assert.deepEqual(
+    uploadPaths('package-test-${{ github.run_id }}').toSorted(),
+    [
+      ...Object.values(names).map((name) => `release-artifacts/${name}`),
+      'release-artifacts/release-plan.json',
+      `release-artifacts/${NOTARY_DIR}/`,
+    ].toSorted(),
   );
 });
 
