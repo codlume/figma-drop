@@ -1,47 +1,132 @@
-head 71d3054b0e4af5cabe7ecedffb4ecbdcacf57ef8, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
+head 2c6a1918b3e2f6312b92525caf3d74792a92af62, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
 
 $ pnpm test:release 
-$ node --test scripts/release-artifacts.test.mjs
-✔ release-please bumps every app package.json exactly once (1.1455ms)
-✔ readReleaseVersion returns the version every file agrees on (2.114459ms)
-✔ readReleaseVersion names the package whose version disagrees (2.449541ms)
-✔ readReleaseVersion compares the release-please manifest (2.132417ms)
-✔ readReleaseVersion rejects a shared version that is not X.Y.Z (7.389ms)
-✔ readReleaseVersion names the config when it lists no extra-files (5.585041ms)
-✔ artifactNames for a release (0.15725ms)
-✔ artifactNames for a dry run mark every name (0.19825ms)
-✔ parseReleaseMode accepts a dry run and both tag forms (0.657667ms)
-✔ parseReleaseMode rejects anything but one mode (0.29025ms)
-✔ isAppleMetadataEntry flags AppleDouble and Finder entries only (0.155208ms)
-✔ release.yml install notice names the release artifacts (0.265125ms)
-✔ release.yml build uploads every zip and the checksums file (0.125708ms)
-✔ release.yml names one checksums file, the one release-package.mjs writes (0.123583ms)
-ℹ tests 14
-ℹ suites 0
-ℹ pass 14
-ℹ fail 0
+$ node --test "scripts/*.test.mjs"
+hdiutil: WARNING: 'hdiutil create -volname -size ...' is deprecated. Please use 'diskutil image create from/blank --volumeName -size ...' instead.
+hdiutil: WARNING: 'hdiutil attach -nobrowse -owners ...' is deprecated. Please use 'diskutil image attach --mountOptions nobrowse --mountOptions owners ...' instead.
+hdiutil: WARNING: 'hdiutil convert -format ...' is deprecated. Please use 'diskutil image create from --format ...' instead.
+▶ ad-hoc DMG from a synthetic app
+  ✔ passes the release verification of the desktop DMG (4724.69775ms)
+  ✔ is a read-only zlib UDIF image that hdiutil verifies (4550.437625ms)
+  ✔ mounts with the app, an Applications link, and the hidden Finder layout (335.232ms)
+  ✔ SHA256SUMS written from the artifact matches the final file (25.042084ms)
+  ✔ verification rejects a DMG whose Applications link points elsewhere (8649.522375ms)
+✔ ad-hoc DMG from a synthetic app (23249.3055ms)
+✔ an Accepted log with no issues passes and reports its submission (1.064708ms)
+✔ an Accepted log with an error issue fails and quotes the issue (0.762958ms)
+✔ an Invalid log fails, with or without issues (0.126542ms)
+✔ warnings pass but are reported (0.142542ms)
+✔ an issue of unknown severity fails closed (0.09475ms)
+✔ a log that is not a notary log fails (0.109333ms)
+✔ release-please bumps every app package.json exactly once (1.652ms)
+✔ readReleaseVersion returns the version every file agrees on (2.564083ms)
+✔ readReleaseVersion names the package whose version disagrees (2.035041ms)
+✔ readReleaseVersion compares the release-please manifest (2.145708ms)
+✔ readReleaseVersion rejects a shared version that is not X.Y.Z (8.571125ms)
+✔ readReleaseVersion names the config when it lists no extra-files (5.537333ms)
+✔ artifactNames for a Developer ID release name the desktop DMG without unsigned (0.073917ms)
+✔ artifactNames for an ad-hoc build mark the desktop DMG unsigned (0.049333ms)
+✔ artifactNames for a dry run mark every name, in both signing modes (0.164083ms)
+✔ requireReleaseSigning refuses an ad-hoc release and accepts every dry run (0.231833ms)
+✔ signingFromEnv is ad-hoc without an identity, whatever else is set (0.117417ms)
+✔ signingFromEnv with an identity carries the notary profile, and the keychain if set (0.094833ms)
+✔ signingFromEnv names each missing or empty variable instead of signing without notarizing (0.211417ms)
+✔ signingFromEnv ignores the Apple ID variables the scripts no longer read (0.123875ms)
+✔ dmgSigning refuses a Developer ID app without the credentials to sign its DMG (0.14825ms)
+✔ dmgSigning keeps an ad-hoc app in an unsigned DMG and refuses mixed modes (0.094541ms)
+✔ readSigningMode reads an ad-hoc signature (0.122209ms)
+✔ readSigningMode reads a notarized Developer ID build (0.165ms)
+✔ readSigningMode rejects each half-finished Developer ID build by what it lacks (0.26725ms)
+✔ developerIdDmgChecks passes a signed, notarized, stapled DMG of the app team (0.105875ms)
+✔ developerIdDmgChecks names what an unfinished or foreign DMG lacks (0.183708ms)
+✔ entitlementProblems allows only allow-jit, and only on app bundles (0.187334ms)
+✔ parseReleaseMode accepts a dry run and both tag forms (0.518416ms)
+✔ parseReleaseMode rejects anything but one mode (0.247ms)
+✔ isAppleMetadataEntry flags AppleDouble and Finder entries only (0.134708ms)
+✖ release.yml install notice names the release artifacts (0.990208ms)
+✖ release.yml build uploads every release asset and nothing else from the release run (0.392708ms)
+✔ release.yml names one checksums file, the one release-package.mjs writes (0.157334ms)
+ℹ tests 39
+ℹ suites 1
+ℹ pass 37
+ℹ fail 2
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 78.15175
-exit=0
+ℹ duration_ms 23422.002958
+
+✖ failing tests:
+
+test at scripts/release-artifacts.test.mjs:443:1
+✖ release.yml install notice names the release artifacts (0.990208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Set(2) {
+  +   'figma-drop-1.2.3-mac-arm64.zip',
+  -   'figma-drop-1.2.3-mac-arm64.dmg',
+      'figma-drop-figma-plugin-1.2.3.zip'
+    }
+  
+      at TestContext.<anonymous> (file://<repo>/scripts/release-artifacts.test.mjs:451:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Set(2) { 'figma-drop-1.2.3-mac-arm64.zip', 'figma-drop-figma-plugin-1.2.3.zip' },
+    expected: Set(2) { 'figma-drop-1.2.3-mac-arm64.dmg', 'figma-drop-figma-plugin-1.2.3.zip' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/release-artifacts.test.mjs:458:1
+✖ release.yml build uploads every release asset and nothing else from the release run (0.392708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  -   'release-artifacts/figma-drop-1.2.3-mac-arm64.dmg',
+      'release-artifacts/figma-drop-figma-plugin-1.2.3.zip',
+      'release-artifacts/SHA256SUMS.txt'
+    ]
+  
+      at TestContext.<anonymous> (file://<repo>/scripts/release-artifacts.test.mjs:475:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'release-artifacts/figma-drop-figma-plugin-1.2.3.zip', 'release-artifacts/SHA256SUMS.txt' ],
+    expected: [ 'release-artifacts/figma-drop-1.2.3-mac-arm64.dmg', 'release-artifacts/figma-drop-figma-plugin-1.2.3.zip', 'release-artifacts/SHA256SUMS.txt' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+[ELIFECYCLE] Command failed with exit code 1.
+exit=1
 
 $ node scripts/release-package.mjs 
 Pass --dry-run or --tag.
 Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z
 exit=1
 
-$ node scripts/release-package.mjs --dry-run --tag v0.0.0 
+$ node scripts/release-package.mjs --dry-run --tag v0.1.1 
 Pass --dry-run or --tag, not both.
 Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z
 exit=1
 
 $ node scripts/release-package.mjs --tag v9.9.9 
-Tag v9.9.9 does not match the release version 0.0.0. Expected v0.0.0.
+Tag v9.9.9 does not match the release version 0.1.1. Expected v0.1.1.
 exit=1
 
 $ pnpm release:dry-run 
-$ pnpm app:local && node scripts/release-package.mjs --dry-run
+$ pnpm app:local && node scripts/dmg.mjs --setup && node scripts/release-package.mjs --dry-run
 $ rm -rf apps/desktop/dist apps/desktop/dist-electron && pnpm build && node scripts/package-local.mjs
 $ vp run -r build
 ~/apps/desktop$ vp build ⊘ cache disabled
@@ -56,7 +141,6 @@ $ vp run -r build
 
 ~/apps/figma-plugin$ vp build ⊘ cache disabled
 transforming...
-transforming...
 ✓ 11 modules transformed.
 rendering chunks...
 computing gzip size...
@@ -64,9 +148,10 @@ dist/ui.html                    1.55 kB │ gzip: 0.61 kB
 dist/assets/style-DyXthL2N.css  4.85 kB │ gzip: 1.50 kB
 dist/assets/ui-qxPkw-eJ.js      9.99 kB │ gzip: 4.02 kB
 
-✓ built in 39ms
+✓ built in 41ms
 
 ~/apps/figma-plugin$ node scripts/inline-ui.mjs dist ⊘ cache disabled
+transforming...
 
 ~/apps/figma-plugin$ node scripts/check-artifacts.mjs dist ⊘ cache disabled
 artifacts ok: code.js 12445 chars, ui.html 16307 chars
@@ -78,7 +163,7 @@ dist/renderer/index.html                   0.55 kB │ gzip:  0.32 kB
 dist/renderer/assets/index-7-B2Rvwl.css   14.18 kB │ gzip:  4.03 kB
 dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 
-✓ built in 365ms
+✓ built in 356ms
 
 ~/apps/desktop$ vp pack ⊘ cache disabled
 ℹ entry: src/main/index.ts
@@ -91,69 +176,79 @@ dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 ℹ dist-electron/preload.cjs      2.06 kB │ gzip: 0.71 kB
 ℹ dist-electron/preload.cjs.map  4.87 kB │ gzip: 1.64 kB
 ℹ 2 files, total: 6.92 kB
-✔ Build complete in 13ms
+✔ Build complete in 12ms
 ℹ dist-electron/main.cjs       64.52 kB │ gzip: 16.88 kB
 ℹ dist-electron/main.cjs.map  141.66 kB │ gzip: 36.20 kB
 ℹ 2 files, total: 206.18 kB
-✔ Build complete in 27ms
+✔ Build complete in 25ms
 ℹ dist-electron/receiver.cjs      199.37 kB │ gzip:  46.92 kB
 ℹ dist-electron/receiver.cjs.map  575.70 kB │ gzip: 123.89 kB
 ℹ 2 files, total: 775.06 kB
-✔ Build complete in 54ms
+✔ Build complete in 65ms
 
 ---
 vp run: 0/6 cache hit (0%). (Run `vp run --last-details` for full details)
 <repo>/apps/desktop/release/.staging/figma-drop.app: replacing existing signature
 Built <repo>/apps/desktop/release/figma-drop.app
-Dry run of 0.0.0: this publishes nothing. The desktop zip is unsigned (ad-hoc signature, no Developer ID, not notarized).
-  figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip  127221720 bytes  sha256 d0887ce813fa28271c3e764ab3c6878c00dcd3c8601e36f84c953079790c0827  (16 checks passed)
-  figma-drop-figma-plugin-0.0.0-dry-run.zip  11685 bytes  sha256 be10305f3c9b537aad7718b0d7b9c72e7599130dbcc619cf90f056da3e2934d9  (7 checks passed)
+dmgbuild is already installed in <repo>/node_modules/.cache/figma-drop-dmgbuild.
+hdiutil: WARNING: 'hdiutil create -volname -size ...' is deprecated. Please use 'diskutil image create from/blank --volumeName -size ...' instead.
+hdiutil: WARNING: 'hdiutil attach -nobrowse -owners ...' is deprecated. Please use 'diskutil image attach --mountOptions nobrowse --mountOptions owners ...' instead.
+hdiutil: WARNING: 'hdiutil convert -format ...' is deprecated. Please use 'diskutil image create from --format ...' instead.
+Dry run of 0.1.1: this publishes nothing. Desktop signing mode ad-hoc: ad-hoc signature, no Developer ID, not notarized.
+  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg  139002446 bytes  sha256 b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821  (21 checks passed)
+  figma-drop-figma-plugin-0.1.1-dry-run.zip  11685 bytes  sha256 e147f55e0451012f64fa1e98a6a9fff51d91cedabb32b252f956cb7739f660a5  (7 checks passed)
 Wrote <repo>/release-artifacts
 exit=0
 
 $ ls -l release-artifacts 
-total 262448
--rw-r--r--@ 1 <user>  staff        222 Nov  8 17:18 SHA256SUMS-dry-run.txt
--rw-r--r--@ 1 <user>  staff  127221720 Nov  8 17:18 figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip
--rw-r--r--@ 1 <user>  staff      11685 Nov  8 17:18 figma-drop-figma-plugin-0.0.0-dry-run.zip
--rw-r--r--@ 1 <user>  staff       2045 Nov  8 17:18 release-plan.json
+total 294960
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 20:50 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  139002446 Nov  8 20:50 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 20:50 figma-drop-figma-plugin-0.1.1-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       2345 Nov  8 20:50 release-plan.json
 exit=0
 
 $ cat release-artifacts/release-plan.json 
 {
   "mode": "dry-run",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "tag": null,
   "publishes": false,
-  "signing": "ad-hoc signature, no Developer ID, not notarized",
+  "signing": "ad-hoc",
+  "notary": null,
   "artifacts": [
     {
-      "name": "figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip",
-      "bytes": 127221720,
-      "sha256": "d0887ce813fa28271c3e764ab3c6878c00dcd3c8601e36f84c953079790c0827",
+      "name": "figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg",
+      "bytes": 139002446,
+      "sha256": "b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821",
       "checks": [
-        "zip holds no AppleDouble or Finder metadata entries",
-        "zip entries outside figma-drop.app = ",
-        "top entry = figma-drop.app",
-        "CFBundleShortVersionString = 0.0.0",
-        "CFBundleVersion = 0.0.0",
+        "hdiutil imageinfo Format = UDZO",
+        "hdiutil verify passes",
+        "volume entries = .DS_Store, .VolumeIcon.icns, .background.tiff, Applications, figma-drop.app",
+        "Applications is a symlink",
+        "Applications symlink target = /Applications",
+        "volume icon is the app's icon",
+        "CFBundleShortVersionString = 0.1.1",
+        "CFBundleVersion = 0.1.1",
         "CFBundleIdentifier = com.codlume.figma-drop",
         "CFBundleExecutable = figma-drop",
         "bundle executable exists",
         "lipo -archs of the executable = arm64",
-        "Contents/Resources/app/package.json version = 0.0.0",
+        "Contents/Resources/app/package.json version = 0.1.1",
         "Contents/Resources/app/package.json main exists",
         "Contents/Resources/app/dist/renderer/index.html exists",
         "Contents/Resources/app/dist is byte-identical to apps/desktop/dist",
         "Contents/Resources/app/dist-electron is byte-identical to apps/desktop/dist-electron",
         "codesign --verify --deep --strict passes",
-        "codesign reports Signature=adhoc"
+        "signing mode of the app in the DMG = ad-hoc",
+        "DMG carries no code signature",
+        "DMG SHA-256 after verification = b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821"
       ]
     },
     {
-      "name": "figma-drop-figma-plugin-0.0.0-dry-run.zip",
+      "name": "figma-drop-figma-plugin-0.1.1-dry-run.zip",
       "bytes": 11685,
-      "sha256": "be10305f3c9b537aad7718b0d7b9c72e7599130dbcc619cf90f056da3e2934d9",
+      "sha256": "e147f55e0451012f64fa1e98a6a9fff51d91cedabb32b252f956cb7739f660a5",
       "checks": [
         "zip holds no AppleDouble or Finder metadata entries",
         "zip file entries = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
@@ -169,11 +264,11 @@ $ cat release-artifacts/release-plan.json
 exit=0
 
 $ bash -c cd\ release-artifacts\ \&\&\ shasum\ -a\ 256\ -c\ SHA256SUMS-dry-run.txt 
-figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip: OK
-figma-drop-figma-plugin-0.0.0-dry-run.zip: OK
+figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg: OK
+figma-drop-figma-plugin-0.1.1-dry-run.zip: OK
 exit=0
 
-$ zipinfo -1 release-artifacts/figma-drop-figma-plugin-0.0.0-dry-run.zip 
+$ zipinfo -1 release-artifacts/figma-drop-figma-plugin-0.1.1-dry-run.zip 
 figma-drop-figma-plugin/
 figma-drop-figma-plugin/dist/
 figma-drop-figma-plugin/dist/code.js
@@ -181,27 +276,57 @@ figma-drop-figma-plugin/dist/ui.html
 figma-drop-figma-plugin/manifest.json
 exit=0
 
-$ bash -c zipinfo\ -1\ release-artifacts/figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip\ \|\ cut\ -d/\ -f1-3\ \|\ sort\ -u 
-figma-drop.app/
-figma-drop.app/Contents/
-figma-drop.app/Contents/Frameworks
-figma-drop.app/Contents/Info.plist
-figma-drop.app/Contents/MacOS
-figma-drop.app/Contents/PkgInfo
-figma-drop.app/Contents/Resources
-figma-drop.app/Contents/_CodeSignature
-exit=0
-
-$ ditto -x -k release-artifacts/figma-drop-figma-plugin-0.0.0-dry-run.zip <scratch>/plugin 
+$ ditto -x -k release-artifacts/figma-drop-figma-plugin-0.1.1-dry-run.zip <scratch>/plugin 
 exit=0
 
 $ cmp <scratch>/plugin/figma-drop-figma-plugin/manifest.json apps/figma-plugin/manifest.json 
 exit=0
 
-$ ditto -x -k release-artifacts/figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip <scratch>/desktop 
+$ bash -c hdiutil\ imageinfo\ \'release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg\'\ 2\>/dev/null\ \|\ grep\ -E\ \'\^Format\' 
+Format Description: UDIF read-only compressed (zlib)
+Format: UDZO
 exit=0
 
-$ plutil -p <scratch>/desktop/figma-drop.app/Contents/Info.plist 
+$ hdiutil verify release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg 
+Checksumming Protective Master Boot Record (MBR : 0)…
+Protective Master Boot Record (MBR :: verified CRC32 $542C63F5
+Checksumming GPT Header (Primary GPT Header : 1)…
+ GPT Header (Primary GPT Header : 1): verified CRC32 $B05A1039
+Checksumming GPT Partition Data (Primary GPT Table : 2)…
+GPT Partition Data (Primary GPT Tabl: verified CRC32 $AA9FB025
+Checksumming  (Apple_Free : 3)…
+                    (Apple_Free : 3): verified CRC32 $00000000
+Checksumming disk image (Apple_HFS : 4)…
+          disk image (Apple_HFS : 4): verified CRC32 $65C9A8E7
+Checksumming GPT Partition Data (Backup GPT Table : 5)…
+GPT Partition Data (Backup GPT Table: verified CRC32 $AA9FB025
+Checksumming GPT Header (Backup GPT Header : 6)…
+  GPT Header (Backup GPT Header : 6): verified CRC32 $4007FC83
+verified CRC32 $1A029BB7
+hdiutil: verify: checksum of "release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg" is VALID
+exit=0
+
+$ hdiutil attach -readonly -nobrowse -noautoopen -mountpoint <scratch>/volume release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg 
+expected CRC32 $1A029BB7
+hdiutil: WARNING: 'hdiutil attach -readonly -nobrowse -mountpoint ...' is deprecated. Please use 'diskutil image attach --readOnly --mountOptions nobrowse --mountPoint ...' instead.
+/dev/disk4          	GUID_partition_scheme          	
+/dev/disk4s1        	Apple_HFS                      	<scratch>/volume
+exit=0
+
+$ ls -lA <scratch>/volume 
+total 696
+-rw-r--r--@ 1 <user>  staff   16388 Nov  8 20:49 .DS_Store
+-rw-r--r--@ 1 <user>  staff  272259 Nov  8 20:49 .VolumeIcon.icns
+-rw-r--r--@ 1 <user>  staff   53456 Nov  8 20:49 .background.tiff
+lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 20:49 Applications -> /Applications
+drwxr-xr-x@ 3 <user>  staff     102 Jan  1  1980 figma-drop.app
+exit=0
+
+$ readlink <scratch>/volume/Applications 
+/Applications
+exit=0
+
+$ plutil -p <scratch>/volume/figma-drop.app/Contents/Info.plist 
 {
   "CFBundleDisplayName" => "figma-drop"
   "CFBundleExecutable" => "figma-drop"
@@ -210,8 +335,8 @@ $ plutil -p <scratch>/desktop/figma-drop.app/Contents/Info.plist
   "CFBundleInfoDictionaryVersion" => "6.0"
   "CFBundleName" => "figma-drop"
   "CFBundlePackageType" => "APPL"
-  "CFBundleShortVersionString" => "0.0.0"
-  "CFBundleVersion" => "0.0.0"
+  "CFBundleShortVersionString" => "0.1.1"
+  "CFBundleVersion" => "0.1.1"
   "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
   "DTSDKBuild" => "24F74"
   "DTSDKName" => "macosx15.5"
@@ -240,8 +365,8 @@ $ plutil -p <scratch>/desktop/figma-drop.app/Contents/Info.plist
 }
 exit=0
 
-$ codesign -dv <scratch>/desktop/figma-drop.app 
-Executable=<scratch>/desktop/figma-drop.app/Contents/MacOS/figma-drop
+$ codesign -dv <scratch>/volume/figma-drop.app 
+Executable=<scratch>/volume/figma-drop.app/Contents/MacOS/figma-drop
 Identifier=com.codlume.figma-drop
 Format=app bundle with Mach-O thin (arm64)
 CodeDirectory v=20400 size=303 flags=0x2(adhoc) hashes=3+3 location=embedded
@@ -252,27 +377,39 @@ Sealed Resources version=2 rules=13 files=19
 Internal requirements count=0 size=12
 exit=0
 
-$ codesign --verify --deep --strict --verbose=2 <scratch>/desktop/figma-drop.app 
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
---prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
---validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
-<scratch>/desktop/figma-drop.app: valid on disk
-<scratch>/desktop/figma-drop.app: satisfies its Designated Requirement
+$ codesign --verify --deep --strict --verbose=2 <scratch>/volume/figma-drop.app 
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:<scratch>/volume/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:<scratch>/volume/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+<scratch>/volume/figma-drop.app: valid on disk
+<scratch>/volume/figma-drop.app: satisfies its Designated Requirement
+exit=0
+
+$ codesign -dv release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg 
+release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg: code object is not signed at all
+exit=1
+
+$ ditto <scratch>/volume/figma-drop.app <scratch>/desktop/figma-drop.app 
+exit=0
+
+$ hdiutil detach <scratch>/volume 
+hdiutil: WARNING: 'hdiutil detach ...' is deprecated. Please use 'diskutil eject ...' instead.
+"disk4" ejected.
 exit=0
 
 $ xattr -w com.apple.quarantine 0081\;00000000\;Safari\; <scratch>/desktop/figma-drop.app 
@@ -282,23 +419,19 @@ $ spctl --assess --type execute -vv <scratch>/desktop/figma-drop.app
 <scratch>/desktop/figma-drop.app: rejected
 exit=3
 
-$ node scripts/release-package.mjs --tag v0.0.0 
-Release v0.0.0: artifacts for GitHub release v0.0.0. The desktop zip is unsigned (ad-hoc signature, no Developer ID, not notarized).
-  figma-drop-0.0.0-mac-arm64-unsigned.zip  127221720 bytes  sha256 d0887ce813fa28271c3e764ab3c6878c00dcd3c8601e36f84c953079790c0827  (16 checks passed)
-  figma-drop-figma-plugin-0.0.0.zip  11685 bytes  sha256 56e51a93eb7f3120b99ac0341fb4fb1cf0d5ef43849f68554d48c2bcc87a0625  (7 checks passed)
-Wrote <repo>/release-artifacts
-exit=0
+$ node scripts/release-package.mjs --tag v0.1.1 
+Release v0.1.1 needs a Developer ID build, notarized and stapled, and this app is ad-hoc: ad-hoc signature, no Developer ID, not notarized. Set FIGMA_DROP_SIGN_IDENTITY and FIGMA_DROP_NOTARY_PROFILE, then run pnpm app:local.
+exit=1
 
 $ ls -l release-artifacts 
-total 262360
--rw-r--r--@ 1 <user>  staff        206 Nov  8 17:19 SHA256SUMS.txt
--rw-r--r--@ 1 <user>  staff  127221720 Nov  8 17:18 figma-drop-0.0.0-mac-arm64-unsigned.zip
--rw-r--r--@ 1 <user>  staff      11685 Nov  8 17:19 figma-drop-figma-plugin-0.0.0.zip
--rw-r--r--@ 1 <user>  staff       2051 Nov  8 17:19 release-plan.json
+total 294960
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 20:50 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  139002446 Nov  8 20:50 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 20:50 figma-drop-figma-plugin-0.1.1-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       2345 Nov  8 20:50 release-plan.json
 exit=0
 
 $ bash -c cd\ release-artifacts\ \&\&\ shasum\ -a\ 256\ -c\ SHA256SUMS.txt 
-figma-drop-0.0.0-mac-arm64-unsigned.zip: OK
-figma-drop-figma-plugin-0.0.0.zip: OK
-exit=0
+shasum: SHA256SUMS.txt: No such file or directory
+exit=2
 
