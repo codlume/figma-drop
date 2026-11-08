@@ -127,7 +127,8 @@ export function readEntitlements(path) {
 const canonical = (entitlements) => JSON.stringify(Object.entries(entitlements).toSorted());
 
 // codesign treats a bundle's main executable as the bundle itself and stores the bundle's
-// signature there, so both paths report the same entitlements. Same rule as @electron/osx-sign.
+// signature there, so both paths report the same entitlements. @electron/osx-sign matches main executables with
+// the same path pattern, though only to order signing.
 export const isBundleMainExecutable = (path) => /\.app\/Contents\/MacOS\/[^/]+$/.test(path);
 
 function expectedEntitlements({ path, app }) {
