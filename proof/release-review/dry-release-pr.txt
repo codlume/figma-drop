@@ -1,0 +1,186 @@
+❯ Fetching release-please-config.json from branch feat/release-workflow
+❯ Fetching .release-please-manifest.json from branch feat/release-workflow
+✔ Building pull requests
+✔ Building strategies by path
+❯ .: node
+✔ Collecting release commit SHAs
+❯ release search depth: 400
+❯ Fetching releases with cursor undefined
+⚠ Could not find releases.
+⚠ Expected 1 releases, only found 0
+⚠ Missing 1 paths: .
+❯ looking for tagName: v0.0.0
+⚠ Expected 1 releases, only found 0
+✔ Collecting commits since all latest releases
+❯ commit search depth: 500
+❯ Set(0) {}
+❯ Fetching merge commits on branch feat/release-workflow with cursor: undefined
+❯ Backfilling file list for commit: 17a7e188ff69ef341af17b554f0aaa5d7f8ee090
+❯ Found 2 files
+❯ Backfilling file list for commit: 9dacfcd138b3c324e603e7af449482f4b9b438ca
+❯ Found 3 files
+❯ Backfilling file list for commit: ee77dc08e49a216466777a401dda5c25d34eeb58
+❯ Found 2 files
+❯ Backfilling file list for commit: adf16f9973ac6ce358162e73bab2e43800b499c4
+❯ Found 7 files
+❯ Backfilling file list for commit: b9f2cf65e390c85e2ae8cb0ae4baaf4d9f4771a7
+❯ Found 7 files
+❯ Backfilling file list for commit: 01ac0be93e5e4088c23138dd850b85222127266c
+❯ Found 2 files
+❯ Backfilling file list for commit: 2eb4410fee843ed4dfd686809612140154f253c8
+❯ Found 4 files
+❯ Backfilling file list for commit: 716286c4a09c52c2536cf4b73ba68d0fb03c2d21
+❯ Found 2 files
+❯ Backfilling file list for commit: eba95062b649f23fec63544f16171c2cdd5ac63f
+❯ Found 6 files
+❯ Backfilling file list for commit: c9d5a711ce6e136133a39292cae26b09418022d9
+❯ Found 3 files
+❯ Fetching merge commits on branch feat/release-workflow with cursor: 17a7e188ff69ef341af17b554f0aaa5d7f8ee090 9
+❯ Backfilling file list for commit: 8ebac7d7f5a4e9b6022c17fe615f546ac1274fea
+❯ Found 0 files
+✔ Splitting 20 commits by path
+✔ Building candidate release pull request for path: .
+❯ type: node
+❯ targetBranch: feat/release-workflow
+❯ commit could not be parsed: 0a65acc463400b074f09b462b337657a588e868e feat(desktop): add the Electron menu-bar shell and shared contracts (#5)
+❯ error message: Error: unexpected token '(' at 84:18, valid tokens [)]
+❯ commits: 22
+⚠ No latest release pull request found.
+✔ Considering: 22 commits
+❯ component: 
+❯ pull request title pattern: undefined
+❯ componentNoSpace: undefined
+Would open 1 pull requests
+fork: false
+title: chore(feat/release-workflow): release 0.1.0
+branch: release-please--branches--feat/release-workflow--components--figma-drop
+draft: false
+body: :robot: I have created a release *beep* *boop*
+---
+
+
+## 0.1.0 (2026-11-08)
+
+
+### Features
+
+* **desktop:** add the local unsigned app build and integrated proofs ([#11](https://github.com/codlume/figma-drop/issues/11)) ([a50c7f7](https://github.com/codlume/figma-drop/commit/a50c7f7784c79e9f5eaebbd58b229c1fca002836))
+* **figma-plugin:** add the development plugin ([#8](https://github.com/codlume/figma-drop/issues/8)) ([5104e8e](https://github.com/codlume/figma-drop/commit/5104e8ee49249b01278edaca83d87074d1b85886))
+* **ingest:** add the local export receiver ([#6](https://github.com/codlume/figma-drop/issues/6)) ([94a26ee](https://github.com/codlume/figma-drop/commit/94a26eed7fae0928a1ec6c019f70bfc2dd75385f))
+* **library:** add the durable export library ([#4](https://github.com/codlume/figma-drop/issues/4)) ([df590ae](https://github.com/codlume/figma-drop/commit/df590ae3c6763ed8f444f5e69358be942c5fca9a))
+* **renderer:** add the export library UI ([#9](https://github.com/codlume/figma-drop/issues/9)) ([be32028](https://github.com/codlume/figma-drop/commit/be320289ad9053e5ed6bdd54c2eda68cf18c846a))
+* **renderer:** larger grid cards and a zoomable image viewer ([#13](https://github.com/codlume/figma-drop/issues/13)) ([f9f8209](https://github.com/codlume/figma-drop/commit/f9f8209b814c878063d11be080b915710c908b55))
+
+
+### Bug Fixes
+
+* **desktop:** report the switch position on a failed receiver status ([#7](https://github.com/codlume/figma-drop/issues/7)) ([34353da](https://github.com/codlume/figma-drop/commit/34353da57291edd9c3bea31d972bb18eccf43fdb))
+* **release:** keep AppleDouble entries out of the app zip and document the release window ([9dacfcd](https://github.com/codlume/figma-drop/commit/9dacfcd138b3c324e603e7af449482f4b9b438ca))
+
+---
+This PR was generated with [Release Please](https://github.com/googleapis/release-please). See [documentation](https://github.com/googleapis/release-please#release-please).
+updates: 9
+❯ Fetching package-lock.json from branch feat/release-workflow
+⚠ file package-lock.json did not exist
+❯ Fetching npm-shrinkwrap.json from branch feat/release-workflow
+⚠ file npm-shrinkwrap.json did not exist
+❯ Fetching samples/package.json from branch feat/release-workflow
+⚠ file samples/package.json did not exist
+❯ Fetching CHANGELOG.md from branch feat/release-workflow
+❯ Fetching package.json from branch feat/release-workflow
+✔ updating from 0.0.0 to 0.1.0
+❯ Fetching changelog.json from branch feat/release-workflow
+⚠ file changelog.json did not exist
+❯ Fetching apps/desktop/package.json from branch feat/release-workflow
+❯ Fetching apps/figma-plugin/package.json from branch feat/release-workflow
+❯ Fetching .release-please-manifest.json from branch feat/release-workflow
+  package-lock.json:  [class PackageLockJson]
+no change found for package-lock.json
+  npm-shrinkwrap.json:  [class PackageLockJson]
+no change found for npm-shrinkwrap.json
+  samples/package.json:  [class SamplesPackageJson extends DefaultUpdater]
+no change found for samples/package.json
+  CHANGELOG.md:  [class Changelog extends DefaultUpdater]
+Index: CHANGELOG.md
+===================================================================
+--- CHANGELOG.md
++++ CHANGELOG.md
+@@ -0,0 +1,19 @@
++# Changelog
++
++## 0.1.0 (2026-11-08)
++
++
++### Features
++
++* **desktop:** add the local unsigned app build and integrated proofs ([#11](https://github.com/codlume/figma-drop/issues/11)) ([a50c7f7](https://github.com/codlume/figma-drop/commit/a50c7f7784c79e9f5eaebbd58b229c1fca002836))
++* **figma-plugin:** add the development plugin ([#8](https://github.com/codlume/figma-drop/issues/8)) ([5104e8e](https://github.com/codlume/figma-drop/commit/5104e8ee49249b01278edaca83d87074d1b85886))
++* **ingest:** add the local export receiver ([#6](https://github.com/codlume/figma-drop/issues/6)) ([94a26ee](https://github.com/codlume/figma-drop/commit/94a26eed7fae0928a1ec6c019f70bfc2dd75385f))
++* **library:** add the durable export library ([#4](https://github.com/codlume/figma-drop/issues/4)) ([df590ae](https://github.com/codlume/figma-drop/commit/df590ae3c6763ed8f444f5e69358be942c5fca9a))
++* **renderer:** add the export library UI ([#9](https://github.com/codlume/figma-drop/issues/9)) ([be32028](https://github.com/codlume/figma-drop/commit/be320289ad9053e5ed6bdd54c2eda68cf18c846a))
++* **renderer:** larger grid cards and a zoomable image viewer ([#13](https://github.com/codlume/figma-drop/issues/13)) ([f9f8209](https://github.com/codlume/figma-drop/commit/f9f8209b814c878063d11be080b915710c908b55))
++
++
++### Bug Fixes
++
++* **desktop:** report the switch position on a failed receiver status ([#7](https://github.com/codlume/figma-drop/issues/7)) ([34353da](https://github.com/codlume/figma-drop/commit/34353da57291edd9c3bea31d972bb18eccf43fdb))
++* **release:** keep AppleDouble entries out of the app zip and document the release window ([9dacfcd](https://github.com/codlume/figma-drop/commit/9dacfcd138b3c324e603e7af449482f4b9b438ca))
+
+  package.json:  [class PackageJson extends DefaultUpdater]
+Index: package.json
+===================================================================
+--- package.json
++++ package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "figma-drop",
+-  "version": "0.0.0",
++  "version": "0.1.0",
+   "private": true,
+   "type": "module",
+   "scripts": {
+     "prepare": "vp config --no-agent",
+
+  changelog.json:  [class ChangelogJson extends DefaultUpdater]
+no change found for changelog.json
+  apps/desktop/package.json:  [class GenericJson]
+Index: apps/desktop/package.json
+===================================================================
+--- apps/desktop/package.json
++++ apps/desktop/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "@figma-drop/desktop",
+-  "version": "0.0.0",
++  "version": "0.1.0",
+   "private": true,
+   "type": "module",
+   "main": "dist-electron/main.cjs",
+   "scripts": {
+
+  apps/figma-plugin/package.json:  [class GenericJson]
+Index: apps/figma-plugin/package.json
+===================================================================
+--- apps/figma-plugin/package.json
++++ apps/figma-plugin/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "@figma-drop/figma-plugin",
+-  "version": "0.0.0",
++  "version": "0.1.0",
+   "private": true,
+   "type": "module",
+   "scripts": {
+     "build": "vp pack && vp build && node scripts/inline-ui.mjs dist && node scripts/check-artifacts.mjs dist",
+
+  .release-please-manifest.json:  [class ReleasePleaseManifest extends DefaultUpdater]
+Index: .release-please-manifest.json
+===================================================================
+--- .release-please-manifest.json
++++ .release-please-manifest.json
+@@ -1,3 +1,3 @@
+ {
+-  ".": "0.0.0"
++  ".": "0.1.0"
+ }
+
