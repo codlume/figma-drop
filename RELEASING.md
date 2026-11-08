@@ -22,7 +22,9 @@ The release workflow also appends an install notice to the release notes. It say
 - The workflows declare their own token permissions in YAML, so the repository's default token permission does not matter.
 - No secrets are required. Both workflows use only `github.token`.
 
-GitHub starts no workflow for a pull request, push, or tag that `github.token` creates. So the release dry-run workflow does not run on the release PR, and the tag starts no workflow. The release workflow builds the assets in the same run that creates the tag for that reason.
+A push or tag that `github.token` creates starts no workflow. So the tag starts no workflow, and the release workflow builds the assets in the same run that creates the tag. A pull request that `github.token` opens gets `pull_request` runs that wait for approval. The **Release dry run** on the release PR waits that way. A maintainer may approve it. Its token is read-only, so approving is safe, and its `package` job packages the bumped version.
+
+release-please marks the open release PR with the `autorelease: pending` label and the released one with `autorelease: tagged`. It releases only a merged PR that carries `autorelease: pending`. Labels go through the issues API, so the `release-please` and `release-pr` jobs hold `issues: write`. The token creates both labels the first time it uses them.
 
 These are not available, because the repository holds none of the credentials they need:
 
@@ -34,24 +36,36 @@ These are not available, because the repository holds none of the credentials th
 ## Cut a release
 
 1. Merge pull requests with Conventional Commit titles into `main`. Each merge updates the standing release PR, titled `chore(main): release <version>`.
-2. Review the release PR. Check the version in its title, the new `CHANGELOG.md` section, the version in the three `package.json` files, and `.release-please-manifest.json`. release-please leaves out a commit whose message it cannot parse, and the release run log names it. To add it back, edit the release PR body, which becomes the GitHub release notes, and `CHANGELOG.md` on its branch. Do this just before you merge, because release-please rewrites the PR on every push to `main`.
-3. Merge the release PR.
-4. Watch the **Release** run for that merge in the **Actions** tab. Its jobs run in this order:
-   1. `release-please` creates the tag `v<version>` and the GitHub release with the changelog section as its notes. This job and `upload` run no repository code, and they are the only jobs with write access.
-   2. `build` runs on `macos-15` with a read-only token. It checks out the tagged commit and runs `pnpm typecheck`, `pnpm test`, and `pnpm test:release`. Then it runs `pnpm app:local` and `node scripts/release-package.mjs --tag v<version>`, which writes and checks the zips and `SHA256SUMS.txt`. It stores them as the workflow artifact `release-v<version>` for 7 days.
-   3. `upload` downloads that artifact and attaches the three files to the release with `gh release upload --clobber`. Then it appends the install notice to the release notes, unless the notes already contain `<!-- figma-drop-unsigned-notice -->`.
+2. Review the release PR. Check the version in its title, the new `CHANGELOG.md` section, the version in the three `package.json` files, and `.release-please-manifest.json`.
 
-   The release is public from the first job, and its assets attach a few minutes later, when `upload` finishes.
+   release-please leaves out a commit whose message it cannot parse, and the release run log names it. To add it back, edit the description of the merged pull request that made that commit. Add a block that holds the message release-please should read instead. For example, for #5:
+
+   ```text
+   BEGIN_COMMIT_OVERRIDE
+   feat(desktop): add the Electron menu-bar shell and shared contracts (#5)
+   END_COMMIT_OVERRIDE
+   ```
+
+   The next **Release** run on `main` rebuilds the release PR with that message. As a fallback, edit the release PR body, which becomes the GitHub release notes, and `CHANGELOG.md` on its branch. Keep `## <version>` as the first heading of the body and keep both `---` lines, because release-please reads the notes between them. Do this just before you merge, because release-please rewrites the PR on every push to `main`.
+
+3. Merge the release PR only after the latest **Release** run on `main` has finished. A run still in progress can rewrite the release PR after you review it.
+4. Watch the **Release** run for that merge in the **Actions** tab. Its jobs run in this order:
+   1. `release-please` creates the tag `v<version>` and the GitHub release with the changelog section as its notes.
+   2. `release-pr` opens the next release PR. It runs apart from the other jobs, and nothing waits for it, so its failure cannot block the build.
+   3. `build` runs on `macos-15` with a read-only token. It checks out the tagged commit. It installs Node from `.node-version`, pnpm from `packageManager` through corepack, and the dependencies with `pnpm install --frozen-lockfile`, so the whole toolchain comes from the lockfile. It runs `pnpm typecheck`, `pnpm test`, and `pnpm test:release`. Then it runs `pnpm app:local` and `node scripts/release-package.mjs --tag v<version>`, which writes and checks the zips and `SHA256SUMS.txt`. It stores them as the workflow artifact `release-v<version>` for 7 days.
+   4. `upload` downloads that artifact and runs `sha256sum -c SHA256SUMS.txt`. It fails if the artifact holds any file that `SHA256SUMS.txt` does not list. Then it attaches every file to the release with `gh release upload --clobber`, and appends the install notice to the release notes, unless a line of the notes is exactly `<!-- figma-drop-unsigned-notice -->`.
+
+   `release-please`, `release-pr`, and `upload` run no repository code, and they are the only jobs with write access. The release is public from the first job, and its assets attach a few minutes later, when `upload` finishes.
 
 5. Download the assets and check them.
 
    ```sh
    gh release download v<version> -R codlume/figma-drop -D figma-drop-v<version>
    cd figma-drop-v<version>
-   shasum -a 256 -c SHA256SUMS.txt
+   shasum -a 256 -c --ignore-missing SHA256SUMS.txt
    ```
 
-   `shasum` prints `OK` for each zip. You can also download the assets from the release page at `https://github.com/codlume/figma-drop/releases`.
+   `shasum` prints `OK` for each zip it finds. `--ignore-missing` skips a zip you did not download. You can also download the assets from the release page at `https://github.com/codlume/figma-drop/releases`.
 
 ## Install the release
 
@@ -59,10 +73,11 @@ To install the app:
 
 1. Quit any running copy of figma-drop.
 2. Unzip `figma-drop-<version>-mac-arm64-unsigned.zip`, and move `figma-drop.app` to `~/Applications` or `/Applications`.
-3. Clear the quarantine flag, so macOS lets the unsigned app open.
+3. Clear the quarantine flag, so macOS lets the unsigned app open. Run the line for the folder you chose.
 
    ```sh
    xattr -dr com.apple.quarantine ~/Applications/figma-drop.app
+   xattr -dr com.apple.quarantine /Applications/figma-drop.app
    ```
 
    Instead, you can open the app once, then select **Open Anyway** in **System Settings > Privacy & Security**.
@@ -97,8 +112,8 @@ It needs no token. It builds `apps/desktop/release/figma-drop.app` and writes th
 
 The **Release dry run** workflow runs on every pull request and on manual dispatch, with a read-only token and no secrets. It has two jobs:
 
-- `plan` runs `release-please release-pr --dry-run` against the branch. Its job summary shows the release PR that release-please would open if that branch were `main`. It skips pull requests from forks, because release-please reads the branch from this repository.
-- `package` runs the same gates as `build`, then `pnpm release:dry-run`, and prints `release-artifacts/release-plan.json`. It uploads nothing, because anyone can download a workflow artifact on a public repository.
+- `plan` runs `release-please release-pr --dry-run` against the branch. Its job summary shows the release PR that release-please would open if that branch were `main`. The plan lists each commit on the branch. `main` gets one squash commit per pull request, so the real release PR lists that commit instead. It skips pull requests from forks, because release-please reads the branch from this repository.
+- `package` installs the same toolchain and runs the same gates as `build`, then `pnpm release:dry-run`, and prints `release-artifacts/release-plan.json`. Then it packages again in release mode with `--tag v<version>` and lists the files. It uploads nothing, because anyone can download a workflow artifact on a public repository.
 
 ## How versions bump
 
@@ -106,7 +121,7 @@ release-please reads the Conventional Commit types merged since the last release
 
 - `fix`, `perf`, and `revert` bump the patch version.
 - `feat` bumps the minor version.
-- A breaking change, written as `feat!:` or with a `BREAKING CHANGE:` footer, bumps the major version. The config does not set `bump-minor-pre-major`, so a breaking change on `0.x` bumps to `1.0.0`.
+- A breaking change bumps the major version. A breaking change is any type with `!`, such as `fix!:` or `refactor!:`, or any commit with a `BREAKING CHANGE:` footer. The config does not set `bump-minor-pre-major`, so a breaking change on `0.x` bumps to `1.0.0`.
 - `chore`, `docs`, `ci`, `build`, `refactor`, `style`, and `test` do not start a release by themselves.
 
 The manifest starts at `0.0.0`, which release-please reads as "never released". The config sets `initial-version` to `0.1.0`, so the first release is `0.1.0`.
@@ -121,6 +136,16 @@ The release PR then proposes that version.
 
 ## Recover from a failed release
 
-- If `build` or `upload` fails, open the run and select **Re-run failed jobs** within 7 days. The rerun keeps the outputs of `release-please`, and `upload` is safe to repeat. `--clobber` replaces assets that already exist, and the marker line stops a second install notice.
-- If `build` fails because of the code, the tag and the release exist without assets. Fix the problem on `main` with a `fix:` pull request. The next release carries the fix.
+- If `build` or `upload` fails, open the run and select **Re-run failed jobs**. GitHub allows a rerun for 30 days after the run. The rerun keeps the outputs of `release-please`, and `upload` is safe to repeat. `--clobber` replaces assets that already exist, and the marker line stops a second install notice.
+- A rerun of `upload` alone needs the `release-v<version>` artifact, which lasts 7 days. After that, rerun the `build` job from its page. GitHub reruns `upload` after it.
+- **Re-run all jobs** does nothing. `release-please` finds no merged release PR still labeled `autorelease: pending`, so it creates no release, and `build` and `upload` skip.
+- If `release-pr` fails, the release still builds. The next push to `main` opens the release PR.
+- If `build` fails because of the code, the tag and the release exist without assets. A maintainer marks the release as a prerelease, so it is no longer the latest release, and adds a note to its notes that it has no assets.
+
+  ```sh
+  gh release edit vX.Y.Z -R codlume/figma-drop --prerelease
+  ```
+
+  Then fix the problem on `main` with a `fix:` pull request. The next release carries the fix.
+
 - Never move, delete, or re-push a tag. Never edit a version by hand. A new release is the only way to replace a published one.
