@@ -8,3 +8,4 @@ dist-electron
 test-results/
 /apps/desktop/.dev/
 /apps/desktop/release/
+/release-artifacts/

@@ -11,6 +11,7 @@ const ignorePatterns = [
   'dist-electron',
   'node_modules',
   'pnpm-lock.yaml',
+  'release-artifacts/**',
   '*.tsbuildinfo',
 ];
 

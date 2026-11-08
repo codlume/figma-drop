@@ -13,7 +13,9 @@
     "fmt:check": "vp fmt --check",
     "lint": "vp lint --report-unused-disable-directives",
     "typecheck": "vp run -r typecheck",
-    "test": "vp run -r test"
+    "test": "vp run -r test",
+    "release:dry-run": "pnpm app:local && node scripts/release-package.mjs --dry-run",
+    "test:release": "node --test scripts/release-artifacts.test.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
