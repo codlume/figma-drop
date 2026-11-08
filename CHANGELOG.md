@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/codlume/figma-drop/compare/v0.1.0...v0.1.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **release:** retry stapling when Apple's ticket service fails ([#19](https://github.com/codlume/figma-drop/issues/19)) ([76a7fd6](https://github.com/codlume/figma-drop/commit/76a7fd65685d430c8ad8dddb74a7711f590aa551))
+
 ## 0.1.0 (2026-11-08)
 
 
