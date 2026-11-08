@@ -22,7 +22,7 @@ export const SIGNING_VARIABLES = {
   keychain: 'FIGMA_DROP_NOTARY_KEYCHAIN',
 };
 
-// The only entitlement any signed bundle carries. Plain executables, dylibs, and frameworks get
+// The only entitlement any signed bundle carries, and so its main executable too. Other code gets
 // none, and nothing gets get-task-allow, which notarization rejects.
 export const APP_ENTITLEMENTS = { 'com.apple.security.cs.allow-jit': true };
 
@@ -126,16 +126,33 @@ export function readEntitlements(path) {
 
 const canonical = (entitlements) => JSON.stringify(Object.entries(entitlements).toSorted());
 
+// codesign treats a bundle's main executable as the bundle itself and stores the bundle's
+// signature there, so both paths report the same entitlements. Same rule as @electron/osx-sign.
+export const isBundleMainExecutable = (path) => /\.app\/Contents\/MacOS\/[^/]+$/.test(path);
+
+function expectedEntitlements({ path, app }) {
+  if (app) return { entitlements: APP_ENTITLEMENTS, rule: 'an .app bundle' };
+  if (isBundleMainExecutable(path)) {
+    return {
+      entitlements: APP_ENTITLEMENTS,
+      rule: "the main executable of an .app bundle, which carries the bundle's signature",
+    };
+  }
+  return { entitlements: {}, rule: 'code that is neither an .app bundle nor its main executable' };
+}
+
 // Each problem with the entitlements of signed code. `code` lists {path, app, entitlements}.
 export function entitlementProblems(code) {
-  return code
-    .filter(
-      ({ app, entitlements }) => canonical(entitlements) !== canonical(app ? APP_ENTITLEMENTS : {}),
-    )
-    .map(
-      ({ path, app, entitlements }) =>
-        `${path} has ${JSON.stringify(entitlements)}, expected ${app ? JSON.stringify(APP_ENTITLEMENTS) : 'none'}.`,
-    );
+  return code.flatMap((item) => {
+    const expected = expectedEntitlements(item);
+    if (canonical(item.entitlements) === canonical(expected.entitlements)) return [];
+    const want = Object.keys(expected.entitlements).length
+      ? JSON.stringify(expected.entitlements)
+      : 'none';
+    return [
+      `${item.path} has ${JSON.stringify(item.entitlements)}, expected ${want} for ${expected.rule}.`,
+    ];
+  });
 }
 
 // `codesign --deep` skips Mach-O files outside the standard nested-code locations, such as
