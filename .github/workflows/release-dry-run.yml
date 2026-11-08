@@ -1,0 +1,70 @@
+name: Release dry run
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: release-dry-run-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    # release-please reads the target branch from this repository, and a fork's branch is not here.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Plan the release pull request
+        run: |
+          npx --yes release-please@17.6.0 release-pr --dry-run \
+            --repo-url "${GITHUB_REPOSITORY}" \
+            --target-branch "${BRANCH}" \
+            --config-file release-please-config.json \
+            --manifest-file .release-please-manifest.json \
+            --token "${GITHUB_TOKEN}" 2>&1 | tee release-plan.txt
+          {
+            echo "## Release plan"
+            echo
+            echo "This is the release pull request release-please would open if \`${BRANCH}\` were \`main\`."
+            echo
+            echo '````text'
+            cat release-plan.txt
+            echo '````'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  package:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      # Corepack installs the pnpm that `packageManager` pins.
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:release
+      - run: pnpm release:dry-run
+      - run: ls -la release-artifacts
+      - run: cat release-artifacts/release-plan.json
+      - name: Package in release mode, uploading nothing
+        run: |
+          node scripts/release-package.mjs --tag "v$(node -p 'require("./package.json").version')"
+          ls -la release-artifacts

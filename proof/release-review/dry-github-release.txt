@@ -1,0 +1,6 @@
+❯ Fetching release-please-config.json from branch feat/release-workflow
+❯ Fetching .release-please-manifest.json from branch feat/release-workflow
+✔ Building releases
+✔ Building strategies by path
+❯ .: node
+✔ Would tag 0 releases:

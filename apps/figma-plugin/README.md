@@ -4,6 +4,8 @@ This development plugin sends the layers you select in Figma to the figma-drop d
 
 ## Build the plugin
 
+To skip the build, download `figma-drop-figma-plugin-<version>.zip` from a GitHub release and import its `manifest.json`. See `RELEASING.md`.
+
 Run the build from this directory:
 
 ```sh

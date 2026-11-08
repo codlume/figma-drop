@@ -5,6 +5,7 @@
 - Track work in GitHub Issues for `codlume/figma-drop` through `gh`. Pass multiline bodies with `--body-file`.
 - When `.claude/skills/verify/SKILL.md` exists, read it before you change user-visible desktop behavior.
 - When `packages/export-contract` exists, read it before you change anything on the wire.
+- Read `RELEASING.md` before you change versioning, the release config, or `.github/workflows`.
 
 ## The product
 
@@ -40,7 +41,7 @@ Upstream's plugin keeps exporting into the library. Upstream has no licence. Wor
 
 ### 6. Version 1 stays small
 
-v1 actions are browse, preview, reveal in Finder, copy path, "Copy to folder", which writes a plain bundle, and delete to Trash. v1 has no existing-bundle import and no folder watching. Target macOS with local unsigned arm64 builds, and leave releases, signing changes, and publishing alone.
+v1 actions are browse, preview, reveal in Finder, copy path, "Copy to folder", which writes a plain bundle, and delete to Trash. v1 has no existing-bundle import and no folder watching. Target macOS arm64 with unsigned builds. Releases go only through the release PR flow in `RELEASING.md`, and a maintainer merges the release PR. Agents never merge or edit a release PR, rerun the Release workflow, create, edit, or upload to a GitHub release, push or move tags, change signing, publish anywhere, or install a release build.
 
 ## A note to agents
 

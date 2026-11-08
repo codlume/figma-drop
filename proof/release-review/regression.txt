@@ -1,0 +1,33 @@
+control: an unmodified copy
+  expected: PASS
+  actual:   PASS
+  caught
+A5: app zip without dist-electron/main.cjs
+  expected: Contents/Resources/app/package.json main exists failed
+  actual:   FAIL <scratch>/no-main.cjs.zip: Contents/Resources/app/package.json main exists failed. main is "dist-electron/main.cjs".
+  caught
+A5: app zip without dist/renderer/index.html
+  expected: Contents/Resources/app/dist/renderer/index.html exists failed
+  actual:   FAIL <scratch>/no-index.html.zip: Contents/Resources/app/dist/renderer/index.html exists failed. Missing dist/renderer/index.html.
+  caught
+A5: app zip older than apps/desktop/dist-electron
+  expected: Contents/Resources/app/dist-electron is byte-identical to apps/desktop/dist-electron failed
+  actual:   FAIL <scratch>/control.zip: Contents/Resources/app/dist-electron is byte-identical to apps/desktop/dist-electron failed. The bundle is stale. Run pnpm app:local.
+  caught
+A6: app zip with 611 sequestered ._ entries
+  expected: zip holds no AppleDouble or Finder metadata entries failed
+  actual:   FAIL <scratch>/appledouble-sequestered.zip: zip holds no AppleDouble or Finder metadata entries failed. Found 881, such as __MACOSX/, __MACOSX/figma-drop.app/, __MACOSX/figma-drop.app/Co
+  caught
+A6: app zip with 611 inline ._ entries
+  expected: zip holds no AppleDouble or Finder metadata entries failed
+  actual:   FAIL <scratch>/appledouble-inline.zip: zip holds no AppleDouble or Finder metadata entries failed. Found 611, such as figma-drop.app/Contents/_CodeSignature/._CodeResources, figma-drop.a
+  caught
+A6: plugin zip with ._ entries
+  expected: zip holds no AppleDouble or Finder metadata entries failed
+  actual:   FAIL <scratch>/appledouble-plugin.zip: zip holds no AppleDouble or Finder metadata entries failed. Found 7, such as __MACOSX/, __MACOSX/figma-drop-figma-plugin/, __MACOSX/figma-drop-figm
+  caught
+A9: SIGINT while the zip is written (exit 130, partial zip: figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip)
+  expected: no zip in release-artifacts/
+  actual:   no zip in release-artifacts/
+  caught
+Every seeded defect was caught.
