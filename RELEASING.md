@@ -34,12 +34,15 @@ These are not available, because the repository holds none of the credentials th
 ## Cut a release
 
 1. Merge pull requests with Conventional Commit titles into `main`. Each merge updates the standing release PR, titled `chore(main): release <version>`.
-2. Review the release PR. Check the version in its title, the new `CHANGELOG.md` section, the version in the three `package.json` files, and `.release-please-manifest.json`.
+2. Review the release PR. Check the version in its title, the new `CHANGELOG.md` section, the version in the three `package.json` files, and `.release-please-manifest.json`. release-please leaves out a commit whose message it cannot parse, and the release run log names it. To add it back, edit the release PR body, which becomes the GitHub release notes, and `CHANGELOG.md` on its branch. Do this just before you merge, because release-please rewrites the PR on every push to `main`.
 3. Merge the release PR.
 4. Watch the **Release** run for that merge in the **Actions** tab. Its jobs run in this order:
    1. `release-please` creates the tag `v<version>` and the GitHub release with the changelog section as its notes. This job and `upload` run no repository code, and they are the only jobs with write access.
    2. `build` runs on `macos-15` with a read-only token. It checks out the tagged commit and runs `pnpm typecheck`, `pnpm test`, and `pnpm test:release`. Then it runs `pnpm app:local` and `node scripts/release-package.mjs --tag v<version>`, which writes and checks the zips and `SHA256SUMS.txt`. It stores them as the workflow artifact `release-v<version>` for 7 days.
    3. `upload` downloads that artifact and attaches the three files to the release with `gh release upload --clobber`. Then it appends the install notice to the release notes, unless the notes already contain `<!-- figma-drop-unsigned-notice -->`.
+
+   The release is public from the first job, and its assets attach a few minutes later, when `upload` finishes.
+
 5. Download the assets and check them.
 
    ```sh

@@ -58,6 +58,10 @@ function checkList(artifact) {
 
 function verifyDesktop(zipPath, version) {
   const { passed, expect, equal } = checkList(zipPath);
+  const stray = capture('zipinfo', '-1', zipPath)
+    .split('\n')
+    .filter((entry) => !entry.startsWith(`${APP_NAME}.app/`));
+  equal('zip entries outside figma-drop.app', stray.join(', '), '');
   withTempDir('figma-drop-verify-desktop-', (dir) => {
     execFileSync('ditto', ['-x', '-k', zipPath, dir]);
     equal('top entry', readdirSync(dir).join(', '), `${APP_NAME}.app`);
@@ -214,7 +218,16 @@ function main() {
   try {
     const desktopZip = join(outDir, names.desktop);
     // `ditto` keeps the framework symlinks the signature seals, which `zip` without `-y` flattens.
-    execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', builtApp, desktopZip]);
+    execFileSync('ditto', [
+      '-c',
+      '-k',
+      '--norsrc',
+      '--noextattr',
+      '--noacl',
+      '--keepParent',
+      builtApp,
+      desktopZip,
+    ]);
     const desktopChecks = verifyDesktop(desktopZip, version);
     const pluginZip = join(outDir, names.plugin);
     zipPlugin(pluginZip);
