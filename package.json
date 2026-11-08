@@ -14,8 +14,9 @@
     "lint": "vp lint --report-unused-disable-directives",
     "typecheck": "vp run -r typecheck",
     "test": "vp run -r test",
-    "release:dry-run": "pnpm app:local && node scripts/release-package.mjs --dry-run",
-    "test:release": "node --test scripts/release-artifacts.test.mjs"
+    "release:dry-run": "pnpm app:local && node scripts/dmg.mjs --setup && node scripts/release-package.mjs --dry-run",
+    "test:release": "node --test \"scripts/*.test.mjs\"",
+    "dmg:setup": "node scripts/dmg.mjs --setup"
   },
   "devDependencies": {
     "@types/node": "catalog:",
