@@ -163,3 +163,48 @@ test('isAppleMetadataEntry flags AppleDouble and Finder entries only', () => {
     assert.equal(isAppleMetadataEntry(entry), false, `keeps ${entry}`);
   }
 });
+
+const releaseWorkflow = readFileSync(join(repoDir, '.github/workflows/release.yml'), 'utf8');
+const releaseNames = artifactNames('1.2.3', { kind: 'release', tag: 'v1.2.3' });
+
+function jobText(job) {
+  const lines = releaseWorkflow.split('\n');
+  const start = lines.indexOf(`  ${job}:`);
+  assert.ok(start >= 0, `release.yml has a ${job} job`);
+  const end = lines.findIndex((line, index) => index > start && /^  \S/.test(line));
+  return lines.slice(start, end === -1 ? undefined : end).join('\n');
+}
+
+test('release.yml install notice names the release artifacts', () => {
+  const notice = jobText('upload').match(/<<NOTICE\n([\s\S]*?)\n\s*NOTICE\n/);
+  assert.ok(notice, 'the upload job writes the notice with a NOTICE heredoc');
+  const named = new Set(
+    [...notice[1].matchAll(/\\`(figma-drop-[^`\\]+\.zip)\\`/g)].map(([, name]) =>
+      name.replaceAll('${version}', '1.2.3'),
+    ),
+  );
+  assert.deepEqual(named, new Set([releaseNames.desktop, releaseNames.plugin]));
+});
+
+test('release.yml build uploads every zip and the checksums file', () => {
+  const build = jobText('build');
+  const upload = build.match(
+    /uses: actions\/upload-artifact@[\s\S]*?\n {10}path: \|\n((?: {12}.*\n)+)/,
+  );
+  assert.ok(upload, 'the build job uploads a workflow artifact with a path block');
+  const patterns = upload[1]
+    .trim()
+    .split('\n')
+    .map((line) => line.trim());
+  assert.deepEqual(patterns, [
+    'release-artifacts/*.zip',
+    `release-artifacts/${releaseNames.checksums}`,
+  ]);
+});
+
+test('release.yml names one checksums file, the one release-package.mjs writes', () => {
+  const named = new Set(releaseWorkflow.match(/SHA256SUMS[\w.-]*/g));
+  assert.deepEqual(named, new Set([releaseNames.checksums]));
+  assert.match(jobText('upload'), new RegExp(`sha256sum -c ${releaseNames.checksums}`));
+  assert.match(jobText('upload'), new RegExp(`--ignore-missing ${releaseNames.checksums}`));
+});

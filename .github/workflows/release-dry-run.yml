@@ -51,14 +51,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: true
-          run-install: true
+          package-manager-cache: false
+      # Corepack installs the pnpm that `packageManager` pins.
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:release
       - run: pnpm release:dry-run
       - run: ls -la release-artifacts
       - run: cat release-artifacts/release-plan.json
+      - name: Package in release mode, uploading nothing
+        run: |
+          node scripts/release-package.mjs --tag "v$(node -p 'require("./package.json").version')"
+          ls -la release-artifacts
