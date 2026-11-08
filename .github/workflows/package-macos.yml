@@ -62,10 +62,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # dmgbuild installs from PyPI, so it runs before any secret is in reach, and before the
+      # release tests so their DMG integration tests run instead of skipping.
+      - run: node scripts/dmg.mjs --setup
       - run: pnpm test:release
       - run: pnpm build
-      # dmgbuild installs from PyPI, so it runs before any secret is in reach.
-      - run: node scripts/dmg.mjs --setup
       # The only step that sees the secrets. Later steps get FIGMA_DROP_SIGN_IDENTITY,
       # FIGMA_DROP_NOTARY_PROFILE, and FIGMA_DROP_NOTARY_KEYCHAIN, and never an Apple password.
       - name: Import the signing and notary credentials
@@ -89,9 +90,12 @@ jobs:
       # kept with the notary logs.
       - name: Record the signing and notarization evidence
         run: |
-          for dmg in release-artifacts/*.dmg; do
-            bash scripts/dmg-evidence.sh "${dmg}" > release-artifacts/notary/dmg-evidence.txt
-          done
+          dmgs=(release-artifacts/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ] || [ ! -f "${dmgs[0]}" ]; then
+            echo "Expected exactly one DMG in release-artifacts, found ${#dmgs[@]}."
+            exit 1
+          fi
+          bash scripts/dmg-evidence.sh "${dmgs[0]}" > release-artifacts/notary/dmg-evidence.txt
           {
             echo '### DMG evidence'
             echo '```text'

@@ -1,3 +1,5 @@
+// Runs the real import script against throwaway keychains. It never touches the login keychain
+// or calls Apple, but it does set the user keychain search list and restores it after each case.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {

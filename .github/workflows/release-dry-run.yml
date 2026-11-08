@@ -60,8 +60,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm test:release
+      # Before the release tests, so their DMG integration tests run instead of skipping.
       - run: node scripts/dmg.mjs --setup
+      - run: pnpm test:release
       - run: pnpm release:dry-run
       - run: ls -la release-artifacts
       - run: cat release-artifacts/release-plan.json

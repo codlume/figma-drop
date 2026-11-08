@@ -14,6 +14,6 @@ This folder holds the evidence that the release pipeline packages both products 
 
 The two workflow scripts need the `yaml` package, which the repository does not install. To rerun them, copy both into a scratch folder, run `npm install yaml@2.6.1` there, and run `node check-workflows.mjs <repo>` and `node mutate.mjs <repo>`.
 
-`local-proof.txt` was recorded before the workflow commit `2a67d11`, so two `release.yml` tests in its `pnpm test:release` fail. They expect the DMG that `release.yml` did not name yet. They pass at head `a945be2`.
+`local-proof.txt` was recorded at the final implementation head. Its `pnpm test:release` passes all 61 tests, and its DMG is the one `proof/dmg/adhoc-dmg-evidence.txt` describes.
 
 `spctl` rejects the extracted app, as it rejects every ad-hoc build. A release build is signed with a Developer ID and notarized instead, as the signing modes in `RELEASING.md` describe. Neither the release workflow nor the **Package macOS app** workflow has run the DMG build. Only a merged release PR on `main` starts the first, and a maintainer dispatches the second on `main`.

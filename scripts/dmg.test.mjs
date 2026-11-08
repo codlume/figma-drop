@@ -126,6 +126,11 @@ function attached(dmg, flags, use) {
   }
 }
 
+// A skip in CI hides a regression, so CI must set up dmgbuild before the release tests.
+if (skip && process.env.CI && process.platform === 'darwin') {
+  test('CI runs the DMG integration tests', () => assert.fail(skip));
+}
+
 describe('ad-hoc DMG from a synthetic app', { skip }, () => {
   let dir;
   let fixture;
