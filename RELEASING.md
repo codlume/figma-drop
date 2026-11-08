@@ -174,7 +174,7 @@ gh workflow run package-macos.yml --ref main
 
 Without a tag, the `package` job runs `release-package.mjs --dry-run`. It signs, notarizes, and staples the app and the DMG, verifies them, and records the evidence. It stores the workflow artifact `package-test-<run_id>` for 3 days. The artifact holds `figma-drop-<version>-mac-arm64-dry-run.dmg`, the dry-run plugin zip, `SHA256SUMS-dry-run.txt`, `release-plan.json`, and the `notary/` folder with both notary logs and `dmg-evidence.txt`. The run touches no release, tag, or release PR, and its token is read-only. Each run makes two notary submissions.
 
-The workflow cannot run from another branch. The `release` environment accepts only `main`, so GitHub refuses the job before it starts.
+The workflow cannot run from another branch, for two reasons. GitHub dispatches only a workflow that exists on `main`, and refuses with HTTP 404 otherwise. The `release` environment also accepts only `main`, so a job from any other ref cannot read its secrets. `proof/dmg/premerge-blocker.txt` records both.
 
 ## Run a dry run
 

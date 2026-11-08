@@ -1,11 +1,12 @@
 # DMG proof
 
-This folder shows the drag-to-install DMG that `scripts/release-package.mjs` builds. Both files come from a local ad-hoc dry run, `pnpm release:dry-run`, on an Apple silicon Mac. Neither file comes from a signed DMG.
+This folder shows the drag-to-install DMG that `scripts/release-package.mjs` builds. The screenshot and the evidence come from a local ad-hoc dry run, `pnpm release:dry-run`, on an Apple silicon Mac. Neither comes from a signed DMG.
 
 | File                     | What it shows                                                                                                                                                                                                                                                                                                                              |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `finder-window.png`      | The Finder window of `figma-drop-<version>-mac-arm64-unsigned-dry-run.dmg`, mounted read-only. The app is on the left and the `Applications` link on the right, with an arrow between them and the hint "Drag figma-drop to Applications" below. No toolbar, sidebar, or status bar shows. The app icon is still Electron's default icon.  |
 | `adhoc-dmg-evidence.txt` | The sanitized output of `bash scripts/dmg-evidence.sh` on the same dry-run DMG, version 0.1.1, whose SHA-256 `b5ae92c5...` matches `proof/release/local-proof.txt`. It shows `UDZO`, a valid `hdiutil verify`, a passing `codesign --verify --deep --strict` on the embedded app, the volume entries, and `Applications -> /Applications`. |
+| `premerge-blocker.txt`   | Why the signed package test cannot run from a pull request branch. GitHub refuses to dispatch `package-macos.yml` before it exists on `main`, and the `release` environment accepts only `main`. It also lists the environment's secret names, never their values.                                                                         |
 
 The signed DMG has the same layout, because `apps/desktop/dmg/layout.json` and the background in that folder set it in both signing modes. Only the signatures and tickets differ.
 
