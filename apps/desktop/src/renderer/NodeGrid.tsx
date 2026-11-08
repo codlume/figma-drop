@@ -16,7 +16,7 @@ const styles = stylex.create({
   grid: {
     display: 'grid',
     gap: space.md,
-    gridTemplateColumns: 'repeat(auto-fill, minmax(124px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
     padding: { default: space.lg, '@media (max-width: 960px)': space.md },
   },
   card: {

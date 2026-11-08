@@ -22,6 +22,19 @@ beforeAll(() => {
     const previous = opener.get(this);
     if (previous instanceof HTMLElement) previous.focus();
   };
+  // jsdom does no layout, so every observed element reports an 800x600 content box.
+  globalThis.ResizeObserver = class {
+    readonly #callback: ResizeObserverCallback;
+    constructor(callback: ResizeObserverCallback) {
+      this.#callback = callback;
+    }
+    observe(target: Element) {
+      const contentRect = DOMRectReadOnly.fromRect({ width: 800, height: 600 });
+      this.#callback([{ target, contentRect } as ResizeObserverEntry], this);
+    }
+    unobserve() {}
+    disconnect() {}
+  };
 });
 
 afterEach(() => {
@@ -204,6 +217,170 @@ describe('previews', () => {
     expect(document.querySelector('script, iframe, object, embed, webview')).toBeNull();
     expect(document.body.innerHTML).not.toContain('<script');
     expect(document.title).toBe('before');
+  });
+});
+
+// A 750x1624 frame in the stubbed 800x600 stage fits at 600 / 1624, shown as 37%.
+function loadTallFrame(dialog: HTMLElement) {
+  const image = within(dialog).getByRole('img');
+  Object.defineProperty(image, 'naturalWidth', { value: 750 });
+  Object.defineProperty(image, 'naturalHeight', { value: 1624 });
+  fireEvent.load(image);
+}
+
+describe('image viewer', () => {
+  const opener = () => within(details()).getByRole('button', { name: 'Open image viewer' });
+  const heroViewer = () =>
+    screen.getByRole('dialog', { name: `Preview of ${name('Hero banner')}` });
+  const control = (label: string) => within(heroViewer()).getByRole('button', { name: label });
+  const readout = () => within(heroViewer()).getByRole('status');
+
+  async function openViewer(user: ReturnType<typeof userEvent.setup>) {
+    await openHero(user);
+    await user.click(opener());
+    const dialog = heroViewer();
+    loadTallFrame(dialog);
+    return dialog;
+  }
+
+  it('opens on the stage in fit mode', async () => {
+    const { user } = start();
+    const dialog = await openViewer(user);
+    expect(within(dialog).getByRole('group', { name: 'Image, scroll to pan' })).toHaveFocus();
+    expect(control('Fit')).toHaveAttribute('aria-pressed', 'true');
+    expect(control('100%')).toHaveAttribute('aria-pressed', 'false');
+    expect(readout()).toHaveTextContent('37%');
+  });
+
+  it('switches between fit and actual size', async () => {
+    const { user } = start();
+    await openViewer(user);
+    await user.click(control('100%'));
+    expect(control('100%')).toHaveAttribute('aria-pressed', 'true');
+    expect(control('Fit')).toHaveAttribute('aria-pressed', 'false');
+    expect(readout()).toHaveTextContent('100%');
+    await user.click(control('Fit'));
+    expect(control('Fit')).toHaveAttribute('aria-pressed', 'true');
+    expect(readout()).toHaveTextContent('37%');
+  });
+
+  it('steps along the zoom ladder from buttons and keys', async () => {
+    const { user } = start();
+    await openViewer(user);
+    await user.click(control('Zoom in'));
+    expect(readout()).toHaveTextContent('50%');
+    expect(control('Fit')).toHaveAttribute('aria-pressed', 'false');
+    await user.click(control('Zoom in'));
+    expect(readout()).toHaveTextContent('67%');
+    await user.click(control('Zoom out'));
+    expect(readout()).toHaveTextContent('50%');
+    await user.keyboard('+');
+    expect(readout()).toHaveTextContent('67%');
+    await user.keyboard('-');
+    expect(readout()).toHaveTextContent('50%');
+    await user.keyboard('1');
+    expect(readout()).toHaveTextContent('100%');
+    await user.keyboard('0');
+    expect(readout()).toHaveTextContent('37%');
+    expect(control('Fit')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('stops zooming in at the top of the ladder', async () => {
+    const { user } = start();
+    await openViewer(user);
+    await user.keyboard('1');
+    await user.keyboard('======');
+    expect(readout()).toHaveTextContent('800%');
+    expect(control('Zoom in')).toHaveAttribute('aria-disabled', 'true');
+    await user.click(control('Zoom in'));
+    expect(readout()).toHaveTextContent('800%');
+  });
+
+  it("closes on the dialog's cancel event, which Escape fires, and returns focus", async () => {
+    const { user } = start();
+    const dialog = await openViewer(user);
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(opener()).toHaveFocus();
+  });
+
+  it('closes on a backdrop click, but not on a click inside', async () => {
+    const { user } = start();
+    const dialog = await openViewer(user);
+    await user.click(within(dialog).getByRole('group', { name: 'Image, scroll to pan' }));
+    await user.click(within(dialog).getByRole('heading', { name: name('Hero banner') }));
+    expect(heroViewer()).toBeVisible();
+    await user.click(dialog);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(opener()).toHaveFocus();
+  });
+
+  it('opens fresh in fit mode each time', async () => {
+    const { user } = start();
+    await openHero(user);
+    for (let round = 0; round < 3; round += 1) {
+      await user.click(opener());
+      loadTallFrame(heroViewer());
+      expect(control('Fit')).toHaveAttribute('aria-pressed', 'true');
+      expect(readout()).toHaveTextContent('37%');
+      await user.click(control('100%'));
+      await user.click(control('Close'));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(opener()).toHaveFocus();
+    }
+  });
+
+  it('shows the older revision picked in history', async () => {
+    const { user } = start();
+    const history = await openHero(user);
+    await user.click(within(history).getAllByRole('option')[1]!);
+    const olderSource = within(details()).getByRole('img').getAttribute('src');
+    await user.click(opener());
+    expect(within(heroViewer()).getByRole('img')).toHaveAttribute('src', olderSource);
+  });
+
+  it('closes rather than go stale when main moves the selection, and stays closed', async () => {
+    const { control: bridgeControl, user } = start();
+    await openViewer(user);
+    bridgeControl.focusExport({ kind: 'revision', revisionId: revision('arrow-upper') });
+    await screen.findByRole('heading', { level: 2, name: name('Icon/Arrow') });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await openHero(user);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes and returns focus to the opener when a new revision of the open node arrives', async () => {
+    const { control: bridgeControl, user } = start();
+    bridgeControl.pushExport();
+    await openProject(user, /Incoming exports/);
+    await openNode(user, name('Pushed node'));
+    await user.click(opener());
+    expect(screen.getByRole('dialog')).toBeVisible();
+    bridgeControl.pushExport();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(opener()).toHaveFocus();
+  });
+
+  it('reports an image that fails to load and offers no zoom', async () => {
+    const { user } = start();
+    await openHero(user);
+    await user.click(opener());
+    fireEvent.error(within(heroViewer()).getByRole('img'));
+    expect(within(heroViewer()).getByText('Preview could not be loaded')).toBeVisible();
+    expect(readout()).toBeEmptyDOMElement();
+    expect(control('Zoom in')).toHaveAttribute('aria-disabled', 'true');
+    expect(control('Zoom out')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('offers no viewer for a damaged, missing, or failed preview', async () => {
+    const { user } = start();
+    await openNode(user, name('Damaged latest revision'));
+    expect(within(details()).queryByRole('button', { name: 'Open image viewer' })).toBeNull();
+    await openNode(user, name('HTML-only export'));
+    expect(within(details()).queryByRole('button', { name: 'Open image viewer' })).toBeNull();
+    await openHero(user);
+    fireEvent.error(within(opener()).getByRole('img'));
+    expect(within(details()).queryByRole('button', { name: 'Open image viewer' })).toBeNull();
   });
 });
 
@@ -672,6 +849,8 @@ describe('keyboard', () => {
     await user.keyboard('{ArrowLeft}{ArrowRight}');
     expect(cards.at(-1)).toHaveFocus();
 
+    await user.tab();
+    expect(actionButton('Open image viewer')).toHaveFocus();
     await user.tab();
     expect(actionButton('Reveal in Finder')).toHaveFocus();
     await user.tab();

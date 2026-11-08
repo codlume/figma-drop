@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import type { Ref } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { ActionBar } from './ActionBar.tsx';
 import type { RevisionId } from './bridge.ts';
 import { formatDate } from './format.ts';
+import { ImageViewer } from './ImageViewer.tsx';
 import type { Detail } from './libraryView.ts';
 import { PreviewImage } from './PreviewImage.tsx';
 import { RevisionHistory } from './RevisionHistory.tsx';
@@ -79,6 +80,21 @@ export function DetailPane({
   readonly titleRef: Ref<HTMLHeadingElement>;
   readonly onSelectRevision: (id: RevisionId) => void;
 }) {
+  const [viewerFor, setViewerFor] = useState<RevisionId | null>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  // Main can move the selection while the viewer is open. Closing beats showing a stale image.
+  if (viewerFor !== null && viewerFor !== detail.selected.id) setViewerFor(null);
+  const preview = detail.selected.preview;
+  const viewing = viewerFor === detail.selected.id && preview !== null;
+  const wasViewing = useRef(false);
+  useEffect(() => {
+    // Unmounting an open dialog, as a new revision does, drops focus to the body.
+    if (wasViewing.current && !viewing && document.activeElement === document.body) {
+      opener.current?.focus();
+    }
+    wasViewing.current = viewing;
+  }, [viewing]);
+
   return (
     <aside {...stylex.props(styles.pane)} aria-label="Export details">
       <DragStrip />
@@ -88,6 +104,8 @@ export function DetailPane({
             revision={detail.selected}
             alt={`Preview of ${detail.title}`}
             size="large"
+            openerRef={opener}
+            onOpen={() => setViewerFor(detail.selected.id)}
           />
         </div>
         <h2 ref={titleRef} tabIndex={-1} {...stylex.props(styles.title, shared.focusRing)}>
@@ -113,6 +131,9 @@ export function DetailPane({
           />
         )}
       </div>
+      {viewing && (
+        <ImageViewer src={preview.url} title={detail.title} onClose={() => setViewerFor(null)} />
+      )}
     </aside>
   );
 }
