@@ -1,0 +1,20 @@
+# Why the signed package test cannot run before merge
+
+Checked 2026-11-08T19:55Z against codlume/figma-drop. Secret values were never read; the secrets listing returns names only.
+
+$ gh workflow run package-macos.yml -R codlume/figma-drop --ref feat/notarized-drag-install-dmg
+HTTP 404: workflow package-macos.yml not found on the default branch (https://api.github.com/repos/codlume/figma-drop/actions/workflows/package-macos.yml)
+[exit 1]
+
+$ gh api repos/codlume/figma-drop/environments/release --jq '{name, protection_rules: [.protection_rules[].type], deployment_branch_policy}'
+{"deployment_branch_policy":{"custom_branch_policies":true,"protected_branches":false},"name":"release","protection_rules":["branch_policy"]}
+
+$ gh api repos/codlume/figma-drop/environments/release/deployment-branch-policies --jq '.branch_policies[] | {name, type}'
+{"name":"main","type":"branch"}
+
+$ gh api repos/codlume/figma-drop/environments/release/secrets --jq '.secrets[].name'
+APPLE_APP_SPECIFIC_PASSWORD
+APPLE_ID
+APPLE_TEAM_ID
+MACOS_CERTIFICATE_P12_BASE64
+MACOS_CERTIFICATE_PASSWORD
