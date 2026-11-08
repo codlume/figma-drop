@@ -24,7 +24,7 @@ The release workflow also appends an install notice to the release notes. It say
 
 A push or tag that `github.token` creates starts no workflow. So the tag starts no workflow, and the release workflow builds the assets in the same run that creates the tag. A pull request that `github.token` opens gets `pull_request` runs that wait for approval. The **Release dry run** on the release PR waits that way. A maintainer may approve it. Its token is read-only, so approving is safe, and its `package` job packages the bumped version.
 
-release-please marks the open release PR with the `autorelease: pending` label and the released one with `autorelease: tagged`. It releases only a merged PR that carries `autorelease: pending`. Labels go through the issues API, so the `release-please` and `release-pr` jobs hold `issues: write`. The token creates both labels the first time it uses them.
+release-please marks the open release PR with the `autorelease: pending` label and the released one with `autorelease: tagged`. It releases only a merged PR that carries `autorelease: pending`. Labels go through the issues API, so the `release-please` and `release-pr` jobs hold `issues: write`. The repository has neither label yet. GitHub creates a missing label when a token with `issues: write` adds it, so the first run should create both. If the first `release-pr` run fails on a label, a maintainer creates both with `gh label create "autorelease: pending"` and `gh label create "autorelease: tagged"` and reruns the failed job.
 
 These are not available, because the repository holds none of the credentials they need:
 
