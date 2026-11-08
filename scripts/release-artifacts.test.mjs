@@ -386,6 +386,81 @@ test('entitlementProblems allows only allow-jit, and only on app bundles', () =>
   }
 });
 
+test('entitlementProblems expects allow-jit on a bundle main executable, which shares its signature', () => {
+  const jit = { 'com.apple.security.cs.allow-jit': true };
+  const helpers = [
+    'Electron Helper',
+    ...['GPU', 'Plugin', 'Renderer'].map((n) => `Electron Helper (${n})`),
+  ];
+  const bundles = [
+    'figma-drop.app',
+    ...helpers.map((name) => `figma-drop.app/Contents/Frameworks/${name}.app`),
+  ];
+  const mainExecutables = [
+    'figma-drop.app/Contents/MacOS/figma-drop',
+    ...helpers.map(
+      (name) => `figma-drop.app/Contents/Frameworks/${name}.app/Contents/MacOS/${name}`,
+    ),
+  ];
+  const framework = 'figma-drop.app/Contents/Frameworks/Electron Framework.framework';
+  const frameworkBinary = `${framework}/Versions/A/Electron Framework`;
+  const dylib = `${framework}/Versions/A/Libraries/libffmpeg.dylib`;
+  const crashpad = `${framework}/Versions/A/Helpers/chrome_crashpad_handler`;
+  const shipIt =
+    'figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt';
+  assert.deepEqual(
+    entitlementProblems([
+      ...mainExecutables.map((path) => ({ path, app: false, entitlements: jit })),
+      ...bundles.map((path) => ({ path, app: true, entitlements: jit })),
+      ...[framework, frameworkBinary, dylib, crashpad, shipIt].map((path) => ({
+        path,
+        app: false,
+        entitlements: {},
+      })),
+    ]),
+    [],
+  );
+
+  const mainExecutable = mainExecutables[1];
+  const nonMain = 'figma-drop.app/Contents/MacOS/sub/x';
+  const forbidden = [
+    [{ path: dylib, app: false, entitlements: jit }, /libffmpeg\.dylib has .*expected none/],
+    [
+      { path: frameworkBinary, app: false, entitlements: jit },
+      /Electron Framework has .*expected none/,
+    ],
+    [
+      { path: crashpad, app: false, entitlements: jit },
+      /chrome_crashpad_handler has .*expected none/,
+    ],
+    [{ path: shipIt, app: false, entitlements: jit }, /ShipIt has .*expected none/],
+    [{ path: nonMain, app: false, entitlements: jit }, /sub\/x has .*expected none/],
+    [
+      { path: mainExecutable, app: false, entitlements: {} },
+      /MacOS\/Electron Helper has \{\}.*main executable/,
+    ],
+    ...[
+      'com.apple.security.get-task-allow',
+      'com.apple.security.cs.disable-library-validation',
+      'com.apple.security.cs.allow-unsigned-executable-memory',
+    ].flatMap((key) => [
+      [
+        { path: mainExecutable, app: false, entitlements: { ...jit, [key]: true } },
+        new RegExp(`${key}.*main executable`),
+      ],
+      [
+        { path: bundles[1], app: true, entitlements: { ...jit, [key]: true } },
+        new RegExp(`${key}.*\\.app bundle`),
+      ],
+    ]),
+  ];
+  for (const [item, problem] of forbidden) {
+    const problems = entitlementProblems([item]);
+    assert.equal(problems.length, 1, `${item.path} ${JSON.stringify(item.entitlements)}`);
+    assert.match(problems[0], problem);
+  }
+});
+
 test('parseReleaseMode accepts a dry run and both tag forms', () => {
   assert.deepEqual(parseReleaseMode(['--dry-run']), { kind: 'dry-run' });
   assert.deepEqual(parseReleaseMode(['--tag', 'v1.2.3']), { kind: 'release', tag: 'v1.2.3' });

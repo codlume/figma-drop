@@ -47,7 +47,7 @@ It then prompts for the app-specific password. Type it at the prompt, and never 
 
 A `developer-id` build runs these steps in order.
 
-1. `package-local.mjs` signs the app from the inside out. Each Mach-O file, framework, and `.app` in the bundle gets its own signature, deepest first, with the hardened runtime and a secure timestamp. Each `.app`, which is the app and its four Electron helpers, gets `apps/desktop/entitlements.mac.plist`. That file holds only `com.apple.security.cs.allow-jit`. Nothing else gets an entitlement, and the script reads back every signature and fails on any other entitlement.
+1. `package-local.mjs` signs the app from the inside out. Each Mach-O file, framework, and `.app` in the bundle gets its own signature, deepest first, with the hardened runtime and a secure timestamp. Each `.app`, which is the app and its four Electron helpers, gets `apps/desktop/entitlements.mac.plist`. That file holds only `com.apple.security.cs.allow-jit`. codesign stores a bundle's signature in its main executable, so each `.app` and its `Contents/MacOS/<exe>` share one signature, which carries exactly that entitlement. All other code carries none. The script reads back every signature and fails on any other entitlements.
 2. It zips the app with `ditto` and submits the zip with `xcrun notarytool submit --wait`.
 3. It always fetches the notary log, also when Apple accepts the submission, and saves it as `apps/desktop/release/notary-log-app.json`. It fails unless the status is `Accepted` and the log holds no issue other than a warning. It prints each warning.
 4. It staples the ticket to the app, with up to five attempts, and runs `xcrun stapler validate` on the app.

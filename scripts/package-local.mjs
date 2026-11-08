@@ -1,16 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import {
-  closeSync,
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  openSync,
-  readdirSync,
-  readFileSync,
-  readSync,
-  renameSync,
-  rmSync,
-} from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -18,11 +7,15 @@ import { fileURLToPath } from 'node:url';
 
 import { notarize } from './notary.mjs';
 import { NOTARY_LOGS } from './release-artifacts.mjs';
-import { entitlementProblems, readEntitlements, signingFromEnv } from './signing.mjs';
+import {
+  entitlementProblems,
+  readEntitlements,
+  signInsideOut,
+  signingFromEnv,
+} from './signing.mjs';
 
 const APP_NAME = 'figma-drop';
 const BUNDLE_ID = 'com.codlume.figma-drop';
-const MACH_O_MAGICS = new Set([0xcffaedfe, 0xcefaedfe, 0xfeedfacf, 0xfeedface, 0xcafebabe]);
 
 const repoDir = fileURLToPath(new URL('..', import.meta.url));
 const desktopDir = join(repoDir, 'apps/desktop');
@@ -81,7 +74,7 @@ if (signing.mode === 'ad-hoc') {
   run('codesign', '--force', '--deep', '--sign', '-', stagedApp);
   run('codesign', '--verify', '--deep', '--strict', stagedApp);
 } else {
-  const code = signInsideOut(stagedApp, signing.identity);
+  const code = signInsideOut(stagedApp, signing.identity, entitlements);
   const problems = entitlementProblems(
     code.map(({ path, app }) => ({ path, app, entitlements: readEntitlements(path) })),
   );
@@ -93,48 +86,6 @@ if (signing.mode === 'ad-hoc') {
 renameSync(stagedApp, finalApp);
 rmSync(stagingDir, { recursive: true, force: true });
 console.log(`Built ${finalApp}`);
-
-// `codesign --deep` skips Mach-O files outside the standard nested-code locations, such as
-// Squirrel's ShipIt and Electron's bundled dylibs, and notarization rejects them unsigned. So each
-// one is signed on its own, deepest first, and every bundle after everything inside it.
-function signInsideOut(app, identity) {
-  const nested = readdirSync(app, { recursive: true, withFileTypes: true })
-    .filter((entry) =>
-      entry.isDirectory()
-        ? /\.(app|framework)$/.test(entry.name)
-        : entry.isFile() && isMachO(join(entry.parentPath, entry.name)),
-    )
-    .map((entry) => ({
-      path: join(entry.parentPath, entry.name),
-      app: entry.name.endsWith('.app'),
-    }))
-    .toSorted((a, b) => b.path.split('/').length - a.path.split('/').length);
-  const code = [...nested, { path: app, app: true }];
-  for (const { path, app: isApp } of code) {
-    run(
-      'codesign',
-      '--force',
-      '--options',
-      'runtime',
-      '--timestamp',
-      ...(isApp ? ['--entitlements', entitlements] : []),
-      '--sign',
-      identity,
-      path,
-    );
-  }
-  return code;
-}
-
-function isMachO(path) {
-  const header = Buffer.alloc(4);
-  const fd = openSync(path, 'r');
-  try {
-    return readSync(fd, header, 0, 4, 0) === 4 && MACH_O_MAGICS.has(header.readUInt32BE(0));
-  } finally {
-    closeSync(fd);
-  }
-}
 
 // Apple notarizes a zip of the app. The ticket is stapled to the app itself.
 function notarizeApp(app, notary) {

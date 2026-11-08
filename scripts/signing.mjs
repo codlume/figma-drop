@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { closeSync, openSync, readdirSync, readSync } from 'node:fs';
+import { join } from 'node:path';
 
 // A Developer ID build is always notarized and stapled, so "signed but not notarized" has no mode.
 export const SIGNING_MODES = {
@@ -12,13 +14,15 @@ export const SIGNING_MODES = {
   },
 };
 
+export const MACH_O_MAGICS = new Set([0xcffaedfe, 0xcefaedfe, 0xfeedfacf, 0xfeedface, 0xcafebabe]);
+
 export const SIGNING_VARIABLES = {
   identity: 'FIGMA_DROP_SIGN_IDENTITY',
   profile: 'FIGMA_DROP_NOTARY_PROFILE',
   keychain: 'FIGMA_DROP_NOTARY_KEYCHAIN',
 };
 
-// The only entitlement any signed bundle carries. Plain executables, dylibs, and frameworks get
+// The only entitlement any signed bundle carries, and so its main executable too. Other code gets
 // none, and nothing gets get-task-allow, which notarization rejects.
 export const APP_ENTITLEMENTS = { 'com.apple.security.cs.allow-jit': true };
 
@@ -122,14 +126,77 @@ export function readEntitlements(path) {
 
 const canonical = (entitlements) => JSON.stringify(Object.entries(entitlements).toSorted());
 
+// codesign treats a bundle's main executable as the bundle itself and stores the bundle's
+// signature there, so both paths report the same entitlements. @electron/osx-sign matches main
+// executables with the same path pattern, though only to order signing.
+export const isBundleMainExecutable = (path) => /\.app\/Contents\/MacOS\/[^/]+$/.test(path);
+
+function expectedEntitlements({ path, app }) {
+  if (app) return { entitlements: APP_ENTITLEMENTS, rule: 'an .app bundle' };
+  if (isBundleMainExecutable(path)) {
+    return {
+      entitlements: APP_ENTITLEMENTS,
+      rule: "the main executable of an .app bundle, which carries the bundle's signature",
+    };
+  }
+  return { entitlements: {}, rule: 'code that is neither an .app bundle nor its main executable' };
+}
+
 // Each problem with the entitlements of signed code. `code` lists {path, app, entitlements}.
 export function entitlementProblems(code) {
-  return code
-    .filter(
-      ({ app, entitlements }) => canonical(entitlements) !== canonical(app ? APP_ENTITLEMENTS : {}),
+  return code.flatMap((item) => {
+    const expected = expectedEntitlements(item);
+    if (canonical(item.entitlements) === canonical(expected.entitlements)) return [];
+    const want = Object.keys(expected.entitlements).length
+      ? JSON.stringify(expected.entitlements)
+      : 'none';
+    return [
+      `${item.path} has ${JSON.stringify(item.entitlements)}, expected ${want} for ${expected.rule}.`,
+    ];
+  });
+}
+
+// `codesign --deep` skips Mach-O files outside the standard nested-code locations, such as
+// Squirrel's ShipIt and Electron's bundled dylibs, and notarization rejects them unsigned. So each
+// one is signed on its own, deepest first, and every bundle after everything inside it.
+export function signInsideOut(app, identity, entitlementsPath) {
+  const nested = readdirSync(app, { recursive: true, withFileTypes: true })
+    .filter((entry) =>
+      entry.isDirectory()
+        ? /\.(app|framework)$/.test(entry.name)
+        : entry.isFile() && isMachO(join(entry.parentPath, entry.name)),
     )
-    .map(
-      ({ path, app, entitlements }) =>
-        `${path} has ${JSON.stringify(entitlements)}, expected ${app ? JSON.stringify(APP_ENTITLEMENTS) : 'none'}.`,
+    .map((entry) => ({
+      path: join(entry.parentPath, entry.name),
+      app: entry.name.endsWith('.app'),
+    }))
+    .toSorted((a, b) => b.path.split('/').length - a.path.split('/').length);
+  const code = [...nested, { path: app, app: true }];
+  for (const { path, app: isApp } of code) {
+    execFileSync(
+      'codesign',
+      [
+        '--force',
+        '--options',
+        'runtime',
+        '--timestamp',
+        ...(isApp ? ['--entitlements', entitlementsPath] : []),
+        '--sign',
+        identity,
+        path,
+      ],
+      { stdio: 'inherit' },
     );
+  }
+  return code;
+}
+
+export function isMachO(path) {
+  const header = Buffer.alloc(4);
+  const fd = openSync(path, 'r');
+  try {
+    return readSync(fd, header, 0, 4, 0) === 4 && MACH_O_MAGICS.has(header.readUInt32BE(0));
+  } finally {
+    closeSync(fd);
+  }
 }
