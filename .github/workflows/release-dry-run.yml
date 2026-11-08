@@ -61,6 +61,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:release
+      - run: node scripts/dmg.mjs --setup
       - run: pnpm release:dry-run
       - run: ls -la release-artifacts
       - run: cat release-artifacts/release-plan.json

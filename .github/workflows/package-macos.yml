@@ -1,0 +1,121 @@
+name: Package macOS app
+
+# Release calls this with a tag and stores the release files for its upload job. A manual dispatch
+# packages the dispatched commit, signed and notarized, as a dry run that publishes nothing.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag, such as v1.2.3. Without it, the run is a dry run.
+        type: string
+        required: false
+        default: ''
+      sha:
+        description: The commit to package. Without it, the run packages the triggering commit.
+        type: string
+        required: false
+        default: ''
+    # The values live in the `release` environment. A caller passes each by name, and a name it
+    # leaves out would resolve to an empty string.
+    secrets:
+      MACOS_CERTIFICATE_P12_BASE64:
+        required: true
+      MACOS_CERTIFICATE_PASSWORD:
+        required: true
+      APPLE_ID:
+        required: true
+      APPLE_APP_SPECIFIC_PASSWORD:
+        required: true
+      APPLE_TEAM_ID:
+        required: true
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  package:
+    runs-on: macos-15
+    # Two notarizations, the app and the DMG, each wait on Apple.
+    timeout-minutes: 90
+    # The signing and notary secrets live in this environment, which only `main` may deploy to.
+    environment: release
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      # Corepack installs the pnpm that `packageManager` pins.
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:release
+      - run: pnpm build
+      # dmgbuild installs from PyPI, so it runs before any secret is in reach.
+      - run: node scripts/dmg.mjs --setup
+      # The only step that sees the secrets. Later steps get FIGMA_DROP_SIGN_IDENTITY,
+      # FIGMA_DROP_NOTARY_PROFILE, and FIGMA_DROP_NOTARY_KEYCHAIN, and never an Apple password.
+      - name: Import the signing and notary credentials
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bash scripts/ci-import-signing.sh
+      - name: Sign, notarize, and staple the app
+        run: node scripts/package-local.mjs
+      - name: Build, sign, notarize, and staple the DMG
+        run: |
+          if [ -n "${TAG}" ]; then
+            node scripts/release-package.mjs --tag "${TAG}"
+          else
+            node scripts/release-package.mjs --dry-run
+          fi
+      - name: Delete the signing keychain
+        if: always()
+        run: bash scripts/ci-import-signing.sh --cleanup
+      - id: version
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "${GITHUB_OUTPUT}"
+      - if: inputs.tag != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ inputs.tag }}
+          path: |
+            release-artifacts/figma-drop-${{ steps.version.outputs.version }}-mac-arm64.dmg
+            release-artifacts/figma-drop-figma-plugin-${{ steps.version.outputs.version }}.zip
+            release-artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+      - if: inputs.tag != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: notary-logs-${{ inputs.tag }}
+          path: release-artifacts/notary/
+          if-no-files-found: error
+          retention-days: 7
+      - if: inputs.tag == ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-test-${{ github.run_id }}
+          path: |
+            release-artifacts/figma-drop-${{ steps.version.outputs.version }}-mac-arm64-dry-run.dmg
+            release-artifacts/figma-drop-figma-plugin-${{ steps.version.outputs.version }}-dry-run.zip
+            release-artifacts/SHA256SUMS-dry-run.txt
+            release-artifacts/release-plan.json
+            release-artifacts/notary/
+          if-no-files-found: error
+          retention-days: 3
