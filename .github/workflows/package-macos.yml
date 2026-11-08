@@ -85,6 +85,19 @@ jobs:
           else
             node scripts/release-package.mjs --dry-run
           fi
+      # Raw codesign, spctl, stapler, and hdiutil output for the final DMG and the app inside it,
+      # kept with the notary logs.
+      - name: Record the signing and notarization evidence
+        run: |
+          for dmg in release-artifacts/*.dmg; do
+            bash scripts/dmg-evidence.sh "${dmg}" > release-artifacts/notary/dmg-evidence.txt
+          done
+          {
+            echo '### DMG evidence'
+            echo '```text'
+            cat release-artifacts/notary/dmg-evidence.txt
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
       - name: Delete the signing keychain
         if: always()
         run: bash scripts/ci-import-signing.sh --cleanup
