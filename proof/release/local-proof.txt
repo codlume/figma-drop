@@ -1,0 +1,269 @@
+head 01ac0be93e5e4088c23138dd850b85222127266c, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
+
+$ pnpm test:release
+$ node --test scripts/release-artifacts.test.mjs
+✔ release-please bumps every app package.json exactly once (1.221333ms)
+✔ readReleaseVersion returns the release-please manifest version (0.511375ms)
+✔ readReleaseVersion names the package whose version disagrees (2.037ms)
+✔ artifactNames for a release (0.08625ms)
+✔ artifactNames for a dry run mark every name (0.121375ms)
+✔ parseReleaseMode accepts a dry run and both tag forms (0.48925ms)
+✔ parseReleaseMode rejects anything but one mode (0.219042ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.387291
+exit=0
+
+$ node scripts/release-package.mjs
+Pass --dry-run or --tag.
+Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z
+exit=1
+
+$ node scripts/release-package.mjs --dry-run --tag v0.0.0
+Pass --dry-run or --tag, not both.
+Usage: node scripts/release-package.mjs --dry-run | --tag vX.Y.Z
+exit=1
+
+$ node scripts/release-package.mjs --tag v9.9.9
+Tag v9.9.9 does not match the release version 0.0.0. Expected v0.0.0.
+exit=1
+
+$ pnpm release:dry-run
+$ pnpm app:local && node scripts/release-package.mjs --dry-run
+$ rm -rf apps/desktop/dist apps/desktop/dist-electron && pnpm build && node scripts/package-local.mjs
+$ vp run -r build
+~/apps/desktop$ vp build ⊘ cache disabled
+~/apps/figma-plugin$ vp pack ⊘ cache disabled
+ℹ entry: src/code.ts
+ℹ target: es2020
+ℹ Build start
+ℹ Cleaning 2 files
+ℹ dist/code.js  12.45 kB │ gzip: 4.68 kB
+ℹ 1 files, total: 12.45 kB
+✔ Build complete in 19ms
+
+~/apps/figma-plugin$ vp build ⊘ cache disabled
+transforming...
+✓ 11 modules transformed.
+rendering chunks...
+transforming...
+computing gzip size...
+dist/ui.html                    1.55 kB │ gzip: 0.61 kB
+dist/assets/style-DyXthL2N.css  4.85 kB │ gzip: 1.50 kB
+dist/assets/ui-qxPkw-eJ.js      9.99 kB │ gzip: 4.02 kB
+
+✓ built in 48ms
+
+~/apps/figma-plugin$ node scripts/inline-ui.mjs dist ⊘ cache disabled
+
+~/apps/figma-plugin$ node scripts/check-artifacts.mjs dist ⊘ cache disabled
+artifacts ok: code.js 12445 chars, ui.html 16307 chars
+
+✓ 41 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/renderer/index.html                   0.55 kB │ gzip:  0.32 kB
+dist/renderer/assets/index-7-B2Rvwl.css   14.18 kB │ gzip:  4.03 kB
+dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
+
+✓ built in 350ms
+
+~/apps/desktop$ vp pack ⊘ cache disabled
+ℹ entry: src/main/index.ts
+ℹ tsconfig: tsconfig.json
+ℹ entry: src/preload/index.ts
+ℹ tsconfig: tsconfig.json
+ℹ entry: src/ingest/receiver-process.ts
+ℹ tsconfig: tsconfig.json
+ℹ Build start
+ℹ dist-electron/preload.cjs      2.06 kB │ gzip: 0.71 kB
+ℹ dist-electron/preload.cjs.map  4.87 kB │ gzip: 1.64 kB
+ℹ 2 files, total: 6.92 kB
+✔ Build complete in 13ms
+ℹ dist-electron/main.cjs       64.52 kB │ gzip: 16.88 kB
+ℹ dist-electron/main.cjs.map  141.66 kB │ gzip: 36.20 kB
+ℹ 2 files, total: 206.18 kB
+✔ Build complete in 28ms
+ℹ dist-electron/receiver.cjs      199.37 kB │ gzip:  46.92 kB
+ℹ dist-electron/receiver.cjs.map  575.70 kB │ gzip: 123.89 kB
+ℹ 2 files, total: 775.06 kB
+✔ Build complete in 61ms
+
+---
+vp run: 0/6 cache hit (0%). (Run `vp run --last-details` for full details)
+<repo>/apps/desktop/release/.staging/figma-drop.app: replacing existing signature
+Built <repo>/apps/desktop/release/figma-drop.app
+Dry run of 0.0.0: this publishes nothing. The desktop zip is unsigned (ad-hoc signature, no Developer ID, not notarized).
+  figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip  127559130 bytes  sha256 f0dfb4f13d54937c8171dca7f285fdd383a9504662441ab0e2e9c7a54b5ba2e4  (9 checks passed)
+  figma-drop-figma-plugin-0.0.0-dry-run.zip  11685 bytes  sha256 94c9f4b058259ec67b7d918e4860e3738c2110777196e6c74230971ad21d1e13  (6 checks passed)
+Wrote <repo>/release-artifacts
+exit=0
+
+$ ls -l release-artifacts
+total 262848
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 16:06 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  127559130 Nov  8 16:06 figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 16:06 figma-drop-figma-plugin-0.0.0-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       1522 Nov  8 16:06 release-plan.json
+exit=0
+
+$ cat release-artifacts/release-plan.json
+{
+  "mode": "dry-run",
+  "version": "0.0.0",
+  "tag": null,
+  "publishes": false,
+  "signing": "ad-hoc signature, no Developer ID, not notarized",
+  "artifacts": [
+    {
+      "name": "figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip",
+      "bytes": 127559130,
+      "sha256": "f0dfb4f13d54937c8171dca7f285fdd383a9504662441ab0e2e9c7a54b5ba2e4",
+      "checks": [
+        "top entry = figma-drop.app",
+        "CFBundleShortVersionString = 0.0.0",
+        "CFBundleVersion = 0.0.0",
+        "CFBundleIdentifier = com.codlume.figma-drop",
+        "CFBundleExecutable = figma-drop",
+        "bundle executable exists",
+        "Contents/Resources/app/package.json version = 0.0.0",
+        "codesign --verify --deep --strict passes",
+        "codesign reports Signature=adhoc"
+      ]
+    },
+    {
+      "name": "figma-drop-figma-plugin-0.0.0-dry-run.zip",
+      "bytes": 11685,
+      "sha256": "94c9f4b058259ec67b7d918e4860e3738c2110777196e6c74230971ad21d1e13",
+      "checks": [
+        "zip file entries = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
+        "extracted files = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
+        "manifest.json is byte-identical to apps/figma-plugin/manifest.json",
+        "manifest main resolves to a zipped file",
+        "manifest ui resolves to a zipped file",
+        "check-artifacts.mjs passes on the extracted dist"
+      ]
+    }
+  ]
+}
+exit=0
+
+$ bash -c cd release-artifacts && shasum -a 256 -c SHA256SUMS-dry-run.txt
+figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip: OK
+figma-drop-figma-plugin-0.0.0-dry-run.zip: OK
+exit=0
+
+$ zipinfo -1 release-artifacts/figma-drop-figma-plugin-0.0.0-dry-run.zip
+figma-drop-figma-plugin/
+figma-drop-figma-plugin/dist/
+figma-drop-figma-plugin/dist/code.js
+figma-drop-figma-plugin/dist/ui.html
+figma-drop-figma-plugin/manifest.json
+exit=0
+
+$ bash -c zipinfo -1 release-artifacts/figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip | grep -v "^__MACOSX/" | cut -d/ -f1-3 | sort -u
+figma-drop.app/
+figma-drop.app/Contents/
+figma-drop.app/Contents/Frameworks
+figma-drop.app/Contents/Info.plist
+figma-drop.app/Contents/MacOS
+figma-drop.app/Contents/PkgInfo
+figma-drop.app/Contents/Resources
+figma-drop.app/Contents/_CodeSignature
+exit=0
+
+$ ditto -x -k release-artifacts/figma-drop-figma-plugin-0.0.0-dry-run.zip <scratch>/plugin
+exit=0
+
+$ cmp <scratch>/plugin/figma-drop-figma-plugin/manifest.json apps/figma-plugin/manifest.json
+exit=0
+
+$ ditto -x -k release-artifacts/figma-drop-0.0.0-mac-arm64-unsigned-dry-run.zip <scratch>/desktop
+exit=0
+
+$ plutil -p <scratch>/desktop/figma-drop.app/Contents/Info.plist
+{
+  "CFBundleDisplayName" => "figma-drop"
+  "CFBundleExecutable" => "figma-drop"
+  "CFBundleIconFile" => "electron.icns"
+  "CFBundleIdentifier" => "com.codlume.figma-drop"
+  "CFBundleInfoDictionaryVersion" => "6.0"
+  "CFBundleName" => "figma-drop"
+  "CFBundlePackageType" => "APPL"
+  "CFBundleShortVersionString" => "0.0.0"
+  "CFBundleVersion" => "0.0.0"
+  "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
+  "DTSDKBuild" => "24F74"
+  "DTSDKName" => "macosx15.5"
+  "DTXcode" => "1640"
+  "DTXcodeBuild" => "16F6"
+  "LSApplicationCategoryType" => "public.app-category.developer-tools"
+  "LSEnvironment" => {
+    "MallocNanoZone" => "0"
+  }
+  "LSMinimumSystemVersion" => "13.0"
+  "NSAppTransportSecurity" => {
+    "NSAllowsArbitraryLoads" => true
+  }
+  "NSAudioCaptureUsageDescription" => "This app needs access to audio capture"
+  "NSBluetoothAlwaysUsageDescription" => "This app needs access to Bluetooth"
+  "NSBluetoothPeripheralUsageDescription" => "This app needs access to Bluetooth"
+  "NSCameraUsageDescription" => "This app needs access to the camera"
+  "NSHighResolutionCapable" => true
+  "NSMainNibFile" => "MainMenu"
+  "NSMicrophoneUsageDescription" => "This app needs access to the microphone"
+  "NSPrefersDisplaySafeAreaCompatibilityMode" => false
+  "NSPrincipalClass" => "AtomApplication"
+  "NSQuitAlwaysKeepsWindows" => false
+  "NSRequiresAquaSystemAppearance" => false
+  "NSSupportsAutomaticGraphicsSwitching" => true
+}
+exit=0
+
+$ codesign -dv <scratch>/desktop/figma-drop.app
+Executable=<scratch>/desktop/figma-drop.app/Contents/MacOS/figma-drop
+Identifier=com.codlume.figma-drop
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=303 flags=0x2(adhoc) hashes=3+3 location=embedded
+Signature=adhoc
+Info.plist entries=30
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=19
+Internal requirements count=0 size=12
+exit=0
+
+$ codesign --verify --deep --strict --verbose=2 <scratch>/desktop/figma-drop.app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper.app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Plugin).app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (Renderer).app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Helper (GPU).app
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:<scratch>/desktop/figma-drop.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+<scratch>/desktop/figma-drop.app: valid on disk
+<scratch>/desktop/figma-drop.app: satisfies its Designated Requirement
+exit=0
+
+$ xattr -w com.apple.quarantine 0081;00000000;Safari; <scratch>/desktop/figma-drop.app
+exit=0
+
+$ spctl --assess --type execute -vv <scratch>/desktop/figma-drop.app
+<scratch>/desktop/figma-drop.app: rejected
+exit=3
+

@@ -1,0 +1,9 @@
+$ node check-workflows.mjs <repo>
+all workflow checks passed
+exit=0
+
+$ node mutate.mjs <repo>
+build gets write: exit 1 AssertionError [ERR_ASSERTION]: only release-please and upload write
+marker check removed: exit 1 AssertionError [ERR_ASSERTION]: second run leaves the body unchanged
+dry run uploads: exit 1 AssertionError [ERR_ASSERTION]: dry run uploads no artifacts
+exit=0

@@ -1,0 +1,24 @@
+Gates on the tree of head 01ac0be93e5e4088c23138dd850b85222127266c plus the proof/release files.
+
+$ pnpm typecheck
+exit=0
+
+$ pnpm test
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+ Test Files  16 passed (16)
+      Tests  322 passed (322)
+ Test Files  30 passed (30)
+      Tests  904 passed (904)
+exit=0
+
+$ pnpm lint
+exit=0
+
+$ pnpm fmt:check
+All matched files use the correct format.
+exit=0
+
+$ actionlint .github/workflows/release.yml .github/workflows/release-dry-run.yml
+exit=0
+
