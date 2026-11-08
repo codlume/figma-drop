@@ -122,7 +122,6 @@ describe('useReceiver', () => {
   });
 
   it.each<[ScenarioName, ReceiverStatus['state']]>([
-    ['receiver-absent', 'unavailable'],
     ['port-conflict', 'port-conflict'],
     ['receiver-failed', 'failed'],
     ['receiver-off', 'off'],

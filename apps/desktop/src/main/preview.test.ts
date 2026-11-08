@@ -38,10 +38,6 @@ describe('previewResponse', () => {
     expect(response.headers.get('content-security-policy')).toBe("sandbox; default-src 'none'");
   });
 
-  it('answers 404 when the library is absent', async () => {
-    expect((await previewResponse(previewUrl(ID), null)).status).toBe(404);
-  });
-
   it('answers 404 when the file cannot be read', async () => {
     const gone: PreviewFile = { path: `${file.path}.gone`, contentType: 'image/png' };
     expect((await previewResponse(previewUrl(ID), libraryWith(gone))).status).toBe(404);

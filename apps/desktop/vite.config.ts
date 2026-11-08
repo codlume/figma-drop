@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import * as NodeURL from 'node:url';
 
 import stylex from '@stylexjs/unplugin';
@@ -8,8 +7,6 @@ import { defineConfig, type Plugin } from 'vite-plus';
 
 const appDir = NodeURL.fileURLToPath(new URL('.', import.meta.url));
 const rendererDir = `${appDir}src/renderer`;
-const rendererTestSetup = `${rendererDir}/test-setup.ts`;
-const receiverProcess = 'src/ingest/receiver-process.ts';
 const DEV_SERVER_PORT = 5791;
 
 const isExternal = (id: string) => id === 'electron' || id.startsWith('electron/');
@@ -74,7 +71,7 @@ const RESET_ID = 'virtual:figma-drop/reset.css';
 
 // StyleX appends its rules to a CSS asset the entry already links. An entry with no CSS import gets
 // an orphan `stylex.css` instead, and the page ships unstyled with no error. This module guarantees
-// the entry a CSS asset whether or not C-UI's App and its own stylesheet are present.
+// the entry a CSS asset whether or not App imports a stylesheet of its own.
 function resetStylesheet(): Plugin {
   return {
     name: 'figma-drop:reset-stylesheet',
@@ -105,9 +102,7 @@ export default defineConfig({
   pack: [
     electronEntry('main', 'src/main/index.ts'),
     electronEntry('preload', 'src/preload/index.ts'),
-    ...(existsSync(`${appDir}${receiverProcess}`)
-      ? [electronEntry('receiver', receiverProcess)]
-      : []),
+    electronEntry('receiver', 'src/ingest/receiver-process.ts'),
   ],
   test: {
     root: appDir,
@@ -122,7 +117,7 @@ export default defineConfig({
           root: appDir,
           environment: 'jsdom',
           include: ['src/renderer/**/*.test.{ts,tsx}'],
-          setupFiles: existsSync(rendererTestSetup) ? [rendererTestSetup] : [],
+          setupFiles: [`${rendererDir}/test-setup.ts`],
         },
       },
       {

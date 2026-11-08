@@ -108,16 +108,6 @@ export function receiverCopy(shown: ShownReceiver): ReceiverCopy {
         isOn: shown.enabled !== false,
         emptyLibrary: receiverProblem,
       };
-    case 'unavailable':
-      return {
-        title: 'No receiver',
-        hints: [shown.message],
-        tone: 'bad',
-        way: null,
-        switchable: false,
-        isOn: false,
-        emptyLibrary: { title: "This build can't receive exports", body: shown.message },
-      };
     case 'loading':
       return {
         title: 'Checking receiver…',

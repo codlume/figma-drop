@@ -43,7 +43,7 @@ export type UnidentifiedEntry = Revision & {
 export type LibrarySnapshot =
   | { state: 'ready'; projects: readonly Project[]; unidentified: readonly UnidentifiedEntry[] }
   | {
-      state: 'unreadable' | 'unavailable';
+      state: 'unreadable';
       message: string;
       projects: readonly [];
       unidentified: readonly [];

@@ -628,7 +628,6 @@ describe('library states', () => {
 
   it.each([
     ['unreadable', 'Synthetic: the library folder could not be read.'],
-    ['library-unavailable', 'Synthetic: the library is not open.'],
     ['snapshot-rejects', null],
   ] as const)('%s offers Try again and the receiver still works', async (scenario, message) => {
     const { control, user } = start({ scenario });
@@ -767,16 +766,6 @@ describe('receiver', () => {
     await user.click(screen.getByRole('button', { name: 'Reload' }));
     expect(await screen.findByText('Listening on port 3579')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull();
-  });
-
-  it("a build with no receiver shows main's message and no way to switch", async () => {
-    start({ scenario: 'receiver-absent' });
-    expect(await screen.findByText('Synthetic: this build has no receiver.')).toBeVisible();
-    const toggle = await receiverSwitch();
-    expect(toggle).toHaveAttribute('aria-disabled', 'true');
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
-    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
-    expect(screen.queryByText(/Listening/)).toBeNull();
   });
 
   it('survives a rejected switch and keeps showing what main reported', async () => {

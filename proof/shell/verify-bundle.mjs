@@ -63,9 +63,6 @@ const scratch = await realpath(await mkdtemp(join(tmpdir(), 'figma-drop-bundle-'
 // The account's home, which a HOME set around this script would hide.
 const realHome = userInfo().homedir;
 
-// The receiver lands separately, and with it a launched app reads differently.
-const hasIngest = existsSync(join(desktopDir, 'src/ingest/receiver-controller.ts'));
-
 const PROBE = `
 const { app, BrowserWindow, utilityProcess } = require('electron');
 const { join } = require('node:path');
@@ -186,7 +183,7 @@ async function main() {
       assert(packaged.equals(built), `${name} matches the current build`);
     }
     const packed = existsSync(join(appDir, 'dist-electron/receiver.cjs'));
-    assert(packed === hasIngest, `receiver.cjs ${packed}, src/ingest ${hasIngest}`);
+    assert(packed, 'receiver.cjs is packed');
   });
 
   await step('the binary is arm64, ad-hoc signed or notarized with a Developer ID', async () => {
@@ -337,15 +334,10 @@ async function launchTheRealBundle(copyBinary) {
     assert(!existsSync(planted.userData), 'FIGMA_DROP_USER_DATA was honoured');
   });
 
-  const expected = hasIngest ? 'listening' : 'unavailable';
-  await step(`the receiver reads ${expected}, as src/ingest decides`, async () => {
-    await waitUntil(async () => (await receiverStatus()).state === expected, expected);
+  await step('the receiver reads listening on the real port', async () => {
+    await waitUntil(async () => (await receiverStatus()).state === 'listening', 'listening');
     const ports = await app.listeningPorts();
     assert(!ports.includes(planted.port), 'FIGMA_DROP_PORT was honoured');
-    if (!hasIngest) {
-      assert(!ports.includes(REAL_PORT), `port ${REAL_PORT} is bound without a receiver`);
-      return;
-    }
     assert((await receiverStatus()).port === REAL_PORT, 'the receiver is on the real port');
     assert(ports.includes(REAL_PORT), `the app holds port ${REAL_PORT}`);
     for (const host of ['127.0.0.1', '[::1]']) {

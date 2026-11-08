@@ -8,9 +8,6 @@ import type { ReceiverController } from '../shared/integration.ts';
 import type { ReceiverStatus } from '../shared/receiver.ts';
 import { createReceiverSwitch, parseSettings } from './receiver-switch.ts';
 
-const MESSAGE = 'Export receiving is not installed in this build.';
-const UNAVAILABLE: ReceiverStatus = { state: 'unavailable', message: MESSAGE };
-
 // Labelled fake: it stands in for A-INGEST's controller and exists only in this test.
 function fakeController(initial: ReceiverStatus = { state: 'off' }) {
   const calls: string[] = [];
@@ -44,8 +41,8 @@ function fakeController(initial: ReceiverStatus = { state: 'off' }) {
 let settingsDir: string;
 let settingsPath: string;
 const persisted = async () => JSON.parse(await readFile(settingsPath, 'utf8'));
-const open = (controller: ReceiverController | null) =>
-  createReceiverSwitch({ settingsPath, controller, unavailableMessage: MESSAGE });
+const open = (controller: ReceiverController = fakeController().controller) =>
+  createReceiverSwitch({ settingsPath, controller });
 
 beforeEach(async () => {
   settingsDir = await mkdtemp(NodePath.join(tmpdir(), 'receiver-switch-'));
@@ -65,43 +62,43 @@ describe('parseSettings', () => {
   });
 });
 
-describe('without the ingest build', () => {
-  it('defaults to on and reports unavailable, never listening', async () => {
-    const receiver = await open(null);
+describe('toggling', () => {
+  it('defaults to on before anything is saved', async () => {
+    const receiver = await open();
     expect(receiver.enabled()).toBe(true);
-    expect(receiver.status()).toEqual(UNAVAILABLE);
   });
 
-  it('reports off when disabled and unavailable when enabled again', async () => {
-    const receiver = await open(null);
+  it('saves each toggle and replies with the status it reached', async () => {
+    const receiver = await open();
     expect(await receiver.setEnabled(false)).toEqual({ state: 'off' });
     expect(await persisted()).toEqual({ receiverEnabled: false });
-    expect(await receiver.setEnabled(true)).toEqual(UNAVAILABLE);
+    expect(await receiver.setEnabled(true)).toEqual({ state: 'listening', port: 13579 });
     expect(await persisted()).toEqual({ receiverEnabled: true });
   });
 
   it('notifies listeners on each toggle', async () => {
-    const receiver = await open(null);
+    const receiver = await open();
     const seen: ReceiverStatus[] = [];
     receiver.onStatus((status) => seen.push(status));
     await receiver.setEnabled(false);
+    expect(seen.at(-1)).toEqual({ state: 'off' });
     await receiver.setEnabled(true);
-    expect(seen).toEqual([{ state: 'off' }, UNAVAILABLE]);
+    expect(seen.at(-1)).toEqual({ state: 'listening', port: 13579 });
   });
 });
 
 describe('persisted setting', () => {
   it('survives a relaunch', async () => {
-    const first = await open(null);
+    const first = await open();
     await first.setEnabled(false);
-    const second = await open(null);
+    const second = await open();
     expect(second.enabled()).toBe(false);
     expect(second.status()).toEqual({ state: 'off' });
   });
 
   it('falls back to on when settings.json is corrupt', async () => {
     await writeFile(settingsPath, '{ not json');
-    const receiver = await open(null);
+    const receiver = await open();
     expect(receiver.enabled()).toBe(true);
   });
 });
@@ -389,16 +386,16 @@ describe('when the setting cannot be saved', () => {
 
   it('agrees with what a relaunch reads', async () => {
     await writeFile(settingsPath, JSON.stringify({ receiverEnabled: true }));
-    const receiver = await open(null);
+    const receiver = await open();
     await refuseWrites();
     await receiver.setEnabled(false);
     await allowWrites();
-    const relaunched = await open(null);
+    const relaunched = await open();
     expect(receiver.enabled()).toBe(relaunched.enabled());
   });
 
-  it('publishes the failure without a controller too', async () => {
-    const receiver = await open(null);
+  it('publishes a save failure to listeners', async () => {
+    const receiver = await open();
     const seen: ReceiverStatus[] = [];
     receiver.onStatus((status) => seen.push(status));
     await refuseWrites();
