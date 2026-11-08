@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { closeSync, openSync, readdirSync, readSync } from 'node:fs';
+import { join } from 'node:path';
 
 // A Developer ID build is always notarized and stapled, so "signed but not notarized" has no mode.
 export const SIGNING_MODES = {
@@ -11,6 +13,8 @@ export const SIGNING_MODES = {
     summary: 'Developer ID signature with the hardened runtime, notarized and stapled',
   },
 };
+
+export const MACH_O_MAGICS = new Set([0xcffaedfe, 0xcefaedfe, 0xfeedfacf, 0xfeedface, 0xcafebabe]);
 
 export const SIGNING_VARIABLES = {
   identity: 'FIGMA_DROP_SIGN_IDENTITY',
@@ -132,4 +136,49 @@ export function entitlementProblems(code) {
       ({ path, app, entitlements }) =>
         `${path} has ${JSON.stringify(entitlements)}, expected ${app ? JSON.stringify(APP_ENTITLEMENTS) : 'none'}.`,
     );
+}
+
+// `codesign --deep` skips Mach-O files outside the standard nested-code locations, such as
+// Squirrel's ShipIt and Electron's bundled dylibs, and notarization rejects them unsigned. So each
+// one is signed on its own, deepest first, and every bundle after everything inside it.
+export function signInsideOut(app, identity, entitlementsPath) {
+  const nested = readdirSync(app, { recursive: true, withFileTypes: true })
+    .filter((entry) =>
+      entry.isDirectory()
+        ? /\.(app|framework)$/.test(entry.name)
+        : entry.isFile() && isMachO(join(entry.parentPath, entry.name)),
+    )
+    .map((entry) => ({
+      path: join(entry.parentPath, entry.name),
+      app: entry.name.endsWith('.app'),
+    }))
+    .toSorted((a, b) => b.path.split('/').length - a.path.split('/').length);
+  const code = [...nested, { path: app, app: true }];
+  for (const { path, app: isApp } of code) {
+    execFileSync(
+      'codesign',
+      [
+        '--force',
+        '--options',
+        'runtime',
+        '--timestamp',
+        ...(isApp ? ['--entitlements', entitlementsPath] : []),
+        '--sign',
+        identity,
+        path,
+      ],
+      { stdio: 'inherit' },
+    );
+  }
+  return code;
+}
+
+export function isMachO(path) {
+  const header = Buffer.alloc(4);
+  const fd = openSync(path, 'r');
+  try {
+    return readSync(fd, header, 0, 4, 0) === 4 && MACH_O_MAGICS.has(header.readUInt32BE(0));
+  } finally {
+    closeSync(fd);
+  }
 }
