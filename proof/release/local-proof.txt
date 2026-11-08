@@ -1,115 +1,84 @@
-head 2c6a1918b3e2f6312b92525caf3d74792a92af62, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
+head dfbdcc76da9122f43883f711e87f8ca59cdb1e0c, node v24.21.0, pnpm 11.10.0, macOS 27.2 arm64
 
 $ pnpm test:release 
 $ node --test "scripts/*.test.mjs"
+▶ ci-import-signing.sh
+  ✔ refuses a missing MACOS_CERTIFICATE_P12_BASE64 (46.639583ms)
+  ✔ refuses an empty MACOS_CERTIFICATE_P12_BASE64 (39.487833ms)
+  ✔ refuses a missing MACOS_CERTIFICATE_PASSWORD (41.621042ms)
+  ✔ refuses an empty MACOS_CERTIFICATE_PASSWORD (38.709667ms)
+  ✔ refuses a missing APPLE_ID (35.0195ms)
+  ✔ refuses an empty APPLE_ID (35.581292ms)
+  ✔ refuses a missing APPLE_APP_SPECIFIC_PASSWORD (35.8145ms)
+  ✔ refuses an empty APPLE_APP_SPECIFIC_PASSWORD (37.442375ms)
+  ✔ refuses a missing APPLE_TEAM_ID (36.607333ms)
+  ✔ refuses an empty APPLE_TEAM_ID (40.665208ms)
+  ✔ names every missing secret in one message (35.026959ms)
+  ✔ refuses without RUNNER_TEMP or GITHUB_ENV (26.669916ms)
+  ✔ refuses the team ID shape abcde12345 (39.461625ms)
+  ✔ refuses the team ID shape ABCDE1234 (40.505792ms)
+  ✔ refuses the team ID shape ABCDE123456 (35.848292ms)
+  ✔ refuses the team ID shape ABCDE-1234 (35.397833ms)
+  ✔ refuses non-base64 text (42.855459ms)
+  ✔ refuses truncated base64 (40.672166ms)
+  ✔ refuses a blob that is not a .p12, and deletes the keychain it made (125.902ms)
+  ✔ refuses a self-signed Developer ID certificate the keychain does not trust (319.837667ms)
+  ✔ cleanup succeeds when nothing was created (15.276ms)
+✔ ci-import-signing.sh (1153.892333ms)
 hdiutil: WARNING: 'hdiutil create -volname -size ...' is deprecated. Please use 'diskutil image create from/blank --volumeName -size ...' instead.
 hdiutil: WARNING: 'hdiutil attach -nobrowse -owners ...' is deprecated. Please use 'diskutil image attach --mountOptions nobrowse --mountOptions owners ...' instead.
 hdiutil: WARNING: 'hdiutil convert -format ...' is deprecated. Please use 'diskutil image create from --format ...' instead.
 ▶ ad-hoc DMG from a synthetic app
-  ✔ passes the release verification of the desktop DMG (4724.69775ms)
-  ✔ is a read-only zlib UDIF image that hdiutil verifies (4550.437625ms)
-  ✔ mounts with the app, an Applications link, and the hidden Finder layout (335.232ms)
-  ✔ SHA256SUMS written from the artifact matches the final file (25.042084ms)
-  ✔ verification rejects a DMG whose Applications link points elsewhere (8649.522375ms)
-✔ ad-hoc DMG from a synthetic app (23249.3055ms)
-✔ an Accepted log with no issues passes and reports its submission (1.064708ms)
-✔ an Accepted log with an error issue fails and quotes the issue (0.762958ms)
-✔ an Invalid log fails, with or without issues (0.126542ms)
-✔ warnings pass but are reported (0.142542ms)
-✔ an issue of unknown severity fails closed (0.09475ms)
-✔ a log that is not a notary log fails (0.109333ms)
-✔ release-please bumps every app package.json exactly once (1.652ms)
-✔ readReleaseVersion returns the version every file agrees on (2.564083ms)
-✔ readReleaseVersion names the package whose version disagrees (2.035041ms)
-✔ readReleaseVersion compares the release-please manifest (2.145708ms)
-✔ readReleaseVersion rejects a shared version that is not X.Y.Z (8.571125ms)
-✔ readReleaseVersion names the config when it lists no extra-files (5.537333ms)
-✔ artifactNames for a Developer ID release name the desktop DMG without unsigned (0.073917ms)
-✔ artifactNames for an ad-hoc build mark the desktop DMG unsigned (0.049333ms)
-✔ artifactNames for a dry run mark every name, in both signing modes (0.164083ms)
-✔ requireReleaseSigning refuses an ad-hoc release and accepts every dry run (0.231833ms)
-✔ signingFromEnv is ad-hoc without an identity, whatever else is set (0.117417ms)
-✔ signingFromEnv with an identity carries the notary profile, and the keychain if set (0.094833ms)
-✔ signingFromEnv names each missing or empty variable instead of signing without notarizing (0.211417ms)
-✔ signingFromEnv ignores the Apple ID variables the scripts no longer read (0.123875ms)
-✔ dmgSigning refuses a Developer ID app without the credentials to sign its DMG (0.14825ms)
-✔ dmgSigning keeps an ad-hoc app in an unsigned DMG and refuses mixed modes (0.094541ms)
-✔ readSigningMode reads an ad-hoc signature (0.122209ms)
-✔ readSigningMode reads a notarized Developer ID build (0.165ms)
-✔ readSigningMode rejects each half-finished Developer ID build by what it lacks (0.26725ms)
-✔ developerIdDmgChecks passes a signed, notarized, stapled DMG of the app team (0.105875ms)
-✔ developerIdDmgChecks names what an unfinished or foreign DMG lacks (0.183708ms)
-✔ entitlementProblems allows only allow-jit, and only on app bundles (0.187334ms)
-✔ parseReleaseMode accepts a dry run and both tag forms (0.518416ms)
-✔ parseReleaseMode rejects anything but one mode (0.247ms)
-✔ isAppleMetadataEntry flags AppleDouble and Finder entries only (0.134708ms)
-✖ release.yml install notice names the release artifacts (0.990208ms)
-✖ release.yml build uploads every release asset and nothing else from the release run (0.392708ms)
-✔ release.yml names one checksums file, the one release-package.mjs writes (0.157334ms)
-ℹ tests 39
-ℹ suites 1
-ℹ pass 37
-ℹ fail 2
+  ✔ passes the release verification of the desktop DMG (5853.284875ms)
+  ✔ is a read-only zlib UDIF image that hdiutil verifies (2453.633834ms)
+  ✔ mounts with the app, an Applications link, and the hidden Finder layout (311.312292ms)
+  ✔ SHA256SUMS written from the artifact matches the final file (20.742083ms)
+  ✔ verification rejects a DMG whose Applications link points elsewhere (9639.406875ms)
+✔ ad-hoc DMG from a synthetic app (25025.772458ms)
+✔ an Accepted log with no issues passes and reports its submission (0.881042ms)
+✔ an Accepted log with an error issue fails and quotes the issue (0.8895ms)
+✔ an Invalid log fails, with or without issues (0.145125ms)
+✔ warnings pass but are reported (0.146083ms)
+✔ an issue of unknown severity fails closed (0.096208ms)
+✔ a log that is not a notary log fails (0.114541ms)
+✔ release-please bumps every app package.json exactly once (1.69125ms)
+✔ readReleaseVersion returns the version every file agrees on (2.429167ms)
+✔ readReleaseVersion names the package whose version disagrees (1.979083ms)
+✔ readReleaseVersion compares the release-please manifest (2.324042ms)
+✔ readReleaseVersion rejects a shared version that is not X.Y.Z (6.830583ms)
+✔ readReleaseVersion names the config when it lists no extra-files (4.405ms)
+✔ artifactNames for a Developer ID release name the desktop DMG without unsigned (0.074542ms)
+✔ artifactNames for an ad-hoc build mark the desktop DMG unsigned (0.06025ms)
+✔ artifactNames for a dry run mark every name, in both signing modes (0.1635ms)
+✔ requireReleaseSigning refuses an ad-hoc release and accepts every dry run (0.223417ms)
+✔ signingFromEnv is ad-hoc without an identity, whatever else is set (0.104417ms)
+✔ signingFromEnv with an identity carries the notary profile, and the keychain if set (0.097583ms)
+✔ signingFromEnv names each missing or empty variable instead of signing without notarizing (0.138916ms)
+✔ signingFromEnv ignores the Apple ID variables the scripts no longer read (0.079458ms)
+✔ dmgSigning refuses a Developer ID app without the credentials to sign its DMG (0.116583ms)
+✔ dmgSigning keeps an ad-hoc app in an unsigned DMG and refuses mixed modes (0.059375ms)
+✔ readSigningMode reads an ad-hoc signature (0.095375ms)
+✔ readSigningMode reads a notarized Developer ID build (0.155542ms)
+✔ readSigningMode rejects each half-finished Developer ID build by what it lacks (0.246458ms)
+✔ developerIdDmgChecks passes a signed, notarized, stapled DMG of the app team (0.101125ms)
+✔ developerIdDmgChecks names what an unfinished or foreign DMG lacks (0.139417ms)
+✔ entitlementProblems allows only allow-jit, and only on app bundles (0.140375ms)
+✔ parseReleaseMode accepts a dry run and both tag forms (0.477333ms)
+✔ parseReleaseMode rejects anything but one mode (0.217375ms)
+✔ isAppleMetadataEntry flags AppleDouble and Finder entries only (0.12575ms)
+✔ release.yml install notice names the release artifacts (0.218583ms)
+✔ package-macos.yml stores exactly the release assets for a tag (0.133459ms)
+✔ package-macos.yml stores the dry-run assets, plan, and notary logs for a dispatch (0.089834ms)
+✔ release.yml names one checksums file, the one release-package.mjs writes (0.108625ms)
+ℹ tests 61
+ℹ suites 2
+ℹ pass 61
+ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 23422.002958
-
-✖ failing tests:
-
-test at scripts/release-artifacts.test.mjs:443:1
-✖ release.yml install notice names the release artifacts (0.990208ms)
-  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
-  + actual - expected
-  
-    Set(2) {
-  +   'figma-drop-1.2.3-mac-arm64.zip',
-  -   'figma-drop-1.2.3-mac-arm64.dmg',
-      'figma-drop-figma-plugin-1.2.3.zip'
-    }
-  
-      at TestContext.<anonymous> (file://<repo>/scripts/release-artifacts.test.mjs:451:10)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1402:25)
-      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
-      at Test.postRun (node:internal/test_runner/test:1542:19)
-      at Test.run (node:internal/test_runner/test:1467:12)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: Set(2) { 'figma-drop-1.2.3-mac-arm64.zip', 'figma-drop-figma-plugin-1.2.3.zip' },
-    expected: Set(2) { 'figma-drop-1.2.3-mac-arm64.dmg', 'figma-drop-figma-plugin-1.2.3.zip' },
-    operator: 'deepStrictEqual',
-    diff: 'simple'
-  }
-
-test at scripts/release-artifacts.test.mjs:458:1
-✖ release.yml build uploads every release asset and nothing else from the release run (0.392708ms)
-  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
-  + actual - expected
-  
-    [
-  -   'release-artifacts/figma-drop-1.2.3-mac-arm64.dmg',
-      'release-artifacts/figma-drop-figma-plugin-1.2.3.zip',
-      'release-artifacts/SHA256SUMS.txt'
-    ]
-  
-      at TestContext.<anonymous> (file://<repo>/scripts/release-artifacts.test.mjs:475:10)
-      at Test.runInAsyncScope (node:async_hooks:227:14)
-      at Test.run (node:internal/test_runner/test:1402:25)
-      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
-      at Test.postRun (node:internal/test_runner/test:1542:19)
-      at Test.run (node:internal/test_runner/test:1467:12)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: [ 'release-artifacts/figma-drop-figma-plugin-1.2.3.zip', 'release-artifacts/SHA256SUMS.txt' ],
-    expected: [ 'release-artifacts/figma-drop-1.2.3-mac-arm64.dmg', 'release-artifacts/figma-drop-figma-plugin-1.2.3.zip', 'release-artifacts/SHA256SUMS.txt' ],
-    operator: 'deepStrictEqual',
-    diff: 'simple'
-  }
-[ELIFECYCLE] Command failed with exit code 1.
-exit=1
+ℹ duration_ms 25193.035625
+exit=0
 
 $ node scripts/release-package.mjs 
 Pass --dry-run or --tag.
@@ -134,10 +103,9 @@ $ vp run -r build
 ℹ entry: src/code.ts
 ℹ target: es2020
 ℹ Build start
-ℹ Cleaning 2 files
 ℹ dist/code.js  12.45 kB │ gzip: 4.68 kB
 ℹ 1 files, total: 12.45 kB
-✔ Build complete in 17ms
+✔ Build complete in 16ms
 
 ~/apps/figma-plugin$ vp build ⊘ cache disabled
 transforming...
@@ -148,7 +116,7 @@ dist/ui.html                    1.55 kB │ gzip: 0.61 kB
 dist/assets/style-DyXthL2N.css  4.85 kB │ gzip: 1.50 kB
 dist/assets/ui-qxPkw-eJ.js      9.99 kB │ gzip: 4.02 kB
 
-✓ built in 41ms
+✓ built in 150ms
 
 ~/apps/figma-plugin$ node scripts/inline-ui.mjs dist ⊘ cache disabled
 transforming...
@@ -163,7 +131,7 @@ dist/renderer/index.html                   0.55 kB │ gzip:  0.32 kB
 dist/renderer/assets/index-7-B2Rvwl.css   14.18 kB │ gzip:  4.03 kB
 dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 
-✓ built in 356ms
+✓ built in 360ms
 
 ~/apps/desktop$ vp pack ⊘ cache disabled
 ℹ entry: src/main/index.ts
@@ -180,14 +148,15 @@ dist/renderer/assets/index-ZY1kWpj7.js   267.74 kB │ gzip: 83.20 kB
 ℹ dist-electron/main.cjs       64.52 kB │ gzip: 16.88 kB
 ℹ dist-electron/main.cjs.map  141.66 kB │ gzip: 36.20 kB
 ℹ 2 files, total: 206.18 kB
-✔ Build complete in 25ms
+✔ Build complete in 26ms
 ℹ dist-electron/receiver.cjs      199.37 kB │ gzip:  46.92 kB
 ℹ dist-electron/receiver.cjs.map  575.70 kB │ gzip: 123.89 kB
 ℹ 2 files, total: 775.06 kB
-✔ Build complete in 65ms
+✔ Build complete in 56ms
 
 ---
 vp run: 0/6 cache hit (0%). (Run `vp run --last-details` for full details)
+Downloading Electron binary...
 <repo>/apps/desktop/release/.staging/figma-drop.app: replacing existing signature
 Built <repo>/apps/desktop/release/figma-drop.app
 dmgbuild is already installed in <repo>/node_modules/.cache/figma-drop-dmgbuild.
@@ -195,17 +164,17 @@ hdiutil: WARNING: 'hdiutil create -volname -size ...' is deprecated. Please use 
 hdiutil: WARNING: 'hdiutil attach -nobrowse -owners ...' is deprecated. Please use 'diskutil image attach --mountOptions nobrowse --mountOptions owners ...' instead.
 hdiutil: WARNING: 'hdiutil convert -format ...' is deprecated. Please use 'diskutil image create from --format ...' instead.
 Dry run of 0.1.1: this publishes nothing. Desktop signing mode ad-hoc: ad-hoc signature, no Developer ID, not notarized.
-  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg  139002446 bytes  sha256 b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821  (21 checks passed)
-  figma-drop-figma-plugin-0.1.1-dry-run.zip  11685 bytes  sha256 e147f55e0451012f64fa1e98a6a9fff51d91cedabb32b252f956cb7739f660a5  (7 checks passed)
+  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg  139002402 bytes  sha256 ff111d643c3035c2f89b6c8b99071a08d5f299469a0e1a86c9946bf4bbe52d04  (21 checks passed)
+  figma-drop-figma-plugin-0.1.1-dry-run.zip  11685 bytes  sha256 1e9f54055c7a01b2db0c0f4f350f5d202f8883757cc0b3396df8aff3672afe3e  (7 checks passed)
 Wrote <repo>/release-artifacts
 exit=0
 
 $ ls -l release-artifacts 
 total 294960
--rw-r--r--@ 1 <user>  staff        222 Nov  8 20:50 SHA256SUMS-dry-run.txt
--rw-r--r--@ 1 <user>  staff  139002446 Nov  8 20:50 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
--rw-r--r--@ 1 <user>  staff      11685 Nov  8 20:50 figma-drop-figma-plugin-0.1.1-dry-run.zip
--rw-r--r--@ 1 <user>  staff       2345 Nov  8 20:50 release-plan.json
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 21:02 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  139002402 Nov  8 21:02 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 21:02 figma-drop-figma-plugin-0.1.1-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       2345 Nov  8 21:02 release-plan.json
 exit=0
 
 $ cat release-artifacts/release-plan.json 
@@ -219,8 +188,8 @@ $ cat release-artifacts/release-plan.json
   "artifacts": [
     {
       "name": "figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg",
-      "bytes": 139002446,
-      "sha256": "b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821",
+      "bytes": 139002402,
+      "sha256": "ff111d643c3035c2f89b6c8b99071a08d5f299469a0e1a86c9946bf4bbe52d04",
       "checks": [
         "hdiutil imageinfo Format = UDZO",
         "hdiutil verify passes",
@@ -242,13 +211,13 @@ $ cat release-artifacts/release-plan.json
         "codesign --verify --deep --strict passes",
         "signing mode of the app in the DMG = ad-hoc",
         "DMG carries no code signature",
-        "DMG SHA-256 after verification = b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821"
+        "DMG SHA-256 after verification = ff111d643c3035c2f89b6c8b99071a08d5f299469a0e1a86c9946bf4bbe52d04"
       ]
     },
     {
       "name": "figma-drop-figma-plugin-0.1.1-dry-run.zip",
       "bytes": 11685,
-      "sha256": "e147f55e0451012f64fa1e98a6a9fff51d91cedabb32b252f956cb7739f660a5",
+      "sha256": "1e9f54055c7a01b2db0c0f4f350f5d202f8883757cc0b3396df8aff3672afe3e",
       "checks": [
         "zip holds no AppleDouble or Finder metadata entries",
         "zip file entries = figma-drop-figma-plugin/dist/code.js, figma-drop-figma-plugin/dist/ui.html, figma-drop-figma-plugin/manifest.json",
@@ -291,23 +260,23 @@ $ hdiutil verify release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.d
 Checksumming Protective Master Boot Record (MBR : 0)…
 Protective Master Boot Record (MBR :: verified CRC32 $542C63F5
 Checksumming GPT Header (Primary GPT Header : 1)…
- GPT Header (Primary GPT Header : 1): verified CRC32 $B05A1039
+ GPT Header (Primary GPT Header : 1): verified CRC32 $416C1E36
 Checksumming GPT Partition Data (Primary GPT Table : 2)…
-GPT Partition Data (Primary GPT Tabl: verified CRC32 $AA9FB025
+GPT Partition Data (Primary GPT Tabl: verified CRC32 $21CDF1B6
 Checksumming  (Apple_Free : 3)…
                     (Apple_Free : 3): verified CRC32 $00000000
 Checksumming disk image (Apple_HFS : 4)…
-          disk image (Apple_HFS : 4): verified CRC32 $65C9A8E7
+          disk image (Apple_HFS : 4): verified CRC32 $5E4B673D
 Checksumming GPT Partition Data (Backup GPT Table : 5)…
-GPT Partition Data (Backup GPT Table: verified CRC32 $AA9FB025
+GPT Partition Data (Backup GPT Table: verified CRC32 $21CDF1B6
 Checksumming GPT Header (Backup GPT Header : 6)…
-  GPT Header (Backup GPT Header : 6): verified CRC32 $4007FC83
-verified CRC32 $1A029BB7
+  GPT Header (Backup GPT Header : 6): verified CRC32 $B131F28C
+verified CRC32 $7AF20324
 hdiutil: verify: checksum of "release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg" is VALID
 exit=0
 
 $ hdiutil attach -readonly -nobrowse -noautoopen -mountpoint <scratch>/volume release-artifacts/figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg 
-expected CRC32 $1A029BB7
+expected CRC32 $7AF20324
 hdiutil: WARNING: 'hdiutil attach -readonly -nobrowse -mountpoint ...' is deprecated. Please use 'diskutil image attach --readOnly --mountOptions nobrowse --mountPoint ...' instead.
 /dev/disk4          	GUID_partition_scheme          	
 /dev/disk4s1        	Apple_HFS                      	<scratch>/volume
@@ -315,10 +284,10 @@ exit=0
 
 $ ls -lA <scratch>/volume 
 total 696
--rw-r--r--@ 1 <user>  staff   16388 Nov  8 20:49 .DS_Store
--rw-r--r--@ 1 <user>  staff  272259 Nov  8 20:49 .VolumeIcon.icns
--rw-r--r--@ 1 <user>  staff   53456 Nov  8 20:49 .background.tiff
-lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 20:49 Applications -> /Applications
+-rw-r--r--@ 1 <user>  staff   16388 Nov  8 21:02 .DS_Store
+-rw-r--r--@ 1 <user>  staff  272259 Nov  8 21:02 .VolumeIcon.icns
+-rw-r--r--@ 1 <user>  staff   53456 Nov  8 21:02 .background.tiff
+lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 21:02 Applications -> /Applications
 drwxr-xr-x@ 3 <user>  staff     102 Jan  1  1980 figma-drop.app
 exit=0
 
@@ -425,10 +394,10 @@ exit=1
 
 $ ls -l release-artifacts 
 total 294960
--rw-r--r--@ 1 <user>  staff        222 Nov  8 20:50 SHA256SUMS-dry-run.txt
--rw-r--r--@ 1 <user>  staff  139002446 Nov  8 20:50 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
--rw-r--r--@ 1 <user>  staff      11685 Nov  8 20:50 figma-drop-figma-plugin-0.1.1-dry-run.zip
--rw-r--r--@ 1 <user>  staff       2345 Nov  8 20:50 release-plan.json
+-rw-r--r--@ 1 <user>  staff        222 Nov  8 21:02 SHA256SUMS-dry-run.txt
+-rw-r--r--@ 1 <user>  staff  139002402 Nov  8 21:02 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+-rw-r--r--@ 1 <user>  staff      11685 Nov  8 21:02 figma-drop-figma-plugin-0.1.1-dry-run.zip
+-rw-r--r--@ 1 <user>  staff       2345 Nov  8 21:02 release-plan.json
 exit=0
 
 $ bash -c cd\ release-artifacts\ \&\&\ shasum\ -a\ 256\ -c\ SHA256SUMS.txt 

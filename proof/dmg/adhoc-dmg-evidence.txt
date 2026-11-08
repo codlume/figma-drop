@@ -6,7 +6,7 @@ BuildVersion:		26B123
 [exit 0]
 
 $ shasum -a 256 figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
-b5ae92c5c6c349584c12fb33850965ba6c7f26cec76aefb057710063725d7821  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
+ff111d643c3035c2f89b6c8b99071a08d5f299469a0e1a86c9946bf4bbe52d04  figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
 [exit 0]
 
 $ hdiutil imageinfo -format figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
@@ -18,18 +18,18 @@ $ hdiutil verify figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg
 Checksumming Protective Master Boot Record (MBR : 0)…
 Protective Master Boot Record (MBR :: verified CRC32 $542C63F5
 Checksumming GPT Header (Primary GPT Header : 1)…
- GPT Header (Primary GPT Header : 1): verified CRC32 $B05A1039
+ GPT Header (Primary GPT Header : 1): verified CRC32 $416C1E36
 Checksumming GPT Partition Data (Primary GPT Table : 2)…
-GPT Partition Data (Primary GPT Tabl: verified CRC32 $AA9FB025
+GPT Partition Data (Primary GPT Tabl: verified CRC32 $21CDF1B6
 Checksumming  (Apple_Free : 3)…
                     (Apple_Free : 3): verified CRC32 $00000000
 Checksumming disk image (Apple_HFS : 4)…
-          disk image (Apple_HFS : 4): verified CRC32 $65C9A8E7
+          disk image (Apple_HFS : 4): verified CRC32 $5E4B673D
 Checksumming GPT Partition Data (Backup GPT Table : 5)…
-GPT Partition Data (Backup GPT Table: verified CRC32 $AA9FB025
+GPT Partition Data (Backup GPT Table: verified CRC32 $21CDF1B6
 Checksumming GPT Header (Backup GPT Header : 6)…
-  GPT Header (Backup GPT Header : 6): verified CRC32 $4007FC83
-verified CRC32 $1A029BB7
+  GPT Header (Backup GPT Header : 6): verified CRC32 $B131F28C
+verified CRC32 $7AF20324
 hdiutil: verify: checksum of "figma-drop-0.1.1-mac-arm64-unsigned-dry-run.dmg" is VALID
 [exit 0]
 
@@ -57,12 +57,12 @@ hdiutil: WARNING: 'hdiutil attach -readonly -nobrowse -mountpoint ...' is deprec
 
 $ ls -la <tmp>/volume
 total 696
-drwxr-xr-x@ 7 <user>  staff     306 Nov  8 20:49 .
-drwx------@ 3 <user>  staff      96 Nov  8 20:54 ..
--rw-r--r--@ 1 <user>  staff   16388 Nov  8 20:49 .DS_Store
--rw-r--r--@ 1 <user>  staff  272259 Nov  8 20:49 .VolumeIcon.icns
--rw-r--r--@ 1 <user>  staff   53456 Nov  8 20:49 .background.tiff
-lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 20:49 Applications -> /Applications
+drwxr-xr-x@ 7 <user>  staff     306 Nov  8 21:02 .
+drwx------@ 3 <user>  staff      96 Nov  8 21:02 ..
+-rw-r--r--@ 1 <user>  staff   16388 Nov  8 21:02 .DS_Store
+-rw-r--r--@ 1 <user>  staff  272259 Nov  8 21:02 .VolumeIcon.icns
+-rw-r--r--@ 1 <user>  staff   53456 Nov  8 21:02 .background.tiff
+lrwxr-xr-x@ 1 <user>  staff      13 Nov  8 21:02 Applications -> /Applications
 drwxr-xr-x@ 3 <user>  staff     102 Jan  1  1980 figma-drop.app
 [exit 0]
 
