@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import { useState } from 'react';
+import { type ReactEventHandler, type Ref, useState } from 'react';
 import type { Revision } from './bridge.ts';
 import { DocumentIcon, WarningIcon } from './Icons.tsx';
 import { color, font, radius, space } from './tokens.stylex.ts';
+import { shared } from './ui.tsx';
 
 type Size = 'large' | 'card' | 'row';
 type NoticeKind = 'damaged' | 'none' | 'failed';
@@ -37,11 +38,6 @@ const styles = stylex.create({
     borderWidth: '1px',
     boxSizing: 'border-box',
   },
-  checkerboard: {
-    backgroundColor: color.surfaceRaised,
-    backgroundImage: `repeating-conic-gradient(color-mix(in srgb, ${color.text} 6%, transparent) 0 25%, transparent 0 50%)`,
-    backgroundSize: '16px 16px',
-  },
   large: { aspectRatio: '4 / 3', maxHeight: '240px' },
   card: { aspectRatio: '4 / 5', flexDirection: 'column' },
   row: { aspectRatio: '1' },
@@ -68,6 +64,15 @@ const styles = stylex.create({
   noticeLarge: { padding: space.lg },
   noticeCard: { padding: space.xs },
   warning: { color: color.warning },
+  opener: {
+    backgroundColor: 'transparent',
+    borderRadius: radius.sm,
+    borderStyle: 'none',
+    cursor: 'zoom-in',
+    display: 'block',
+    padding: 0,
+    width: '100%',
+  },
 });
 
 function Notice({ size, kind }: { readonly size: Size; readonly kind: NoticeKind }) {
@@ -87,14 +92,50 @@ function Notice({ size, kind }: { readonly size: Size; readonly kind: NoticeKind
   );
 }
 
+/** Every received image renders through here, so none sends a referrer or can be dragged out. */
+export function UntrustedImage({
+  ref,
+  src,
+  alt,
+  style,
+  onLoad,
+  onError,
+}: {
+  readonly ref?: Ref<HTMLImageElement>;
+  readonly src: string;
+  readonly alt: string;
+  readonly style: stylex.StyleXStyles;
+  readonly onLoad?: ReactEventHandler<HTMLImageElement>;
+  readonly onError?: ReactEventHandler<HTMLImageElement>;
+}) {
+  return (
+    <img
+      ref={ref}
+      {...stylex.props(style)}
+      src={src}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      draggable={false}
+      decoding="async"
+      onLoad={onLoad}
+      onError={onError}
+    />
+  );
+}
+
 export function PreviewImage({
   revision,
   alt,
   size,
+  onOpen,
+  openerRef,
 }: {
   readonly revision: Revision;
   readonly alt: string;
   readonly size: Size;
+  /** Makes a loaded preview a button. Damaged, missing, and failed previews stay inert. */
+  readonly onOpen?: () => void;
+  readonly openerRef?: Ref<HTMLButtonElement>;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const url = revision.preview?.url ?? null;
@@ -114,25 +155,35 @@ export function PreviewImage({
       </div>
     );
   }
-  return (
+  const image = (
     <div
       {...stylex.props(
         styles.frame,
         styles[size],
-        styles.checkerboard,
+        shared.checkerboard,
         size === 'row' && styles.smallCheckerboard,
         size === 'card' && styles.cardFill,
       )}
     >
-      <img
-        {...stylex.props(size === 'card' ? styles.cardImage : styles.image)}
+      <UntrustedImage
+        style={size === 'card' ? styles.cardImage : styles.image}
         src={url}
         alt={alt}
-        referrerPolicy="no-referrer"
-        draggable={false}
-        decoding="async"
         onError={() => setFailedUrl(url)}
       />
     </div>
+  );
+  if (onOpen === undefined) return image;
+  return (
+    <button
+      ref={openerRef}
+      type="button"
+      aria-haspopup="dialog"
+      aria-label="Open image viewer"
+      onClick={onOpen}
+      {...stylex.props(styles.opener, shared.focusRing)}
+    >
+      {image}
+    </button>
   );
 }

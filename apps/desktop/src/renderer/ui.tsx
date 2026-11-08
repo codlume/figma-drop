@@ -11,6 +11,11 @@ export const shared = stylex.create({
     outlineWidth: '2px',
   },
   selectable: { cursor: 'text', userSelect: 'text' },
+  checkerboard: {
+    backgroundColor: color.surfaceRaised,
+    backgroundImage: `repeating-conic-gradient(color-mix(in srgb, ${color.text} 6%, transparent) 0 25%, transparent 0 50%)`,
+    backgroundSize: '16px 16px',
+  },
   mono: { fontFamily: font.familyMono, fontSize: font.sizeSm },
   visuallyHidden: {
     borderWidth: 0,
