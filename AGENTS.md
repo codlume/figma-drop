@@ -41,7 +41,7 @@ Upstream's plugin keeps exporting into the library. Upstream has no licence. Wor
 
 ### 6. Version 1 stays small
 
-v1 actions are browse, preview, reveal in Finder, copy path, "Copy to folder", which writes a plain bundle, and delete to Trash. v1 has no existing-bundle import and no folder watching. Target macOS arm64. Release builds are Developer ID signed and notarized, and local builds are ad-hoc signed unless signing is set up, as `RELEASING.md` describes. Releases go only through the release PR flow in `RELEASING.md`, and a maintainer merges the release PR. Agents never merge or edit a release PR, rerun the Release workflow, create, edit, or upload to a GitHub release, push or move tags, read, set, or rotate signing certificates or notarization credentials, publish anywhere, or install a release build.
+v1 actions are browse, preview, reveal in Finder, copy path, "Copy to folder", which writes a plain bundle, and delete to Trash. v1 has no existing-bundle import and no folder watching. Target macOS arm64. A release ships the app in a drag-to-install DMG, and the app and the DMG are each Developer ID signed, notarized, and stapled. Local builds are ad-hoc signed unless signing is set up, as `RELEASING.md` describes. Releases go only through the release PR flow in `RELEASING.md`, and a maintainer merges the release PR. Agents never merge or edit a release PR, rerun the Release workflow, create, edit, or upload to a GitHub release, push or move tags, read, set, or rotate signing certificates or notarization credentials, publish anywhere, or install a release build.
 
 ## A note to agents
 
