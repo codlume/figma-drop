@@ -44,13 +44,12 @@ for (const text of [relText, dryText])
   for (const m of text.matchAll(/uses: (\S+)/g))
     assert.match(m[1], /@[0-9a-f]{40}$/, `${m[1]} is pinned to a SHA`);
 
-// Run the notice step twice against a stub gh that stores the release body in a file.
 const dir = mkdtempSync(join(tmpdir(), 'notice-'));
 const body = join(dir, 'body.md');
 writeFileSync(body, '## Changelog\n\n* a fix\n');
-const gh = join(dir, 'gh');
+const stubGh = join(dir, 'gh');
 writeFileSync(
-  gh,
+  stubGh,
   `#!/bin/bash
 case "$1 $2" in
   "release view") cat "${body}" ;;
@@ -59,7 +58,7 @@ case "$1 $2" in
 esac
 `,
 );
-chmodSync(gh, 0o755);
+chmodSync(stubGh, 0o755);
 const notice = rel.jobs.upload.steps.find(
   (s) => s.name === 'Add the install notice to the release notes',
 ).run;

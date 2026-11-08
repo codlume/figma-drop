@@ -15,7 +15,6 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Only jobs that run no dependency code get write access.
     permissions:
       contents: write
       pull-requests: write

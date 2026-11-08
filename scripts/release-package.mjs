@@ -237,7 +237,6 @@ function main() {
     writeFileSync(join(outDir, 'release-plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
     writeSummary(plan, headline(mode, version));
   } catch (error) {
-    // An unverified zip must not stay where a release workflow would upload it.
     rmSync(outDir, { recursive: true, force: true });
     throw error;
   }

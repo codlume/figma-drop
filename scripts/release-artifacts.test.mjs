@@ -52,6 +52,7 @@ test('readReleaseVersion names the package whose version disagrees', () => {
     write('apps/desktop/package.json', { version: '1.2.3' });
     write('apps/figma-plugin/package.json', { version: '1.2.4' });
     write('.release-please-manifest.json', { '.': '1.2.3' });
+    write('release-please-config.json', readJson('release-please-config.json'));
     assert.throws(() => readReleaseVersion(dir), /apps\/figma-plugin\/package\.json: "1\.2\.4"/);
   } finally {
     rmSync(dir, { recursive: true, force: true });

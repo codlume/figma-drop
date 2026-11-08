@@ -7,13 +7,7 @@ export const USAGE = 'Usage: node scripts/release-package.mjs --dry-run | --tag 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const TAG_PATTERN = /^v\d+\.\d+\.\d+$/;
 
-// release-please keeps these equal: the root through `release-type: node`, the apps through
-// `extra-files`, and the manifest as its own record of the last release.
-const VERSIONED_PACKAGES = [
-  'package.json',
-  'apps/desktop/package.json',
-  'apps/figma-plugin/package.json',
-];
+const RELEASE_CONFIG = 'release-please-config.json';
 const RELEASE_MANIFEST = '.release-please-manifest.json';
 
 export function parseReleaseMode(argv) {
@@ -39,8 +33,10 @@ export function parseReleaseMode(argv) {
 
 export function readReleaseVersion(repoDir) {
   const readJson = (path) => JSON.parse(readFileSync(join(repoDir, path), 'utf8'));
+  const extraFiles = readJson(RELEASE_CONFIG).packages['.']['extra-files'];
+  const versioned = ['package.json', ...extraFiles.map((file) => file.path)];
   const found = [
-    ...VERSIONED_PACKAGES.map((path) => ({ source: path, version: readJson(path).version })),
+    ...versioned.map((path) => ({ source: path, version: readJson(path).version })),
     { source: `${RELEASE_MANIFEST} "."`, version: readJson(RELEASE_MANIFEST)['.'] },
   ];
   const [{ version }] = found;

@@ -1,8 +1,7 @@
 #!/bin/bash
-# Rerun from the repository root on an Apple silicon Mac: bash proof/release/local-proof.sh
-# Writes proof/release/local-proof.txt. Publishes nothing and needs no token.
 set -uo pipefail
-repo="$(pwd)"
+repo="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+cd "${repo}" || exit 1
 out="${repo}/proof/release/local-proof.txt"
 scratch="$(cd "$(mktemp -d)" && pwd -P)"
 sanitize() {
