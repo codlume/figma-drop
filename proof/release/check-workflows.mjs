@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
@@ -25,14 +26,39 @@ assert(!relText.includes('secrets.'), 'release references no secrets');
 const writers = Object.entries(rel.jobs)
   .filter(([, job]) => Object.values(job.permissions ?? {}).includes('write'))
   .map(([id]) => id);
-assert.deepEqual(writers, ['release-please', 'upload'], 'only release-please and upload write');
+assert.deepEqual(
+  writers,
+  ['release-please', 'release-pr', 'upload'],
+  'only release-please, release-pr, and upload write',
+);
 const rpUsers = Object.entries(rel.jobs)
   .filter(([, job]) =>
     job.steps.some((s) => s.uses?.startsWith('googleapis/release-please-action@')),
   )
   .map(([id]) => id);
-assert.deepEqual(rpUsers, ['release-please'], 'only release-please runs the action');
-assert.equal(rel.jobs['release-please'].steps.length, 1, 'release-please job runs only the action');
+assert.deepEqual(
+  rpUsers,
+  ['release-please', 'release-pr'],
+  'only the two release-please jobs run the action',
+);
+const rpWrite = { contents: 'write', 'pull-requests': 'write', issues: 'write' };
+for (const [id, skip] of [
+  ['release-please', 'skip-github-pull-request'],
+  ['release-pr', 'skip-github-release'],
+]) {
+  const job = rel.jobs[id];
+  assert.deepEqual(job.permissions, rpWrite, `${id} can label the release PR with issues: write`);
+  assert.equal(job.steps.length, 1, `${id} job runs only the action`);
+  assert.equal(job.steps[0].with[skip], true, `${id} sets ${skip}: true`);
+  assert.equal(job.concurrency?.['cancel-in-progress'], false, `${id} never cancels a run`);
+}
+assert.notEqual(
+  rel.jobs['release-please'].concurrency.group,
+  rel.jobs['release-pr'].concurrency.group,
+  'release-please and release-pr queue apart',
+);
+for (const [id, job] of Object.entries(rel.jobs))
+  assert(![job.needs ?? []].flat().includes('release-pr'), `${id} does not depend on release-pr`);
 assert(
   !rel.jobs.upload.steps.some((s) => s.uses?.startsWith('actions/checkout')),
   'upload checks out no code',
@@ -40,13 +66,26 @@ assert(
 for (const [id, job] of Object.entries({ ...rel.jobs, ...dry.jobs }))
   for (const step of job.steps)
     assert(!step.run?.includes('${{'), `${id} step interpolates no expression into run`);
-for (const text of [relText, dryText])
+for (const text of [relText, dryText]) {
   for (const m of text.matchAll(/uses: (\S+)/g))
     assert.match(m[1], /@[0-9a-f]{40}$/, `${m[1]} is pinned to a SHA`);
+  assert(!text.includes('setup-vp'), 'no workflow uses setup-vp');
+  for (const [line] of text.matchAll(/pnpm install\b.*/g))
+    assert.match(line, /--frozen-lockfile/, `"${line.trim()}" keeps the lockfile frozen`);
+}
+for (const [id, job] of [
+  ['build', rel.jobs.build],
+  ['package', dry.jobs.package],
+]) {
+  const runs = job.steps.map((s) => s.run);
+  assert(runs.includes('pnpm install --frozen-lockfile'), `${id} installs from the lockfile`);
+  const node = job.steps.find((s) => s.uses?.startsWith('actions/setup-node@'));
+  assert.equal(node?.with['node-version-file'], '.node-version', `${id} reads .node-version`);
+  assert.equal(node?.with['package-manager-cache'], false, `${id} restores no cache`);
+}
 
 const dir = mkdtempSync(join(tmpdir(), 'notice-'));
 const body = join(dir, 'body.md');
-writeFileSync(body, '## Changelog\n\n* a fix\n');
 const stubGh = join(dir, 'gh');
 writeFileSync(
   stubGh,
@@ -59,9 +98,8 @@ esac
 `,
 );
 chmodSync(stubGh, 0o755);
-const notice = rel.jobs.upload.steps.find(
-  (s) => s.name === 'Add the install notice to the release notes',
-).run;
+const step = (name) => rel.jobs.upload.steps.find((s) => s.name === name);
+const notice = step('Add the install notice to the release notes').run;
 const env = {
   ...process.env,
   PATH: `${dir}:${process.env.PATH}`,
@@ -69,17 +107,66 @@ const env = {
   GITHUB_SERVER_URL: 'https://github.com',
   GITHUB_REPOSITORY: 'codlume/figma-drop',
 };
-execFileSync('bash', ['-eo', 'pipefail', '-c', notice], { cwd: dir, env });
+const runNotice = () => execFileSync('bash', ['-eo', 'pipefail', '-c', notice], { cwd: dir, env });
+writeFileSync(body, '## Changelog\n\n* a fix\n');
+runNotice();
 const once = readFileSync(body, 'utf8');
-execFileSync('bash', ['-eo', 'pipefail', '-c', notice], { cwd: dir, env });
+runNotice();
 assert.equal(readFileSync(body, 'utf8'), once, 'second run leaves the body unchanged');
 assert.equal(once.split('<!-- figma-drop-unsigned-notice -->').length, 2, 'marker appears once');
 assert(once.startsWith('## Changelog'), 'original notes kept');
 assert(once.includes('`figma-drop-1.2.3-mac-arm64-unsigned.zip`'), 'version substituted');
 assert(
+  once.includes('shasum -a 256 -c --ignore-missing SHA256SUMS.txt'),
+  'partial download checks',
+);
+assert(
   once.includes('https://github.com/codlume/figma-drop/blob/v1.2.3/RELEASING.md'),
   'link substituted',
 );
 assert(/^NOTICE$/m.test(notice), 'heredoc terminator at column 0');
+
+writeFileSync(body, '* **fix:** a fix <!-- figma-drop-unsigned-notice --> ([#99](x))\n');
+runNotice();
+const inline = readFileSync(body, 'utf8');
+assert.equal(inline.match(/^## Install$/gm)?.length, 1, 'a marker inside a line keeps the notice');
+
+const verifyStep = step('Verify the downloaded assets');
+assert.equal(verifyStep['working-directory'], 'release-artifacts', 'verify runs in the artifact');
+if (spawnSync('bash', ['-c', 'command -v sha256sum']).status !== 0) {
+  writeFileSync(join(dir, 'sha256sum'), '#!/bin/bash\nexec shasum -a 256 "$@"\n');
+  chmodSync(join(dir, 'sha256sum'), 0o755);
+}
+const verify = (name, files) => {
+  const artifact = join(dir, name);
+  mkdirSync(artifact);
+  for (const [file, text] of Object.entries(files)) writeFileSync(join(artifact, file), text);
+  return spawnSync('bash', ['-eo', 'pipefail', '-c', verifyStep.run], {
+    cwd: artifact,
+    env,
+    encoding: 'utf8',
+  }).status;
+};
+const zips = { 'a.zip': 'a', 'b.zip': 'b' };
+const sums = ['a', 'b']
+  .map((name) => `${createHash('sha256').update(name).digest('hex')}  ${name}.zip\n`)
+  .join('');
+assert.equal(verify('good', { ...zips, 'SHA256SUMS.txt': sums }), 0, 'verify accepts the artifact');
+assert.notEqual(
+  verify('tampered', { ...zips, 'b.zip': 'x', 'SHA256SUMS.txt': sums }),
+  0,
+  'verify rejects a changed zip',
+);
+assert.notEqual(
+  verify('extra', { ...zips, 'c.zip': 'c', 'SHA256SUMS.txt': sums }),
+  0,
+  'verify rejects a file SHA256SUMS.txt does not list',
+);
+assert.notEqual(verify('missing', zips), 0, 'verify rejects an artifact without SHA256SUMS.txt');
+assert.equal(
+  step('Upload the release assets').run,
+  'gh release upload "${TAG}" release-artifacts/* --clobber',
+  'upload sends every verified file',
+);
 console.log(once);
 console.log('all workflow checks passed');
