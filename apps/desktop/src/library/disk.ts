@@ -15,7 +15,9 @@ import {
   UNIDENTIFIED_DIR,
   type Catalog,
   type CatalogRevision,
+  type ProjectRevision,
   type RevisionRecord,
+  type UnidentifiedRevision,
 } from './catalog';
 import {
   isSafeBundlePath,
@@ -181,6 +183,41 @@ async function readRecord(fs: LibraryFs, dir: string, home: ReceiptHome): Promis
   return { state: 'damaged', receivedAt: (info?.mtime ?? new Date(0)).toISOString() };
 }
 
+// Every snapshot rescans, and each step is a thread-pool round trip, so one-at-a-time
+// I/O leaves the scan waiting on latency. The bound keeps file descriptors well below
+// any limit, because a receipt read that fails reads as damaged.
+const SCAN_CONCURRENCY = 32;
+
+// Resolves in input order. After the first rejection no new item starts, though calls
+// already in flight still settle.
+async function mapConcurrently<Item, Result>(
+  items: readonly Item[],
+  run: (item: Item) => Promise<Result>,
+): Promise<Result[]> {
+  const results: Result[] = [];
+  let next = 0;
+  let failed = false;
+  const worker = async () => {
+    while (!failed && next < items.length) {
+      const index = next;
+      next += 1;
+      try {
+        results[index] = await run(items[index] as Item);
+      } catch (cause) {
+        failed = true;
+        throw cause;
+      }
+    }
+  };
+  const workers = Math.min(SCAN_CONCURRENCY, items.length);
+  await Promise.all(Array.from({ length: workers }, worker));
+  return results;
+}
+
+type ScannedProject = { path: string; dir: HashedDir; id: ProjectId };
+type ScannedNode = { path: string; dir: HashedDir; id: ExportNodeId; project: ScannedProject };
+
+// Order matters: when two directories claim one revision id, the first one listed wins.
 export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog> {
   const revisions = new Map<RevisionId, CatalogRevision>();
   const projectDirs = new Map<ProjectId, HashedDir>();
@@ -189,55 +226,74 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   const keepFirst = (revision: CatalogRevision) => {
     if (!revisions.has(revision.id)) revisions.set(revision.id, revision);
   };
+  const listAll = <Parent extends { path: string }>(parents: readonly Parent[]) =>
+    mapConcurrently(parents, async (parent) => ({
+      parent,
+      names: await subdirectoriesUnlessRefused(fs, parent.path),
+    }));
 
   const filesRoot = join(root, FILES_DIR);
-  for (const projectName of await subdirectories(fs, filesRoot)) {
-    const projectDir = parseHashedDir(projectName);
-    if (!projectDir) continue;
-    const projectId = projectIdFromHash(projectDir.hash);
-    if (!projectDirs.has(projectId)) projectDirs.set(projectId, projectDir);
-    const projectPath = join(filesRoot, projectName);
-    const nodeNames = await subdirectoriesUnlessRefused(fs, projectPath);
-    if (!nodeNames) blocked.add(projectId);
-    for (const nodeName of nodeNames ?? []) {
-      const nodeDir = parseHashedDir(nodeName);
-      if (!nodeDir) continue;
-      const nodeId = nodeIdFromHashes(projectId, nodeDir.hash);
-      if (!nodeDirs.has(nodeId)) nodeDirs.set(nodeId, nodeDir);
-      const nodePath = join(projectPath, nodeName);
-      const revisionNames = await subdirectoriesUnlessRefused(fs, nodePath);
-      if (!revisionNames) blocked.add(nodeId);
-      for (const revisionName of revisionNames ?? []) {
-        const parsed = parseRevisionDir(revisionName);
-        if (!parsed) continue;
-        const dir = join(nodePath, revisionName);
-        const record = await readRecord(fs, dir, {
-          kind: 'project',
-          revisionId: parsed.id,
-          nodeId,
-        });
-        keepFirst({
-          kind: 'project',
-          ...parsed,
-          dir,
-          projectId,
-          nodeId,
-          projectDir,
-          nodeDir,
-          record,
-        });
-      }
+  const projects: ScannedProject[] = [];
+  for (const name of await subdirectories(fs, filesRoot)) {
+    const dir = parseHashedDir(name);
+    if (!dir) continue;
+    const id = projectIdFromHash(dir.hash);
+    if (!projectDirs.has(id)) projectDirs.set(id, dir);
+    projects.push({ path: join(filesRoot, name), dir, id });
+  }
+
+  const nodes: ScannedNode[] = [];
+  for (const { parent: project, names } of await listAll(projects)) {
+    if (!names) blocked.add(project.id);
+    for (const name of names ?? []) {
+      const dir = parseHashedDir(name);
+      if (!dir) continue;
+      const id = nodeIdFromHashes(project.id, dir.hash);
+      if (!nodeDirs.has(id)) nodeDirs.set(id, dir);
+      nodes.push({ path: join(project.path, name), dir, id, project });
     }
   }
 
-  const unidentifiedRoot = join(root, UNIDENTIFIED_DIR);
-  for (const name of await subdirectories(fs, unidentifiedRoot)) {
-    const parsed = parseUnidentifiedDir(name);
-    if (!parsed) continue;
-    const dir = join(unidentifiedRoot, name);
-    const record = await readRecord(fs, dir, { kind: 'unidentified', revisionId: parsed.id });
-    keepFirst({ kind: 'unidentified', ...parsed, dir, record });
+  const revisionDirs: { node: ScannedNode; seq: number; id: RevisionId; dir: string }[] = [];
+  for (const { parent: node, names } of await listAll(nodes)) {
+    if (!names) blocked.add(node.id);
+    for (const name of names ?? []) {
+      const parsed = parseRevisionDir(name);
+      if (parsed) revisionDirs.push({ node, ...parsed, dir: join(node.path, name) });
+    }
   }
+  const projectRevisions = await mapConcurrently(
+    revisionDirs,
+    async ({ node, seq, id, dir }): Promise<ProjectRevision> => ({
+      kind: 'project',
+      seq,
+      id,
+      dir,
+      projectId: node.project.id,
+      nodeId: node.id,
+      projectDir: node.project.dir,
+      nodeDir: node.dir,
+      record: await readRecord(fs, dir, { kind: 'project', revisionId: id, nodeId: node.id }),
+    }),
+  );
+  for (const revision of projectRevisions) keepFirst(revision);
+
+  const unidentifiedRoot = join(root, UNIDENTIFIED_DIR);
+  const unidentifiedDirs = (await subdirectories(fs, unidentifiedRoot)).flatMap((name) => {
+    const parsed = parseUnidentifiedDir(name);
+    return parsed ? [{ ...parsed, dir: join(unidentifiedRoot, name) }] : [];
+  });
+  const unidentified = await mapConcurrently(
+    unidentifiedDirs,
+    async ({ slug, id, dir }): Promise<UnidentifiedRevision> => ({
+      kind: 'unidentified',
+      slug,
+      id,
+      dir,
+      record: await readRecord(fs, dir, { kind: 'unidentified', revisionId: id }),
+    }),
+  );
+  for (const revision of unidentified) keepFirst(revision);
 
   return { revisions, projectDirs, nodeDirs, blocked };
 }
