@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/codlume/figma-drop/compare/v0.2.0...v0.2.1) (2026-11-09)
+
+
+### Performance Improvements
+
+* **library:** scan the library with bounded concurrency ([#25](https://github.com/codlume/figma-drop/issues/25)) ([e2e3042](https://github.com/codlume/figma-drop/commit/e2e304251aa871e5750309b51eab6710cf4640ec))
+
 ## [0.2.0](https://github.com/codlume/figma-drop/compare/v0.1.1...v0.2.0) (2026-11-08)
 
 
