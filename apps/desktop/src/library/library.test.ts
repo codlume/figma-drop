@@ -1,4 +1,14 @@
-import { mkdir, readdir, readFile, rename, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
@@ -744,6 +754,62 @@ describe('relaunch', () => {
 
     expect(await relaunched.getSnapshot()).toEqual(before);
   });
+
+  it('keeps every committed revision when the library holds more than one scan reads at once', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const committed: string[] = [];
+    for (let index = 0; index < 45; index += 1) {
+      const identity =
+        index % 9 === 8 ? unidentified(`claim-${index % 2}`) : fileIdentity(`key-${index % 4}`);
+      const result = await sb.commit(lib, {
+        identity,
+        figmaNodeId: `${index % 7}:1`,
+        content: `C${index}`,
+      });
+      committed.push(result.revisionId);
+    }
+
+    const snapshot = expectReady(await (await sb.open()).getSnapshot());
+
+    const all = [...projectRevisions(snapshot), ...snapshot.unidentified];
+    const oldestFirst = all.toSorted((a, b) => a.receivedAt.localeCompare(b.receivedAt));
+    expect(idsOf(oldestFirst)).toEqual(committed);
+    expect(all.every(({ state }) => state === 'ok')).toBe(true);
+    expect(snapshot.unidentified).toHaveLength(5);
+  }, 60_000);
+
+  it.each([
+    { copyListed: 'after', originalNode: 'Aaa', otherNode: 'Zzz', winner: 'original', state: 'ok' },
+    {
+      copyListed: 'before',
+      originalNode: 'Zzz',
+      otherNode: 'Aaa',
+      winner: 'copy',
+      state: 'damaged',
+    },
+  ] as const)(
+    'keeps the first listed directory when a copy listed $copyListed the original claims its id',
+    async ({ originalNode, otherNode, winner, state }) => {
+      const sb = await newSandbox();
+      const lib = await sb.open();
+      const original = await sb.commit(lib, { figmaNodeId: '1:1', nodeName: originalNode });
+      const other = await sb.commit(lib, { figmaNodeId: '2:2', nodeName: otherNode });
+      const copy = path.join(
+        path.dirname(revisionDirOf(other)),
+        path.basename(revisionDirOf(original)),
+      );
+      await cp(revisionDirOf(original), copy, { recursive: true });
+
+      const snapshot = expectReady(await (await sb.open()).getSnapshot());
+
+      const winnerDir = { original: revisionDirOf(original), copy }[winner];
+      const claims = projectRevisions(snapshot).filter(({ id }) => id === original.revisionId);
+      expect(claims).toEqual([
+        expect.objectContaining({ state, bundlePath: path.join(winnerDir, 'bundle') }),
+      ]);
+    },
+  );
 
   it('keeps no index or project file beside the revision directories', async () => {
     const sb = await newSandbox();
