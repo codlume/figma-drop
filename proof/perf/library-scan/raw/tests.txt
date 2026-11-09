@@ -1,0 +1,89 @@
+# tests.txt: captured test evidence. Paths under the session scratch directory read <scratch>.
+
+## Earlier one-off failure: reproduction attempt
+# One full 'pnpm test' run failed the first, 90-commit version of the new relaunch test. Its error text was not saved and is not reproduced here.
+# Reproduction: 8 full workspace runs ('vp run -r test') on an overlay of base d127aea + changed disk.ts + the 90-commit test. Loop log follows.
+=== run 1 00:07:57 load={ 1.82 3.48 3.63 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 2 00:08:20 load={ 3.28 3.72 3.71 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 3 00:08:41 load={ 5.80 4.31 3.92 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 4 00:09:19 load={ 8.68 5.27 4.29 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 5 00:09:42 load={ 9.66 5.84 4.53 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 6 00:10:02 load={ 9.10 5.97 4.61 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 7 00:10:24 load={ 9.98 6.38 4.78 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+=== run 8 00:10:44 load={ 10.78 6.84 4.99 }
+      Tests  20 passed (20)
+      Tests  322 passed (322)
+      Tests  906 passed (906)
+done
+
+## Duration of the 90-commit test inside the full desktop suite (vitest json reporter), alternating base disk.ts and changed disk.ts
+change run 1: suite passed 906 failed 0; 90-commit test passed in 4151 ms
+base   run 1: suite passed 906 failed 0; 90-commit test passed in 4293 ms
+change run 2: suite passed 906 failed 0; 90-commit test passed in 4239 ms
+base   run 2: suite passed 906 failed 0; 90-commit test passed in 4051 ms
+change run 3: suite passed 906 failed 0; 90-commit test passed in 4468 ms
+base   run 3: suite passed 906 failed 0; 90-commit test passed in 3759 ms
+
+## Duration of the 45-commit version inside the full desktop suite (before the 60_000 timeout and test renames)
+run 1: suite passed 906 failed 0; 45-commit test passed in 1880 ms
+run 2: suite passed 906 failed 0; 45-commit test passed in 1926 ms
+run 3: suite passed 906 failed 0; 45-commit test passed in 1823 ms
+
+## Final gates on the working tree, captured 2026-11-09T00:08:47Z
+$ pnpm test
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+~/apps/desktop$ vp test run --passWithNoTests ⊘ cache disabled
+ Test Files  16 passed (16)
+      Tests  322 passed (322)
+ Test Files  30 passed (30)
+      Tests  907 passed (907)
+Tests closed successfully but something prevents the main process from exiting
+exit 0
+$ pnpm typecheck
+exit 0
+$ pnpm lint (warnings under apps/desktop/src/library)
+0
+exit 0
+$ vp fmt --check apps/desktop/src/library proof/perf/library-scan
+Finished in 85ms on 16 files using 8 threads.
+$ pnpm --filter @figma-drop/desktop build
+exit 0
+$ cmp built dist-electron/main.cjs with the benchmarked change build
+identical
+
+## Dead-code branch compatibility: overlay of origin/chore/remove-unused-code d7159b6f645ad6163bf998d10c2efed141554df7 + these two files
+tsc exit 0
+ Test Files  30 passed (30)
+      Tests  895 passed (895)
+Tests closed successfully but something prevents the main process from exiting
+
+## Correction to the format line above
+# The gate above printed only its last line. It actually reported format issues in 5 new benchmark scripts. They were then formatted with 'vp fmt proof/perf/library-scan'. Re-check:
+$ vp fmt --check apps/desktop/src/library proof/perf/library-scan
+All matched files use the correct format.
+Finished in 75ms on 16 files using 8 threads.
+exit 0
+$ pnpm fmt:check (repo-wide; CHANGELOG.md also fails on base d127aea)
+CHANGELOG.md (27ms)

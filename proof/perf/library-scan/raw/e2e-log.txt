@@ -1,0 +1,84 @@
+# runs/typical/log.txt
+00:32:39 L=5000 r=1 v=base load={ 3.94 3.44 3.87 }
+{"batchMs":16011.7235,"p50SyncMs":821.8940000000002,"maxSyncMs":1030.8486670000002,"medSnapshotMs":737.5,"launchToLibraryShownMs":2811.217083999999,"errors":0}
+00:33:14 L=5000 r=1 v=change load={ 4.48 3.61 3.92 }
+{"batchMs":4139.025832999999,"p50SyncMs":209.9512080000004,"maxSyncMs":241.3574580000004,"medSnapshotMs":186.70000004768372,"launchToLibraryShownMs":778.8821660000003,"errors":0}
+00:33:29 L=5000 r=2 v=base load={ 4.45 3.65 3.92 }
+{"batchMs":14926.885500000002,"p50SyncMs":782.9096250000002,"maxSyncMs":805.8997920000002,"medSnapshotMs":737.3000000715256,"launchToLibraryShownMs":1926.4860829999998,"errors":0}
+00:34:00 L=5000 r=2 v=change load={ 4.00 3.62 3.90 }
+{"batchMs":3597.8457499999995,"p50SyncMs":186.47508300000027,"maxSyncMs":191.98395900000014,"medSnapshotMs":174.70000004768372,"launchToLibraryShownMs":726.5899589999999,"errors":0}
+00:34:15 L=5000 r=3 v=base load={ 4.41 3.72 3.93 }
+{"batchMs":14968.782375,"p50SyncMs":782.7003330000007,"maxSyncMs":799.2991249999977,"medSnapshotMs":740.6000000238419,"launchToLibraryShownMs":1816.9440000000004,"errors":0}
+00:34:45 L=5000 r=3 v=change load={ 3.78 3.62 3.89 }
+{"batchMs":3599.2591669999993,"p50SyncMs":186.45049999999992,"maxSyncMs":192.79991599999994,"medSnapshotMs":174.5,"launchToLibraryShownMs":715.8190830000003,"errors":0}
+00:35:00 L=5000 r=4 v=base load={ 3.98 3.67 3.90 }
+{"batchMs":14936.701458999998,"p50SyncMs":784.2833329999994,"maxSyncMs":803.1544170000016,"medSnapshotMs":737.6000000238419,"launchToLibraryShownMs":1862.3987500000003,"errors":0}
+00:35:31 L=5000 r=4 v=change load={ 3.34 3.54 3.85 }
+{"batchMs":3600.636792000001,"p50SyncMs":185.27099999999882,"maxSyncMs":191.96912500000144,"medSnapshotMs":171.89999997615814,"launchToLibraryShownMs":732.7874170000005,"errors":0}
+00:35:45 L=5000 r=5 v=base load={ 3.77 3.63 3.87 }
+{"batchMs":15059.3915,"p50SyncMs":781.2958330000001,"maxSyncMs":889.3482089999998,"medSnapshotMs":752,"launchToLibraryShownMs":1974.5118750000001,"errors":0}
+00:36:17 L=5000 r=5 v=change load={ 4.02 3.71 3.89 }
+{"batchMs":4030.3442079999995,"p50SyncMs":210.09000000000015,"maxSyncMs":222.15512500000023,"medSnapshotMs":189.5,"launchToLibraryShownMs":776.2650409999997,"errors":0}
+00:36:32 L=1000 r=1 v=base load={ 4.13 3.76 3.90 }
+{"batchMs":3759.68025,"p50SyncMs":181.23424999999952,"maxSyncMs":290.3164160000001,"medSnapshotMs":148.69999992847443,"launchToLibraryShownMs":708.4386669999999,"errors":0}
+00:36:40 L=1000 r=1 v=change load={ 3.96 3.73 3.89 }
+{"batchMs":1185.9627500000001,"p50SyncMs":56.07145800000035,"maxSyncMs":84.39970800000015,"medSnapshotMs":39,"launchToLibraryShownMs":453.5284999999999,"errors":0}
+00:36:44 L=1000 r=2 v=base load={ 4.04 3.75 3.90 }
+{"batchMs":3452.792875,"p50SyncMs":174.41066599999976,"maxSyncMs":237.96012500000006,"medSnapshotMs":160,"launchToLibraryShownMs":708.4267499999999,"errors":0}
+00:36:51 L=1000 r=2 v=change load={ 3.96 3.74 3.90 }
+{"batchMs":1162.590792,"p50SyncMs":57.96016699999973,"maxSyncMs":66.85083299999997,"medSnapshotMs":38.799999952316284,"launchToLibraryShownMs":448.3684169999999,"errors":0}
+00:36:55 L=1000 r=3 v=base load={ 3.96 3.74 3.90 }
+{"batchMs":3576.122917,"p50SyncMs":182.20183300000008,"maxSyncMs":221.0469579999999,"medSnapshotMs":166.10000002384186,"launchToLibraryShownMs":811.7250419999998,"errors":0}
+00:37:02 L=1000 r=3 v=change load={ 3.97 3.75 3.90 }
+{"batchMs":1088.6597499999998,"p50SyncMs":53.93820800000003,"maxSyncMs":62.85695800000008,"medSnapshotMs":36.10000002384186,"launchToLibraryShownMs":449.0234170000001,"errors":0}
+00:37:06 L=1000 r=4 v=base load={ 3.81 3.72 3.88 }
+{"batchMs":3304.935709,"p50SyncMs":170.1888329999997,"maxSyncMs":180.04975000000013,"medSnapshotMs":149,"launchToLibraryShownMs":710.009041,"errors":0}
+00:37:13 L=1000 r=4 v=change load={ 3.83 3.72 3.89 }
+{"batchMs":1093.094916,"p50SyncMs":54.34162500000002,"maxSyncMs":61.89541699999995,"medSnapshotMs":36.10000002384186,"launchToLibraryShownMs":408.04387499999984,"errors":0}
+00:37:17 L=1000 r=5 v=base load={ 4.16 3.79 3.91 }
+{"batchMs":3349.9973330000003,"p50SyncMs":170.62804099999994,"maxSyncMs":209.4437909999997,"medSnapshotMs":140.39999997615814,"launchToLibraryShownMs":708.772708,"errors":0}
+00:37:24 L=1000 r=5 v=change load={ 3.99 3.76 3.90 }
+{"batchMs":1209.340167,"p50SyncMs":61.11508300000014,"maxSyncMs":72.76120900000001,"medSnapshotMs":40,"launchToLibraryShownMs":460.261041,"errors":0}
+00:37:28 L=0 r=1 v=base load={ 4.07 3.78 3.90 }
+{"batchMs":666.561042,"p50SyncMs":31.854082999999946,"maxSyncMs":51.36899999999997,"medSnapshotMs":4,"launchToLibraryShownMs":288.064333,"errors":0}
+00:37:29 L=0 r=1 v=change load={ 4.07 3.78 3.90 }
+{"batchMs":646.582458,"p50SyncMs":30.69237499999997,"maxSyncMs":49.665749999999946,"medSnapshotMs":1.600000023841858,"launchToLibraryShownMs":291.547542,"errors":0}
+00:37:31 L=0 r=2 v=base load={ 4.07 3.78 3.90 }
+{"batchMs":632.1840420000001,"p50SyncMs":30.182500000000005,"maxSyncMs":50.55879200000004,"medSnapshotMs":3.8000000715255737,"launchToLibraryShownMs":291.33025,"errors":0}
+00:37:32 L=0 r=2 v=change load={ 3.98 3.77 3.90 }
+{"batchMs":652.992542,"p50SyncMs":31.180625000000077,"maxSyncMs":50.320542000000046,"medSnapshotMs":1.7000000476837158,"launchToLibraryShownMs":288.20883299999997,"errors":0}
+00:37:33 L=0 r=3 v=base load={ 3.98 3.77 3.90 }
+{"batchMs":642.086333,"p50SyncMs":31.137249999999995,"maxSyncMs":49.31466599999999,"medSnapshotMs":3.8000000715255737,"launchToLibraryShownMs":289.18654200000003,"errors":0}
+00:37:35 L=0 r=3 v=change load={ 3.98 3.77 3.90 }
+{"batchMs":638.337125,"p50SyncMs":31.136874999999918,"maxSyncMs":48.13779100000005,"medSnapshotMs":1.5,"launchToLibraryShownMs":291.49275,"errors":0}
+00:37:36 L=0 r=4 v=base load={ 4.06 3.79 3.91 }
+{"batchMs":698.877375,"p50SyncMs":34.3940419999999,"maxSyncMs":44.48508400000003,"medSnapshotMs":6.100000023841858,"launchToLibraryShownMs":286.639208,"errors":0}
+00:37:37 L=0 r=4 v=change load={ 4.06 3.79 3.91 }
+{"batchMs":651.369208,"p50SyncMs":31.611000000000104,"maxSyncMs":51.95037500000001,"medSnapshotMs":1.5,"launchToLibraryShownMs":344.201833,"errors":0}
+00:37:39 L=0 r=5 v=base load={ 4.06 3.79 3.91 }
+{"batchMs":663.42275,"p50SyncMs":33.17075,"maxSyncMs":49.96854099999996,"medSnapshotMs":5.199999928474426,"launchToLibraryShownMs":288.98075,"errors":0}
+00:37:40 L=0 r=5 v=change load={ 4.06 3.79 3.91 }
+{"batchMs":671.7181249999999,"p50SyncMs":31.824250000000006,"maxSyncMs":50.555791,"medSnapshotMs":1.600000023841858,"launchToLibraryShownMs":290.558375,"errors":0}
+done
+# runs/heavy/log.txt
+00:37:41 L=1000 r=1 v=base load={ 3.98 3.78 3.90 }
+{"batchMs":2122.053166,"p50SyncMs":219.8711669999998,"maxSyncMs":238.926375,"medSnapshotMs":158.30000007152557,"launchToLibraryShownMs":870.2885000000001,"errors":0}
+00:37:48 L=1000 r=1 v=change load={ 4.22 3.83 3.92 }
+{"batchMs":1622.1537079999998,"p50SyncMs":152.9719580000001,"maxSyncMs":224.54066599999987,"medSnapshotMs":43.299999952316284,"launchToLibraryShownMs":457.5318750000001,"errors":0}
+00:37:53 L=1000 r=2 v=base load={ 4.68 3.93 3.95 }
+{"batchMs":2030.5497089999994,"p50SyncMs":200.3221249999997,"maxSyncMs":237.51695800000016,"medSnapshotMs":153.60000002384186,"launchToLibraryShownMs":812.974792,"errors":0}
+00:38:00 L=1000 r=2 v=change load={ 4.63 3.93 3.95 }
+{"batchMs":1510.368375,"p50SyncMs":149.92545900000005,"maxSyncMs":174.18412499999977,"medSnapshotMs":39.799999952316284,"launchToLibraryShownMs":453.5681669999999,"errors":0}
+00:38:05 L=1000 r=3 v=base load={ 4.74 3.97 3.96 }
+{"batchMs":2186.852709,"p50SyncMs":216.52437500000087,"maxSyncMs":315.0155829999999,"medSnapshotMs":149.30000007152557,"launchToLibraryShownMs":1243.658459,"errors":0}
+00:38:12 L=1000 r=3 v=change load={ 5.22 4.10 4.01 }
+{"batchMs":4460.7392500000005,"p50SyncMs":392.11825,"maxSyncMs":741.7496250000004,"medSnapshotMs":39.40000009536743,"launchToLibraryShownMs":512.0916669999999,"errors":0}
+00:38:20 L=1000 r=4 v=base load={ 4.96 4.06 4.00 }
+{"batchMs":2136.255542,"p50SyncMs":210.47999999999956,"maxSyncMs":244.56279200000017,"medSnapshotMs":131.89999997615814,"launchToLibraryShownMs":714.04675,"errors":0}
+00:38:27 L=1000 r=4 v=change load={ 5.13 4.13 4.02 }
+{"batchMs":1486.7325,"p50SyncMs":151.26987499999996,"maxSyncMs":174.88166599999977,"medSnapshotMs":38.89999997615814,"launchToLibraryShownMs":448.22425,"errors":0}
+00:38:32 L=1000 r=5 v=base load={ 5.12 4.14 4.03 }
+{"batchMs":1959.2137910000006,"p50SyncMs":190.84508300000016,"maxSyncMs":234.77729100000033,"medSnapshotMs":153.20000004768372,"launchToLibraryShownMs":721.5750419999999,"errors":0}
+00:38:38 L=1000 r=5 v=change load={ 4.95 4.12 4.02 }
+{"batchMs":1563.700291,"p50SyncMs":157.27366699999993,"maxSyncMs":183.731542,"medSnapshotMs":41.799999952316284,"launchToLibraryShownMs":451.05166699999995,"errors":0}
+done
