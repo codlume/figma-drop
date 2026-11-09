@@ -25,9 +25,7 @@ export type ReceiverSwitch = {
 
 export type ReceiverSwitchOptions = {
   settingsPath: string;
-  // Null when the ingest build is absent, so no toggle can make anything listen.
-  controller: ReceiverController | null;
-  unavailableMessage: string;
+  controller: ReceiverController;
 };
 
 const SETTING_NOT_SAVED_MESSAGE =
@@ -36,7 +34,6 @@ const SETTING_NOT_SAVED_MESSAGE =
 export async function createReceiverSwitch({
   settingsPath,
   controller,
-  unavailableMessage,
 }: ReceiverSwitchOptions): Promise<ReceiverSwitch> {
   const settings = await readJsonFile(settingsPath, parseSettings);
   let enabled = (settings ?? DEFAULT_SETTINGS).receiverEnabled;
@@ -48,9 +45,6 @@ export async function createReceiverSwitch({
 
   const status = (): ReceiverStatus => {
     if (fault !== null) return { state: 'failed', message: fault, enabled };
-    if (!controller) {
-      return enabled ? { state: 'unavailable', message: unavailableMessage } : { state: 'off' };
-    }
     const current = controller.status();
     return current.state === 'failed' ? { ...current, enabled } : current;
   };
@@ -59,7 +53,7 @@ export async function createReceiverSwitch({
     for (const listener of listeners) listener(current);
     return current;
   };
-  controller?.onStatus(() => {
+  controller.onStatus(() => {
     fault = null;
     publish();
   });
@@ -82,7 +76,7 @@ export async function createReceiverSwitch({
 
   const drive = async (action: 'start' | 'stop') => {
     try {
-      await controller?.[action]();
+      await controller[action]();
     } catch (error) {
       console.error(`Could not ${action} the receiver`, error);
       const cause = error instanceof Error ? error.message : String(error);

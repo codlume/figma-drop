@@ -159,22 +159,19 @@ describe('useLibrary', () => {
     expect(listeners.size).toBe(0);
   });
 
-  it.each(['unreadable', 'library-unavailable'] as const)(
-    "shows main's message for %s, and a later success recovers without a restart",
-    async (scenario) => {
-      const { bridge, control } = createSyntheticBridge({ scenario });
-      const { result } = renderHook(() => useLibrary(bridge));
-      await waitFor(() => expect(result.current.state.kind).toBe('failed'));
-      expect(result.current.state).toMatchObject({ message: expect.stringContaining('Synthetic') });
+  it("shows main's message for unreadable, and a later success recovers without a restart", async () => {
+    const { bridge, control } = createSyntheticBridge({ scenario: 'unreadable' });
+    const { result } = renderHook(() => useLibrary(bridge));
+    await waitFor(() => expect(result.current.state.kind).toBe('failed'));
+    expect(result.current.state).toMatchObject({ message: expect.stringContaining('Synthetic') });
 
-      control.recover();
-      act(() => result.current.retry());
-      expect(result.current.state).toEqual({ kind: 'loading' });
+    control.recover();
+    act(() => result.current.retry());
+    expect(result.current.state).toEqual({ kind: 'loading' });
 
-      await waitFor(() => expect(result.current.state.kind).toBe('ready'));
-      expect(result.current.state).toMatchObject({ snapshot: populatedLibrary });
-    },
-  );
+    await waitFor(() => expect(result.current.state.kind).toBe('ready'));
+    expect(result.current.state).toMatchObject({ snapshot: populatedLibrary });
+  });
 
   it('stays failed when retrying an unreadable library that has not recovered', async () => {
     const { bridge } = createSyntheticBridge({ scenario: 'unreadable' });

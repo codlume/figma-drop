@@ -13,7 +13,7 @@ import { createReceiverSwitch, type ReceiverSwitch } from './receiver-switch.ts'
 const REVISION = 'revision-1';
 const BUNDLE = '/library/bundle';
 
-// Labelled fakes: they stand in for B-LIBRARY and the desktop shell in this test only.
+// Labelled fakes: they stand in for the library and the desktop shell in this test only.
 function fakeLibrary(overrides: Partial<Library> = {}) {
   return {
     bundlePath: vi.fn(async () => ({ ok: true, path: BUNDLE }) as const),
@@ -39,38 +39,14 @@ const receiver = {
   setEnabled: vi.fn(async () => ({ state: 'off' })),
 } as unknown as ReceiverSwitch;
 
-describe('without the library', () => {
-  const commands = createCommands({ library: null, receiver, desktop: fakeDesktop() });
-
-  it('returns the unavailable snapshot', async () => {
-    expect(await commands[IPC.librarySnapshot]()).toEqual({
-      state: 'unavailable',
-      message: expect.any(String),
-      projects: [],
-      unidentified: [],
-    });
-  });
-
-  it.each([IPC.libraryReveal, IPC.libraryCopyPath, IPC.libraryCopyToFolder, IPC.libraryTrash])(
-    '%s answers unavailable',
-    async (channel) => {
-      expect(await commands[channel](REVISION)).toEqual({
-        ok: false,
-        code: 'unavailable',
-        message: expect.any(String),
-      });
-    },
-  );
-
-  it('opens no folder picker', async () => {
-    const desktop = fakeDesktop();
-    const absent = createCommands({ library: null, receiver, desktop });
-    await absent[IPC.libraryCopyToFolder](REVISION);
-    expect(desktop.chooseFolder).not.toHaveBeenCalled();
-  });
-});
-
 describe('with the library', () => {
+  it('returns the library snapshot', async () => {
+    const snapshot = { state: 'ready', projects: [], unidentified: [] } as const;
+    const library = fakeLibrary({ getSnapshot: vi.fn(async () => snapshot) });
+    const commands = createCommands({ library, receiver, desktop: fakeDesktop() });
+    expect(await commands[IPC.librarySnapshot]()).toBe(snapshot);
+  });
+
   it('reveals the path the library names', async () => {
     const desktop = fakeDesktop();
     const commands = createCommands({ library: fakeLibrary(), receiver, desktop });
@@ -145,7 +121,7 @@ describe('with the library', () => {
 });
 
 describe('receiver commands', () => {
-  const commands = createCommands({ library: null, receiver, desktop: fakeDesktop() });
+  const commands = createCommands({ library: fakeLibrary(), receiver, desktop: fakeDesktop() });
 
   it('reads the status', async () => {
     expect(await commands[IPC.receiverStatus]()).toEqual({ state: 'off' });
@@ -161,7 +137,7 @@ describe('receiver commands', () => {
   });
 });
 
-// Labelled fake: it stands in for A-INGEST's controller in this test only.
+// Labelled fake: it stands in for the receiver controller in this test only.
 function fakeController(start: (report: (status: ReceiverStatus) => void) => Promise<void>) {
   const listeners = new Set<(status: ReceiverStatus) => void>();
   let current: ReceiverStatus = { state: 'off' };
@@ -194,12 +170,11 @@ describe('push and reply through the real switch', () => {
     const realReceiver = await createReceiverSwitch({
       settingsPath: NodePath.join(dir, 'settings.json'),
       controller,
-      unavailableMessage: 'Not installed.',
     });
     const pushed: ReceiverStatus[] = [];
     realReceiver.onStatus((status) => pushed.push(status));
     const commands = createCommands({
-      library: null,
+      library: fakeLibrary(),
       receiver: realReceiver,
       desktop: fakeDesktop(),
     });

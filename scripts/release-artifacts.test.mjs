@@ -18,7 +18,6 @@ import {
   dmgSigning,
   isAppleMetadataEntry,
   NOTARY_DIR,
-  NOTARY_LOGS,
   parseReleaseMode,
   readReleaseVersion,
   requireReleaseSigning,

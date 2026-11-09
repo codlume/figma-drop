@@ -23,11 +23,17 @@ vi.mock('./tray-icon.ts', () => ({ createTrayIcon: () => ({}) }));
 
 let settingsDir: string;
 
-const openTray = async (controller: ReceiverController | null = null) => {
+const idleController: ReceiverController = {
+  start: async () => {},
+  stop: async () => {},
+  status: () => ({ state: 'off' }),
+  onStatus: () => () => {},
+};
+
+const openTray = async (controller: ReceiverController = idleController) => {
   const receiver = await createReceiverSwitch({
     settingsPath: NodePath.join(settingsDir, 'settings.json'),
     controller,
-    unavailableMessage: 'Not installed.',
   });
   const tray = createAppTray({ receiver, open: () => {}, quit: () => {} });
   const item = (id: string) => {

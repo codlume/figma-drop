@@ -12,11 +12,12 @@ import {
   type WebContents,
 } from 'electron';
 
+import { createReceiverController } from '../ingest/receiver-controller.ts';
+import { createLibrary } from '../library/index.ts';
 import { IPC } from '../shared/ipc.ts';
 import { PREVIEW_SCHEME } from '../shared/library.ts';
 import { type Commands, createCommands } from './commands.ts';
 import { focusExport } from './focus.ts';
-import { createLibrary, createReceiverController, receiverEntry } from './integrations.ts';
 import { denyPermissions, lockNavigation, pageUrl } from './lockdown.ts';
 import { previewResponse } from './preview.ts';
 import { createReceiverSwitch } from './receiver-switch.ts';
@@ -26,7 +27,6 @@ import { createAppTray } from './tray.ts';
 import { createWindows } from './windows.ts';
 
 const QUIT_TIMEOUT_MS = 5_000;
-const RECEIVER_UNAVAILABLE_MESSAGE = 'Export receiving is not installed in this build.';
 
 const runtime = resolveRuntime(process.env, {
   isPackaged: app.isPackaged,
@@ -55,11 +55,10 @@ async function main() {
   denyPermissions(session.defaultSession);
 
   // Opening sweeps staging, so the receiver must not start before this resolves.
-  const library =
-    (await createLibrary?.({
-      root: runtime.library,
-      trashItem: (path) => shell.trashItem(path),
-    })) ?? null;
+  const library = await createLibrary({
+    root: runtime.library,
+    trashItem: (path) => shell.trashItem(path),
+  });
 
   const windows = createWindows({
     url: pageUrl(runtime.devServerUrl, NodePath.join(__dirname, '../dist/renderer')),
@@ -67,25 +66,21 @@ async function main() {
     onCreated: (contents) => registerCommands(contents, commands),
   });
 
-  const controller =
-    library && createReceiverController
-      ? createReceiverController({
-          entry: receiverEntry,
-          port: runtime.port,
-          library,
-          fork: (entry) =>
-            utilityProcess.fork(entry, [], {
-              serviceName: 'figma-drop receiver',
-              stdio: 'inherit',
-            }),
-          onFocus: (path) => focusExport(path, { library, windows }),
-        })
-      : null;
+  const controller = createReceiverController({
+    entry: NodePath.join(__dirname, 'receiver.cjs'),
+    port: runtime.port,
+    library,
+    fork: (entry) =>
+      utilityProcess.fork(entry, [], {
+        serviceName: 'figma-drop receiver',
+        stdio: 'inherit',
+      }),
+    onFocus: (path) => focusExport(path, { library, windows }),
+  });
 
   const receiver = await createReceiverSwitch({
     settingsPath: NodePath.join(runtime.userData, 'settings.json'),
     controller,
-    unavailableMessage: RECEIVER_UNAVAILABLE_MESSAGE,
   });
   const commands = createCommands({
     library,
@@ -105,7 +100,7 @@ async function main() {
   });
 
   protocol.handle(PREVIEW_SCHEME, (request) => previewResponse(request.url, library));
-  library?.onChanged(() => windows.send(IPC.libraryChanged));
+  library.onChanged(() => windows.send(IPC.libraryChanged));
   receiver.onStatus((status) => windows.send(IPC.receiverStatusChanged, status));
 
   const show = () => void windows.show();

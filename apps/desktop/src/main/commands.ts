@@ -1,6 +1,6 @@
 import type { Library } from '../shared/integration.ts';
 import { type FigmaDropApi, IPC } from '../shared/ipc.ts';
-import type { CommandError, LibrarySnapshot, RevisionId } from '../shared/library.ts';
+import type { CommandError, RevisionId } from '../shared/library.ts';
 import type { ReceiverSwitch } from './receiver-switch.ts';
 import { parseRevisionId } from './revision-id.ts';
 
@@ -24,40 +24,25 @@ export type DesktopActions = {
   chooseFolder(): Promise<string | null>;
 };
 
-export const LIBRARY_UNAVAILABLE_MESSAGE = 'The library is not installed in this build.';
-
-const UNAVAILABLE: CommandError = {
-  ok: false,
-  code: 'unavailable',
-  message: LIBRARY_UNAVAILABLE_MESSAGE,
-};
-const UNAVAILABLE_SNAPSHOT: LibrarySnapshot = {
-  state: 'unavailable',
-  message: LIBRARY_UNAVAILABLE_MESSAGE,
-  projects: [],
-  unidentified: [],
-};
-
 export function createCommands({
   library,
   receiver,
   desktop,
 }: {
-  library: Library | null;
+  library: Library;
   receiver: ReceiverSwitch;
   desktop: DesktopActions;
 }): Commands {
   const onRevision =
     <Result>(run: (library: Library, revisionId: RevisionId) => Promise<Result>) =>
     async (value: unknown): Promise<Result | CommandError> => {
-      if (!library) return UNAVAILABLE;
       const revisionId = parseRevisionId(value);
       if (!revisionId) return { ok: false, code: 'not-found', message: 'No such revision.' };
       return run(library, revisionId);
     };
 
   return {
-    [IPC.librarySnapshot]: async () => (library ? library.getSnapshot() : UNAVAILABLE_SNAPSHOT),
+    [IPC.librarySnapshot]: () => library.getSnapshot(),
     [IPC.libraryReveal]: onRevision(async (open, revisionId) => {
       const bundle = await open.bundlePath(revisionId);
       if (!bundle.ok) return bundle;

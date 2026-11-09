@@ -22,7 +22,7 @@ pnpm dev
 pnpm dev -- --remote-debugging-port=9222
 ```
 
-Restart `pnpm dev` after you add `src/ingest/receiver-process.ts`, because the config reads the file list once. `pnpm install` does not download the Electron binary. The first `pnpm dev` does, or run `pnpm --filter @figma-drop/desktop exec install-electron`.
+`pnpm install` does not download the Electron binary. The first `pnpm dev` does, or run `pnpm --filter @figma-drop/desktop exec install-electron`.
 
 ## Environment
 
@@ -59,21 +59,6 @@ The first run uses the real library at `~/figma-drop` and port 3579, and keeps i
 
 By default the app is an Electron bundle with an ad-hoc signature, which lets it run locally on arm64. `pnpm app:local` needs no Python and no credentials. With `FIGMA_DROP_SIGN_IDENTITY` and `FIGMA_DROP_NOTARY_PROFILE` set, it signs the app with a Developer ID under the hardened runtime, gives each `.app` in the bundle `entitlements.mac.plist`, has Apple notarize the app, and staples the ticket. Each `.app` and its main executable share one signature, which carries exactly `com.apple.security.cs.allow-jit`. Other code carries no entitlement. A release ships that notarized app inside a signed, notarized DMG, which `pnpm release:dry-run` also builds. See the signing modes in `RELEASING.md`. The executable must keep a name other than `Electron`, because Electron derives `app.isPackaged` from it. Under the old name the app reads as a development build.
 
-## Ownership
-
-Each ticket adds its own files. No ticket edits another's files, and none edits `src/main/integrations.ts`, which finds these seams at build time.
-
-| Ticket    | Owns                                                                                                      | Contract                                                                                                                                                        |
-| --------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A-INGEST  | `src/ingest/**`                                                                                           | `receiver-controller.ts` exports `createReceiverController: CreateReceiverController`. `receiver-process.ts` is the `utilityProcess` entry. Land both together. |
-| B-LIBRARY | `src/library/**`                                                                                          | `index.ts` exports `createLibrary: CreateLibrary`                                                                                                               |
-| C-UI      | `src/renderer/App.tsx`, `src/renderer/style.css`, `src/renderer/test-setup.ts`, `src/renderer/synthetic/` | `App.tsx` exports `App` and imports its own `./style.css`                                                                                                       |
-| D-PLUGIN  | `apps/figma-plugin/**`                                                                                    | `packages/export-contract`                                                                                                                                      |
-
-The shell owns `src/main/**`, `src/preload/**`, `src/node/atomic-json.ts`, and `src/renderer/{index.html,main.tsx}`.
-
-A controller is created only when the library is present, because it needs `ReceiverLibrary`.
-
 ## Proof
 
 Build first. These scripts use scratch directories under the system temp dir, and they stop only the processes they started. All of them use a free test port except `verify-bundle.mjs`, the one proof that binds port 3579, because a packaged app cannot use any other.
@@ -88,7 +73,7 @@ node proof/shell/verify-bundle.mjs
 
 | Script                      | Proves                                                                                                                                    | Does not prove                                               |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `verify-shell.mjs`          | The window, tray, persistence, and quit lifecycle over CDP. It expects a receiver exactly when `src/ingest` exists.                       | The packaged app                                             |
+| `verify-shell.mjs`          | The window, tray, persistence, and quit lifecycle over CDP.                                                                               | The packaged app                                             |
 | `verify-copy-to-folder.mjs` | Copy to folder through the real button and library, with the dialog answered from the inspector. An unstubbed run shows the call pending. | That a person can pick a folder in the native panel          |
 | `verify-chrome.mjs`         | The window options, and the drag strip's computed style and geometry.                                                                     | A native window drag, or where the traffic lights really are |
 | `verify-bundle.mjs`         | The bundle's metadata and signature, then a launch of its own executable on a scratch home: render, library root, receiver state, quit.   | A Finder double-click, which it does not perform             |

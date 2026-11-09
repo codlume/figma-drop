@@ -136,13 +136,10 @@ describe('scenarios', () => {
     expect(outcome).toBe('pending');
   });
 
-  it.each<[ScenarioName, LibrarySnapshot['state']]>([
-    ['unreadable', 'unreadable'],
-    ['library-unavailable', 'unavailable'],
-  ])('%s reports its state with a message and no data', async (scenario, state) => {
-    const { bridge } = createSyntheticBridge({ scenario });
+  it('unreadable reports its state with a message and no data', async () => {
+    const { bridge } = createSyntheticBridge({ scenario: 'unreadable' });
     await expect(bridge.library.getSnapshot()).resolves.toEqual({
-      state,
+      state: 'unreadable',
       message: expect.stringContaining('Synthetic'),
       projects: [],
       unidentified: [],
@@ -160,7 +157,6 @@ describe('scenarios', () => {
     ['port-conflict', 'port-conflict'],
     ['receiver-failed', 'failed'],
     ['receiver-stop-failed', 'failed'],
-    ['receiver-absent', 'unavailable'],
   ])('%s reports receiver state %s', async (scenario, state) => {
     const { bridge } = createSyntheticBridge({ scenario });
     await expect(bridge.receiver.getStatus()).resolves.toMatchObject({ state });

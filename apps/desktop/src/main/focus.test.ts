@@ -6,7 +6,7 @@ import { focusExport } from './focus.ts';
 
 const TARGET: FocusTarget = { kind: 'revision', revisionId: 'revision-1' as RevisionId };
 
-// Labelled fakes: they stand in for B-LIBRARY's `locate` and the Electron window owner.
+// Labelled fakes: they stand in for the library's `locate` and the Electron window owner.
 function fakes({ target = TARGET as FocusTarget | null, shown = true, sent = true } = {}) {
   return {
     library: { locate: vi.fn(async () => target) },

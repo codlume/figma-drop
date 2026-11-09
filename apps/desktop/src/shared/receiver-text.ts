@@ -18,7 +18,5 @@ export function receiverStatusText(status: ReceiverStatus): string {
         : `Port ${status.port} is in use`;
     case 'failed':
       return `Receiver problem: ${status.message}`;
-    case 'unavailable':
-      return `Receiver unavailable: ${status.message}`;
   }
 }
