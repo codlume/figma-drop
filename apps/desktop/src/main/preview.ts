@@ -25,11 +25,11 @@ function revisionIdFromUrl(requestUrl: string): RevisionId | null {
 
 export async function previewResponse(
   requestUrl: string,
-  library: Pick<Library, 'previewFile'> | null,
+  library: Pick<Library, 'previewFile'>,
 ): Promise<Response> {
   const notFound = new Response(null, { status: 404, headers: HEADERS });
   const revisionId = revisionIdFromUrl(requestUrl);
-  if (!library || !revisionId) return notFound;
+  if (!revisionId) return notFound;
   const file = await library.previewFile(revisionId);
   if (!file) return notFound;
   try {

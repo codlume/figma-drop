@@ -25,14 +25,12 @@ export const scenarioNames = [
   'empty',
   'loading',
   'unreadable',
-  'library-unavailable',
   'snapshot-rejects',
   'receiver-off',
   'port-conflict',
   'receiver-failed',
   'receiver-stop-failed',
   'receiver-unavailable',
-  'receiver-absent',
   'actions-fail',
   'actions-reject',
 ] as const;
@@ -83,14 +81,9 @@ const receiverStopFailed: ReceiverStatus = {
   message: 'Synthetic: could not stop the receiver.',
   enabled: false,
 };
-const receiverAbsent: ReceiverStatus = {
-  state: 'unavailable',
-  message: 'Synthetic: this build has no receiver.',
-};
 
-const notReady =
-  (state: 'unreadable' | 'unavailable', message: string) => (): Promise<LibrarySnapshot> =>
-    Promise.resolve({ state, message, projects: [], unidentified: [] });
+const notReady = (message: string) => (): Promise<LibrarySnapshot> =>
+  Promise.resolve({ state: 'unreadable', message, projects: [], unidentified: [] });
 
 const populated: Scenario = {
   seed: populatedLibrary,
@@ -107,11 +100,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
   loading: { ...populated, snapshot: () => new Promise(() => {}) },
   unreadable: {
     ...populated,
-    snapshot: notReady('unreadable', 'Synthetic: the library folder could not be read.'),
-  },
-  'library-unavailable': {
-    ...populated,
-    snapshot: notReady('unavailable', 'Synthetic: the library is not open.'),
+    snapshot: notReady('Synthetic: the library folder could not be read.'),
   },
   'snapshot-rejects': {
     ...populated,
@@ -122,7 +111,6 @@ const scenarios: Record<ScenarioName, Scenario> = {
   'receiver-failed': { ...populated, status: receiverFailed, statusWhenOn: receiverFailed },
   'receiver-stop-failed': { ...populated, status: receiverStopFailed },
   'receiver-unavailable': { ...populated, receiverReachable: false },
-  'receiver-absent': { ...populated, status: receiverAbsent, statusWhenOn: receiverAbsent },
   'actions-fail': { ...populated, commands: 'fail' },
   'actions-reject': { ...populated, commands: 'reject' },
 };
