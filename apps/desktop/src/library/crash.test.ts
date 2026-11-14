@@ -294,6 +294,25 @@ describe('error mapping', () => {
     });
   });
 
+  it('keeps running queued commands after one of them fails', async () => {
+    const sb = await newSandbox();
+    const fs = instrumentFs();
+    const lib = await sb.open(fs.fs);
+    const doomed = await sb.stage(lib, { content: 'A' });
+    const next = await sb.stage(lib, { content: 'B', figmaNodeId: '2:2' });
+    fs.arm({ kind: 'once', at: 1, code: 'EBUSY' });
+
+    const [failed, committed, snapshot] = await Promise.all([
+      lib.commit(doomed),
+      lib.commit(next),
+      lib.getSnapshot(),
+    ]);
+
+    expectFailure(failed, 'failed');
+    expect(committed).toMatchObject({ ok: true, status: 'committed', revisionId: next.stagingId });
+    expect(idsOf(projectRevisions(expectReady(snapshot)))).toEqual([next.stagingId]);
+  });
+
   it('never rejects when every filesystem call fails', async () => {
     const sb = await newSandbox();
     const fs = instrumentFs();

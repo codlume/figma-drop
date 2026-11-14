@@ -168,6 +168,7 @@ export type InstrumentedFs = {
   mutationCount(): number;
   fired(): boolean;
   mutationLog(): string[];
+  peakInFlight(): number;
   hold(method: string): Gate;
 };
 
@@ -224,6 +225,8 @@ export function instrumentFs(): InstrumentedFs {
   let methodHits = 0;
   let dead = false;
   let fired = false;
+  let inFlight = 0;
+  let peakInFlight = 0;
 
   async function run<T>(call: FsCall, real: () => Promise<T>): Promise<T> {
     calls.push(call);
@@ -252,9 +255,15 @@ export function instrumentFs(): InstrumentedFs {
       gate.reached();
       await gate.released;
     }
-    const result = await real();
-    call.landed = true;
-    return result;
+    inFlight += 1;
+    peakInFlight = Math.max(peakInFlight, inFlight);
+    try {
+      const result = await real();
+      call.landed = true;
+      return result;
+    } finally {
+      inFlight -= 1;
+    }
   }
 
   function wrapHandle(handle: FileHandle): FileHandle {
@@ -312,10 +321,12 @@ export function instrumentFs(): InstrumentedFs {
       mutations = 0;
       methodHits = 0;
       fired = false;
+      peakInFlight = inFlight;
     },
     mutationCount: () => mutations,
     fired: () => fired,
     mutationLog: () => calls.filter((call) => call.mutating).map(describeCall),
+    peakInFlight: () => peakInFlight,
     hold(method) {
       const reached = Promise.withResolvers<void>();
       const released = Promise.withResolvers<void>();
