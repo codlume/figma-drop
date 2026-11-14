@@ -338,6 +338,7 @@ const decodeChildMessage = Schema.decodeUnknownOption(
   ]),
 );
 
+// Child messages are untrusted because the child parses hostile bodies.
 export function parseChildMessage(raw: unknown): ChildMessage | null {
   return Option.getOrNull(decodeChildMessage(raw));
 }

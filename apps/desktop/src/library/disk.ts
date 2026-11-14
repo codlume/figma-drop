@@ -149,6 +149,9 @@ async function subdirectories(fs: LibraryFs, dir: string): Promise<string[]> {
     .toSorted();
 }
 
+// Null blocks that one branch, refused or moved mid-scan, so other Figma files keep
+// ingesting. Any other failure, like a missing root, says nothing about the branch,
+// so the scan fails.
 async function subdirectoriesUnlessBlocked(fs: LibraryFs, dir: string): Promise<string[] | null> {
   try {
     return await subdirectories(fs, dir);
