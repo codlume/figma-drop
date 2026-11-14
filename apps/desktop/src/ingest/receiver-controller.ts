@@ -29,7 +29,7 @@ export type ControllerTuning = {
 
 type Holder = { pid: number; command: string };
 
-type Child = { process: ForkedProcess; exited: boolean; watchdog: NodeJS.Timeout | null };
+type Child = { process: ForkedProcess; watchdog: NodeJS.Timeout | null };
 
 // `off`, `port-conflict`, and `failed` hold no process.
 type Phase =
@@ -89,7 +89,7 @@ export const createReceiverController = ((
       setPhase({ phase: 'failed', message: `The receiver could not start: ${describe(error)}` });
       return;
     }
-    const child: Child = { process, exited: false, watchdog: null };
+    const child: Child = { process, watchdog: null };
     setPhase({ phase: 'starting', child });
     process.on('message', (raw) => onMessage(child, raw));
     process.on('exit', () => onExit(child));
@@ -144,7 +144,6 @@ export const createReceiverController = ((
   }
 
   function onExit(child: Child): void {
-    child.exited = true;
     clearWatchdog(child);
     if (!isCurrent(child)) return;
     if (phase.phase === 'stopping') {
@@ -212,7 +211,7 @@ export const createReceiverController = ((
           Effect.timeoutOption(stopTimeoutMs),
         );
         await Effect.runPromise(exited);
-        if (!child.exited) {
+        if (isCurrent(child)) {
           child.process.kill();
           await Effect.runPromise(exited);
         }
