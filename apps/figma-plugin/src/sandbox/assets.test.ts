@@ -277,6 +277,24 @@ describe('image fills', () => {
     expect((await exportNode(fake.figma, root)).images).toHaveLength(1);
   });
 
+  it('lists images in document order, a nested layer before the next sibling of its parent', async () => {
+    const fake = createFakeFigma();
+    for (const hash of ['nested', 'sibling', 'last']) fake.addImage(hash, PNG);
+    const root = fake.node('FRAME', {
+      children: [
+        fake.node('GROUP', {
+          children: [fake.node('RECTANGLE', { fills: [imagePaint('nested')] })],
+        }),
+        fake.node('RECTANGLE', { fills: [imagePaint('sibling')] }),
+        fake.node('RECTANGLE', { fills: [imagePaint('last')] }),
+      ],
+    });
+
+    const { images } = await exportNode(fake.figma, root);
+
+    expect(images.map((image) => image.imageHash)).toEqual(['nested', 'sibling', 'last']);
+  });
+
   it('takes only visible paints in fills of visible nodes', async () => {
     const fake = createFakeFigma();
     for (const hash of ['shown', 'paint-off', 'node-off', 'under-off', 'stroke', 'background']) {
