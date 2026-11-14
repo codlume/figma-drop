@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>control</h1>
+    <ul id="l"></ul>
+    <script>
+      for (let i = 0; i < 300; i++) {
+        const li = document.createElement('li');
+        li.textContent = 'row ' + i;
+        document.getElementById('l').append(li);
+      }
+    </script>
+  </body>
+</html>

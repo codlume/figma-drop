@@ -1,0 +1,65 @@
+{
+  "seconds": 60,
+  "errors": [],
+  "windowOpen": {
+    "wallMs": 60060,
+    "totalCpuMs": 40,
+    "percentOfOneCore": 0.067,
+    "wakeupsPerSecond": 3.5,
+    "byProcess": {
+      "main": {
+        "cpuMs": 40,
+        "wakeups": 171,
+        "processes": 1
+      },
+      "zygote": {
+        "cpuMs": 0,
+        "wakeups": 0,
+        "processes": 2
+      },
+      "gpu-process": {
+        "cpuMs": 0,
+        "wakeups": 10,
+        "processes": 1
+      },
+      "utility:network.mojom.NetworkService": {
+        "cpuMs": 0,
+        "wakeups": 21,
+        "processes": 1
+      },
+      "renderer": {
+        "cpuMs": 0,
+        "wakeups": 11,
+        "processes": 1
+      }
+    }
+  },
+  "windowClosed": {
+    "wallMs": 60048,
+    "totalCpuMs": 10,
+    "percentOfOneCore": 0.017,
+    "wakeupsPerSecond": 1.3,
+    "byProcess": {
+      "main": {
+        "cpuMs": 10,
+        "wakeups": 30,
+        "processes": 1
+      },
+      "zygote": {
+        "cpuMs": 0,
+        "wakeups": 0,
+        "processes": 2
+      },
+      "gpu-process": {
+        "cpuMs": 0,
+        "wakeups": 25,
+        "processes": 1
+      },
+      "utility:network.mojom.NetworkService": {
+        "cpuMs": 0,
+        "wakeups": 23,
+        "processes": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "app": "proto-json",
+  "calls": 10,
+  "errors": [],
+  "catalog": {
+    "wallMs": {
+      "n": 50,
+      "min": 64.8,
+      "p50": 88.8,
+      "p90": 108.8,
+      "max": 131.6
+    },
+    "mainCpuMsPerCall": {
+      "n": 5,
+      "min": 37,
+      "p50": 45,
+      "p90": 50,
+      "max": 50
+    },
+    "rendererCpuMsPerCall": {
+      "n": 5,
+      "min": 51,
+      "p50": 54,
+      "p90": 60,
+      "max": 60
+    }
+  },
+  "disk": {
+    "wallMs": {
+      "n": 50,
+      "min": 671.4,
+      "p50": 770.9,
+      "p90": 945.8,
+      "max": 1205
+    },
+    "mainCpuMsPerCall": {
+      "n": 5,
+      "min": 1111,
+      "p50": 1144,
+      "p90": 1228,
+      "max": 1228
+    },
+    "rendererCpuMsPerCall": {
+      "n": 5,
+      "min": 58,
+      "p50": 59,
+      "p90": 105,
+      "max": 105
+    }
+  },
+  "json": {
+    "wallMs": {
+      "n": 50,
+      "min": 34.6,
+      "p50": 48.5,
+      "p90": 78.3,
+      "max": 146.3
+    },
+    "mainCpuMsPerCall": {
+      "n": 5,
+      "min": 37,
+      "p50": 43,
+      "p90": 48,
+      "max": 48
+    },
+    "rendererCpuMsPerCall": {
+      "n": 5,
+      "min": 10,
+      "p50": 13,
+      "p90": 20,
+      "max": 20
+    }
+  }
+}

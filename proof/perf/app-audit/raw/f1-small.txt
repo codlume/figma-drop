@@ -1,0 +1,31 @@
+# f1-small
+# 17:08:03 round=1 build=base load=3.83 4.27 5.53
+# 17:08:15 round=1 build=f1 load=4.16 4.33 5.54
+# 17:08:22 round=2 build=base load=4.30 4.35 5.53
+# 17:08:35 round=2 build=f1 load=4.27 4.34 5.52
+# 17:08:43 round=3 build=base load=4.15 4.31 5.49
+# 17:08:56 round=3 build=f1 load=4.61 4.40 5.51
+# 17:09:03 round=4 build=base load=4.65 4.42 5.50
+# 17:09:16 round=4 build=f1 load=4.73 4.45 5.50
+# 17:09:25 round=5 build=base load=4.91 4.49 5.50
+# 17:09:37 round=5 build=f1 load=5.36 4.61 5.53
+base: 5 runs, 0 errors
+  batch total ms               5451 [4130–5582]
+  batch until shown ms         6305 [4778–6357]
+  reply p50 ms                 30.2 [18.9–43.7]
+  reply p90 ms                 756 [668–838]
+  reply max ms                 848 [718–858]
+  main CPU ms                  8880 [7190–9550]
+  renderer CPU ms              780 [640–860]
+  receiver CPU ms              120 [110–130]
+  launch to library shown ms   2159 [2010–2443]
+f1: 5 runs, 0 errors
+  batch total ms               949 [716–1105]
+  batch until shown ms         1115 [879–1428]
+  reply p50 ms                 39.2 [20.5–60.1]
+  reply p90 ms                 100 [75.8–112]
+  reply max ms                 109 [88.6–124]
+  main CPU ms                  830 [700–1100]
+  renderer CPU ms              710 [580–1020]
+  receiver CPU ms              110 [100–110]
+  launch to library shown ms   2040 [1953–2504]

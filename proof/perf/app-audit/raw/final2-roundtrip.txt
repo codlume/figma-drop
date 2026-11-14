@@ -1,0 +1,21 @@
+# final2-roundtrip
+# 18:06:59 round=1 build=base load=5.96 6.62 6.55
+# 18:07:50 round=1 build=final2 load=6.36 6.63 6.56
+# 18:08:15 round=2 build=base load=5.79 6.47 6.51
+# 18:09:06 round=2 build=final2 load=6.22 6.45 6.49
+# 18:09:30 round=3 build=base load=5.73 6.30 6.44
+# 18:10:30 round=3 build=final2 load=8.24 6.90 6.64
+# 18:11:01 round=4 build=base load=9.39 7.32 6.79
+# 18:12:07 round=4 build=final2 load=8.47 7.50 6.89
+# 18:12:37 round=5 build=base load=8.85 7.71 6.99
+# 18:13:42 round=5 build=final2 load=12.18 8.88 7.44
+base: 5 runs, 0 errors
+  launch to library shown ms   2888 [2087–3663]
+  reopen to library shown ms   1121 [1011–1348]
+  focus to refreshed ms        801 [641–944]
+  focus main CPU ms            1168 [928–1242]
+final2: 5 runs, 0 errors
+  launch to library shown ms   2464 [1841–3431]
+  reopen to library shown ms   563 [461–1010]
+  focus to refreshed ms        399 [305–415]
+  focus main CPU ms            528 [452–578]

@@ -1,0 +1,8 @@
+{
+  "app": "base",
+  "errors": [],
+  "checkoutShownAtStart": true,
+  "checkoutShownAfterExport": false,
+  "checkoutShownAfterFocus": false,
+  "benchShownAfterFocus": true
+}

@@ -1,0 +1,11 @@
+{
+  "app": "final2",
+  "errors": [],
+  "checkoutShownAtStart": true,
+  "checkoutShownAfterExport": true,
+  "checkoutShownAfterFocus": false,
+  "benchShownAfterFocus": true,
+  "benchShownAfterRestart": true,
+  "checkoutShownAfterRestart": false,
+  "rowsAfterRestart": 301
+}

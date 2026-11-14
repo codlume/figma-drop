@@ -1,0 +1,77 @@
+{
+  "seconds": 60,
+  "errors": [],
+  "windowOpen": {
+    "wallMs": 60031,
+    "totalCpuMs": 260,
+    "percentOfOneCore": 0.433,
+    "wakeupsPerSecond": 16.8,
+    "byProcess": {
+      "main": {
+        "cpuMs": 140,
+        "wakeups": 459,
+        "processes": 1
+      },
+      "zygote": {
+        "cpuMs": 0,
+        "wakeups": 0,
+        "processes": 2
+      },
+      "gpu-process": {
+        "cpuMs": 0,
+        "wakeups": 13,
+        "processes": 1
+      },
+      "utility:network.mojom.NetworkService": {
+        "cpuMs": 10,
+        "wakeups": 23,
+        "processes": 1
+      },
+      "renderer": {
+        "cpuMs": 70,
+        "wakeups": 136,
+        "processes": 1
+      },
+      "utility:node.mojom.NodeService": {
+        "cpuMs": 40,
+        "wakeups": 376,
+        "processes": 1
+      }
+    }
+  },
+  "activeResources": ["PipeWrap"],
+  "activeResourcesClosed": ["PipeWrap"],
+  "windowClosed": {
+    "wallMs": 60038,
+    "totalCpuMs": 20,
+    "percentOfOneCore": 0.033,
+    "wakeupsPerSecond": 1.7,
+    "byProcess": {
+      "main": {
+        "cpuMs": 10,
+        "wakeups": 28,
+        "processes": 1
+      },
+      "zygote": {
+        "cpuMs": 0,
+        "wakeups": 0,
+        "processes": 2
+      },
+      "gpu-process": {
+        "cpuMs": 10,
+        "wakeups": 27,
+        "processes": 1
+      },
+      "utility:network.mojom.NetworkService": {
+        "cpuMs": 0,
+        "wakeups": 22,
+        "processes": 1
+      },
+      "utility:node.mojom.NodeService": {
+        "cpuMs": 0,
+        "wakeups": 24,
+        "processes": 1
+      }
+    }
+  }
+}

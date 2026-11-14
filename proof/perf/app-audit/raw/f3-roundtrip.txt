@@ -1,0 +1,21 @@
+# f3-roundtrip
+# 17:35:47 round=1 build=f4 load=5.32 5.94 5.95
+# 17:36:26 round=1 build=f3 load=5.91 6.03 5.99
+# 17:36:51 round=2 build=f4 load=5.20 5.85 5.93
+# 17:37:27 round=2 build=f3 load=6.13 6.00 5.97
+# 17:37:52 round=3 build=f4 load=6.91 6.21 6.04
+# 17:38:28 round=3 build=f3 load=7.58 6.44 6.13
+# 17:38:53 round=4 build=f4 load=6.80 6.34 6.10
+# 17:39:27 round=4 build=f3 load=6.55 6.31 6.10
+# 17:39:53 round=5 build=f4 load=6.89 6.41 6.14
+# 17:40:32 round=5 build=f3 load=8.07 6.78 6.27
+f3: 5 runs, 0 errors
+  launch to library shown ms   1929 [1829–2041]
+  reopen to library shown ms   627 [491–729]
+  focus to refreshed ms        328 [300–368]
+  focus main CPU ms            468 [446–490]
+f4: 5 runs, 0 errors
+  launch to library shown ms   2623 [2043–2629]
+  reopen to library shown ms   988 [855–1316]
+  focus to refreshed ms        676 [644–783]
+  focus main CPU ms            1036 [992–1162]
