@@ -23,6 +23,7 @@ import {
   HOSTILE_HTML,
   HOSTILE_SVG,
   idsOf,
+  instrumentFs,
   nodeFor,
   PNG_BYTES,
   projectFor,
@@ -699,6 +700,35 @@ describe('findExport', () => {
     expect(await treeOf(sb.root)).toEqual(tree);
   });
 
+  const lookup = {
+    identity: fileIdentity('file-key-a'),
+    figmaNodeId: '1:2',
+    contentHash: contentHashOf('A'),
+  };
+  const badLookups: [string, unknown][] = [
+    ['a null lookup', null],
+    ['a string lookup', 'lookup'],
+    ['an undefined identity', { ...lookup, identity: undefined }],
+    ['an array identity', { ...lookup, identity: ['file', 'file-key-a'] }],
+    ['an empty fileKey', { ...lookup, identity: fileIdentity('') }],
+    ['a missing claimedKey', { ...lookup, identity: { kind: 'unidentified' } }],
+    ['an empty figmaNodeId', { ...lookup, figmaNodeId: '' }],
+    ['a numeric figmaNodeId', { ...lookup, figmaNodeId: 12 }],
+    ['an uppercase hash', { ...lookup, contentHash: lookup.contentHash.toUpperCase() }],
+    ['an undefined hash', { ...lookup, contentHash: undefined }],
+  ];
+
+  it.each(badLookups)('fails %s without rejecting or touching disk', async (_label, bad) => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    await sb.commit(lib);
+    const tree = await treeOf(sb.root);
+
+    expectFailure(await lib.findExport(bad as typeof lookup), 'failed');
+
+    expect(await treeOf(sb.root)).toEqual(tree);
+  });
+
   it('returns null when the matched bundle has vanished', async () => {
     const sb = await newSandbox();
     const lib = await sb.open();
@@ -778,6 +808,23 @@ describe('relaunch', () => {
     expect(all.every(({ state }) => state === 'ok')).toBe(true);
     expect(snapshot.unidentified).toHaveLength(5);
   }, 60_000);
+
+  it('reads a large library concurrently, never more than 32 calls at once', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    const receiptlessIds = Array.from({ length: 80 }, (_, index) => stagingIdFor(500 + index));
+    await Promise.all(
+      receiptlessIds.map((id) => mkdir(path.join(sb.root, 'unidentified', `loose-${id}`))),
+    );
+    instrumented.arm();
+
+    const snapshot = expectReady(await lib.getSnapshot());
+
+    expect(snapshot.unidentified).toHaveLength(receiptlessIds.length);
+    expect(instrumented.peakInFlight()).toBeGreaterThan(1);
+    expect(instrumented.peakInFlight()).toBeLessThanOrEqual(32);
+  });
 
   it.each([
     { copyListed: 'after', originalNode: 'Aaa', otherNode: 'Zzz', winner: 'original', state: 'ok' },

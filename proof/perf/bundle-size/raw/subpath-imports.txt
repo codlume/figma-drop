@@ -1,0 +1,3 @@
+## every `import { X } from 'effect'` rewritten to `import * as X from 'effect/X'`, 4 files, 11 imports
+as-built-before              main 357422 (gzip 86976)  preload 2056 (gzip 712)  receiver 369866 (gzip 90383)
+minify                       main 114622 (gzip 36991)  preload 1234 (gzip 537)  receiver 106357 (gzip 34723)

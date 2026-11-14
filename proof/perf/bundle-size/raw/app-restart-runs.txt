@@ -1,0 +1,2 @@
+before: exit 0, main.cjs 357418 bytes, stderr 0 bytes, output sha256 c269d8888d770ec0
+after: exit 0, main.cjs 114622 bytes, stderr 0 bytes, output sha256 c269d8888d770ec0

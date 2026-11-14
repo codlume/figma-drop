@@ -1,0 +1,4 @@
+before, default:            at Object.<anonymous> (<app>/dist-electron/main.cjs:11746:21)
+before, --enable-source-maps: at Object.<anonymous> (<app>/src/main/index.ts:33:13)
+after, default:            at Object.<anonymous> (<app>/dist-electron/main.cjs:5:93161)
+after, --enable-source-maps: at Object.<anonymous> (<app>/src/main/index.ts:33:13)

@@ -19,6 +19,8 @@ const electronEntry = (name: 'main' | 'preload' | 'receiver', entry: string) => 
   outExtensions: () => ({ js: '.cjs' }),
   dts: false,
   sourcemap: true,
+  // An unminified bundle keeps the JSDoc of every bundled dependency, over a third of its bytes.
+  minify: true,
   // Entries share this directory.
   clean: false,
   outputOptions: { codeSplitting: false },

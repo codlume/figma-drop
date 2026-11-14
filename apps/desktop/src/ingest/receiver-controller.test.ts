@@ -587,6 +587,62 @@ const commit = (overrides: Record<string, unknown>) => ({
   call: { method: 'commit', staged: { ...staged, ...overrides } },
 });
 
+describe('parseChildMessage on hostile shapes', () => {
+  const lookup = {
+    identity: { kind: 'file', fileKey: 'key' },
+    figmaNodeId: '1:2',
+    contentHash: 'a'.repeat(64),
+  };
+  const find = (overrides: Record<string, unknown>) => ({
+    type: 'call',
+    callId: 1,
+    call: { method: 'findExport', lookup: { ...lookup, ...overrides } },
+  });
+
+  it.each([
+    ['an array carrying a type', Object.assign([], { type: 'parse-start' })],
+    ['an unknown type', { type: 'restart' }],
+    ['a fractional call id', { ...find({}), callId: 1.5 }],
+    ['a call with no body', { type: 'call', callId: 1 }],
+    ['port zero', { type: 'status', status: { state: 'listening', port: 0 } }],
+    ['a port past the range', { type: 'status', status: { state: 'listening', port: 65_536 } }],
+    ['a fractional port', { type: 'status', status: { state: 'port-conflict', port: 80.5 } }],
+    [
+      'a fractional holder pid',
+      {
+        type: 'status',
+        status: { state: 'port-conflict', port: 80, holder: { pid: 1.5, command: 'n' } },
+      },
+    ],
+    ['an empty node id', find({ figmaNodeId: '' })],
+    ['an uppercase hash', find({ contentHash: 'A'.repeat(64) })],
+    ['a long hash', find({ contentHash: 'a'.repeat(65) })],
+    ['an unknown identity kind', find({ identity: { kind: 'team', fileKey: 'key' } })],
+    ['a file identity with a null key', find({ identity: { kind: 'file', fileKey: null } })],
+    ['an unidentified export with no claimed key', find({ identity: { kind: 'unidentified' } })],
+    ['a numeric focus path', { type: 'call', callId: 1, call: { method: 'focus', path: 7 } }],
+    ['an undefined display name', commit({ fileName: undefined })],
+    ['an uppercase staging id', commit({ stagingId: staged.stagingId.replace('0', 'A') })],
+    ['a staging id wrapped in an array', commit({ stagingId: [staged.stagingId] })],
+  ])('drops %s', (_label, message) => {
+    expect(parseChildMessage(message)).toBeNull();
+  });
+
+  it('keeps values at their bounds', () => {
+    const atLimit = 'x'.repeat(MAX_IDENTITY_CHARS);
+    for (const message of [
+      { type: 'status', status: { state: 'listening', port: 1 } },
+      { type: 'status', status: { state: 'port-conflict', port: 65_535 } },
+      { type: 'status', status: { state: 'failed', message: 'x'.repeat(MAX_IDENTITY_CHARS + 1) } },
+      { type: 'call', callId: 1, call: { method: 'focus', path: '' } },
+      find({ identity: { kind: 'unidentified', claimedKey: '' } }),
+      commit({ fileName: atLimit, nodeName: '', figmaNodeId: atLimit }),
+    ]) {
+      expect(parseChildMessage(message)).toEqual(message);
+    }
+  });
+});
+
 describe('parseChildMessage length bounds', () => {
   const oversized = 'x'.repeat(MAX_IDENTITY_CHARS + 1);
 
