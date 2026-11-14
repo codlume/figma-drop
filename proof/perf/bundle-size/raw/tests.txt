@@ -1,0 +1,9 @@
+ ❯ |node| src/ingest/receiver-controller.test.ts (41 tests | 1 failed) 666ms
+     × reports a port conflict with the holder and leaves it running 42ms
+ ❯ |node| src/ingest/port-holder.test.ts (3 tests | 1 failed) 109ms
+     × names this process when it holds the port 90ms
+ ❯ src/ingest/port-holder.test.ts:19:25
+ ❯ src/ingest/receiver-controller.test.ts:294:33
+ Test Files  2 failed | 28 passed (30)
+      Tests  2 failed | 973 passed (975)
+   Duration  74.22s (transform 15.20s, setup 10.98s, import 36.37s, tests 251.32s, environment 30.04s)

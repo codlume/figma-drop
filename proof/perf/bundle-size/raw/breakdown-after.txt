@@ -1,0 +1,101 @@
+## after (minify: true)
+dist-electron/main.cjs: 114622 bytes in 6 lines, 114622 attributed
+
+by package
+   81549  71.1%  npm:effect
+   18024  15.7%  src/library
+    8548   7.5%  src/main
+    4348   3.8%  src/ingest
+     831   0.7%  src/shared
+     673   0.6%  (unmapped)
+     375   0.3%  src/node
+     274   0.2%  packages/export-contract
+
+top 25 of 80 modules
+   24221  21.1%  npm:effect/dist/SchemaAST.js
+   13397  11.7%  npm:effect/dist/internal/effect.js
+    5851   5.1%  src/library/disk.ts
+    4927   4.3%  npm:effect/dist/internal/core.js
+    4762   4.2%  npm:effect/dist/Duration.js
+    4581   4.0%  src/library/catalog.ts
+    4511   3.9%  src/library/library.ts
+    4348   3.8%  src/ingest/receiver-controller.ts
+    3860   3.4%  npm:effect/dist/Schema.js
+    2536   2.2%  npm:effect/dist/Context.js
+    2396   2.1%  npm:effect/dist/internal/dateTime.js
+    2331   2.0%  npm:effect/dist/internal/schema/interpreter.js
+    2249   2.0%  npm:effect/dist/Equal.js
+    1999   1.7%  src/main/index.ts
+    1927   1.7%  npm:effect/dist/BigDecimal.js
+    1818   1.6%  npm:effect/dist/Formatter.js
+    1775   1.5%  npm:effect/dist/Hash.js
+    1775   1.5%  src/library/receipt.ts
+    1557   1.4%  npm:effect/dist/SchemaIssue.js
+    1552   1.4%  npm:effect/dist/Scheduler.js
+    1525   1.3%  npm:effect/dist/SchemaParser.js
+    1401   1.2%  npm:effect/dist/Semaphore.js
+    1288   1.1%  src/library/names.ts
+    1190   1.0%  src/main/receiver-switch.ts
+    1186   1.0%  src/main/windows.ts
+
+effect copies: 1 install, build directories dist
+modules bundled from more than one path: none
+dist-electron/main.cjs.map: 2343645 bytes, sources embedded: effect 2002912, other 90836
+
+modules also in dist-electron/receiver.cjs: 55, 77326 bytes, of which effect 77052
+
+dist-electron/receiver.cjs: 106363 bytes in 22 lines, 106363 attributed
+
+by package
+   88213  82.9%  npm:effect
+   16639  15.6%  src/ingest
+    1374   1.3%  packages/export-contract
+     137   0.1%  (unmapped)
+
+top 25 of 75 modules
+   25257  23.7%  npm:effect/dist/SchemaAST.js
+   16541  15.6%  npm:effect/dist/internal/effect.js
+    6622   6.2%  npm:effect/dist/Duration.js
+    4935   4.6%  npm:effect/dist/internal/core.js
+    3980   3.7%  npm:effect/dist/SchemaIssue.js
+    3723   3.5%  src/ingest/receiver-server.ts
+    2677   2.5%  src/ingest/bundle.ts
+    2538   2.4%  npm:effect/dist/Context.js
+    2394   2.3%  npm:effect/dist/internal/dateTime.js
+    2331   2.2%  npm:effect/dist/internal/schema/interpreter.js
+    2249   2.1%  npm:effect/dist/Equal.js
+    2048   1.9%  src/ingest/receiver-child.ts
+    1920   1.8%  npm:effect/dist/BigDecimal.js
+    1872   1.8%  npm:effect/dist/Formatter.js
+    1775   1.7%  npm:effect/dist/Hash.js
+    1646   1.5%  src/ingest/rejections.ts
+    1552   1.5%  npm:effect/dist/Scheduler.js
+    1513   1.4%  npm:effect/dist/SchemaParser.js
+    1484   1.4%  src/ingest/export-pipeline.ts
+    1413   1.3%  npm:effect/dist/Schema.js
+    1377   1.3%  src/ingest/content-hash.ts
+    1335   1.3%  src/ingest/request-policy.ts
+    1149   1.1%  npm:effect/dist/internal/matcher.js
+     951   0.9%  npm:effect/dist/internal/result.js
+     883   0.8%  npm:effect/dist/internal/option.js
+
+effect copies: 1 install, build directories dist
+modules bundled from more than one path: none
+dist-electron/receiver.cjs.map: 2349593 bytes, sources embedded: effect 2057850, other 50788
+
+dist-electron/preload.cjs: 1234 bytes in 2 lines, 1234 attributed
+
+by package
+     832  67.4%  src/preload
+     376  30.5%  src/shared
+      26   2.1%  (unmapped)
+
+top 5 of 4 modules
+     742  60.1%  src/preload/index.ts
+     376  30.5%  src/shared/ipc.ts
+      90   7.3%  src/preload/subscribe.ts
+      26   2.1%  (unmapped)
+
+effect copies: 0 install, build directories 
+modules bundled from more than one path: none
+dist-electron/preload.cjs.map: 4850 bytes, sources embedded: effect 0, other 3510

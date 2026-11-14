@@ -1,0 +1,187 @@
+{
+  "health": {
+    "status": 200,
+    "allowOrigin": null,
+    "contentType": "text/plain; charset=utf-8",
+    "body": "figma-drop receiver\n"
+  },
+  "preflight": {
+    "status": 204,
+    "allowOrigin": "null",
+    "contentType": null,
+    "body": ""
+  },
+  "sync": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"path\":\"<base>/library/files/<staging-1>\"}"
+  },
+  "syncNoKey": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"path\":\"<base>/library/files/<staging-2>\"}"
+  },
+  "syncKeyIsName": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"path\":\"<base>/library/files/<staging-3>\"}"
+  },
+  "syncCurrent": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"path\":\"<base>/library/files/<staging-4>\"}"
+  },
+  "syncHostileNames": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"path\":\"<base>/library/files/<staging-5>\"}"
+  },
+  "badOrigin": {
+    "status": 403,
+    "allowOrigin": null,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This origin is not allowed.\"}"
+  },
+  "noOrigin": {
+    "status": 403,
+    "allowOrigin": null,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This origin is not allowed.\"}"
+  },
+  "badOriginPreflight": {
+    "status": 403,
+    "allowOrigin": null,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This origin is not allowed.\"}"
+  },
+  "badHost": {
+    "status": 403,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This address is not allowed.\"}"
+  },
+  "wrongType": {
+    "status": 415,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"Send this request as application/json.\"}"
+  },
+  "badJson": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"The request body is not valid JSON.\"}"
+  },
+  "notObject": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "nullBody": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "noNode": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "badTop": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "badNested": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "multiBad": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "assetsBad": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "versionInfinity": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This export is missing required data.\"}"
+  },
+  "open": {
+    "status": 200,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"ok\":true}"
+  },
+  "openBadPath": {
+    "status": 400,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This request names no export path.\"}"
+  },
+  "openBadOrigin": {
+    "status": 403,
+    "allowOrigin": null,
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"This origin is not allowed.\"}"
+  },
+  "pickFolder": {
+    "status": 501,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"figma-drop chooses where exports are saved, so there is nothing to pick.\"}"
+  },
+  "unknownRoute": {
+    "status": 404,
+    "allowOrigin": "null",
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"error\":\"There is nothing at this address.\"}"
+  },
+  "committedFiles": [
+    "bundle/figma-components.json 2 B sha256:4f53cda18c2baa0c",
+    "bundle/meta.json 582 B sha256:8bfa9f1469ae0a40",
+    "bundle/node.json 55 B sha256:746e0c75bc7324b4",
+    "bundle/preview.html 334 B sha256:3ab019b4c24b89a1",
+    "bundle/preview.svg 71 B sha256:3f67c8be987aa1db"
+  ],
+  "pathInsideScratch": true,
+  "exit": {
+    "code": 0,
+    "signal": null
+  },
+  "statuses": ["listening", "stopping"],
+  "calls": [
+    "findExport",
+    "commit {\"stagingId\":\"<staging-1>\",\"identity\":{\"kind\":\"file\",\"fileKey\":\"synthKey\"},\"figmaNodeId\":\"1:2\",\"contentHash\":\"72845d196ebcb56a07f29971ba01e58e698c657871f39bffffda8f90d25c899c\",\"fileName\":\"Synthetic\",\"nodeName\":\"Frame\",\"exportedAt\":\"2026-01-02T03:04:05.000Z\"} files=bundle",
+    "findExport",
+    "commit {\"stagingId\":\"<staging-2>\",\"identity\":{\"kind\":\"unidentified\",\"claimedKey\":null},\"figmaNodeId\":\"1:2\",\"contentHash\":\"c77c8c04cc1d03c44a95e3c0fef1dadd731d0056e73fdc555a4f44a6d5fdbe72\",\"fileName\":\"Synthetic\",\"nodeName\":\"Frame\",\"exportedAt\":\"2026-01-02T03:04:05.000Z\"} files=bundle",
+    "findExport",
+    "commit {\"stagingId\":\"<staging-3>\",\"identity\":{\"kind\":\"unidentified\",\"claimedKey\":\"Synthetic\"},\"figmaNodeId\":\"1:2\",\"contentHash\":\"e89bf1d4701ffa41953fd85e00b3b33b65a4d87ca883e1cfcffe155ce4bafcd8\",\"fileName\":\"Synthetic\",\"nodeName\":\"Frame\",\"exportedAt\":\"2026-01-02T03:04:05.000Z\"} files=bundle",
+    "findExport",
+    "commit {\"stagingId\":\"<staging-4>\",\"identity\":{\"kind\":\"unidentified\",\"claimedKey\":\"current\"},\"figmaNodeId\":\"1:2\",\"contentHash\":\"0263c5cc932cf198d23931243c12af54c2b9a340cf539d04813df3f21fb8a062\",\"fileName\":\"Synthetic\",\"nodeName\":\"Frame\",\"exportedAt\":\"2026-01-02T03:04:05.000Z\"} files=bundle",
+    "findExport",
+    "commit {\"stagingId\":\"<staging-5>\",\"identity\":{\"kind\":\"file\",\"fileKey\":\"synthKey\"},\"figmaNodeId\":\"1:2\",\"contentHash\":\"242bd8217128700c250ae9ef7ab3324d1f63bb704a9ff4e3f21f8c9dbe638d24\",\"fileName\":\"..\",\"nodeName\":\"../../Ünï/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"exportedAt\":\"2026-01-02T03:04:05.000Z\"} files=bundle",
+    "focus"
+  ],
+  "refusedAfterStop": {
+    "error": "ECONNREFUSED"
+  }
+}

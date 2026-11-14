@@ -1,0 +1,6 @@
+as-built-before              main 357418 (gzip 87046)  preload 2056 (gzip 712)  receiver 369870 (gzip 90570)
+comments-stripped            main 225013 (gzip 54175)  preload 2040 (gzip 695)  receiver 207423 (gzip 50510)
+minify-names-kept            main 177653 (gzip 47335)  preload 1717 (gzip 622)  receiver 164936 (gzip 44535)
+minify-function-names-kept   main 132370 (gzip 39731)  preload 1284 (gzip 552)  receiver 122203 (gzip 37176)
+minify                       main 114622 (gzip 36993)  preload 1234 (gzip 537)  receiver 106363 (gzip 34725)
+minify-pure-property-reads   main 101159 (gzip 32896)  preload 1234 (gzip 537)  receiver 100846 (gzip 32796)
