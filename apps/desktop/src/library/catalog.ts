@@ -52,8 +52,6 @@ export type Catalog = {
   revisions: ReadonlyMap<RevisionId, CatalogRevision>;
   projectDirs: ReadonlyMap<ProjectId, HashedDir>;
   nodeDirs: ReadonlyMap<ExportNodeId, HashedDir>;
-  // Branches the OS refused to list. Unknown is not empty: one may hold newer
-  // revisions, so neither dedup nor the next sequence can be trusted inside it.
   blocked: ReadonlySet<ProjectId | ExportNodeId>;
 };
 
