@@ -111,7 +111,7 @@ export type BundleResult =
   | { ok: false; rejection: Extract<RejectionCode, 'tooManyAssets' | 'invalidAsset'> };
 
 // Throws RangeError when a file exceeds V8's string limit even as compact JSON.
-export function buildBundleFiles(payload: ExportPayload & { nodeId: string }): BundleResult {
+export function buildBundleFiles(payload: ExportPayload, nodeId: string): BundleResult {
   const { node, components, remoteMasters, variables, styles, svg, png } = payload;
   const encodedAssets = [...(payload.assets ?? []), ...(payload.images ?? [])];
   if (encodedAssets.length > MAX_ASSETS) return { ok: false, rejection: 'tooManyAssets' };
@@ -132,7 +132,7 @@ export function buildBundleFiles(payload: ExportPayload & { nodeId: string }): B
   if (variables) files.push({ relativePath: BUNDLE_FILES.variables, bytes: toJson(variables) });
   if (styles) files.push({ relativePath: BUNDLE_FILES.styles, bytes: toJson(styles) });
   if (svg !== undefined) {
-    const title = payload.nodeName || payload.nodeId;
+    const title = payload.nodeName || nodeId;
     files.push(
       { relativePath: BUNDLE_FILES.previewSvg, bytes: svg },
       { relativePath: BUNDLE_FILES.previewHtml, bytes: previewHtml(title, svg) },

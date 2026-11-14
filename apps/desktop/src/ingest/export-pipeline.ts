@@ -50,7 +50,7 @@ export function prepareExport(body: Buffer): PrepareResult {
 
   let bundle: BundleResult;
   try {
-    bundle = buildBundleFiles({ ...payload, nodeId });
+    bundle = buildBundleFiles(payload, nodeId);
   } catch {
     return { ok: false, rejection: 'bodyTooLarge' };
   }
