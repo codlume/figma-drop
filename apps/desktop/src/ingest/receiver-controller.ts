@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
 import type {
   CommitResult,
@@ -208,11 +208,13 @@ export const createReceiverController = ((
         const { child } = phase;
         setPhase({ phase: 'stopping', child });
         post(child, { type: 'stop' });
-        const exited = waitFor((current) => current.phase === 'off');
-        await Promise.race([exited, delay(stopTimeoutMs)]);
+        const exited = Effect.promise(() => waitFor((current) => current.phase === 'off')).pipe(
+          Effect.timeoutOption(stopTimeoutMs),
+        );
+        await Effect.runPromise(exited);
         if (!child.exited) {
           child.process.kill();
-          await Promise.race([exited, delay(stopTimeoutMs)]);
+          await Effect.runPromise(exited);
         }
         // A kill that emits no exit still ends here at off.
         if (isCurrent(child)) setPhase({ phase: 'off' });
@@ -276,10 +278,6 @@ async function guard<T>(operation: () => Promise<T>): Promise<T | CommitResult> 
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms).unref());
 }
 
 const identityString = Schema.String.check(Schema.isMaxLength(MAX_IDENTITY_CHARS));

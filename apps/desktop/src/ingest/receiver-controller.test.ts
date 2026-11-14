@@ -616,7 +616,7 @@ describe('controller timing at the default tuning', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('ends the stop when the killed child exits', async () => {
+  it('ends the stop when the killed child exits, with no timer left', async () => {
     const { controller, fork } = await listeningScripted();
     const stopping = controller.stop();
     await settle();
@@ -624,9 +624,10 @@ describe('controller timing at the default tuning', () => {
     await stopping;
     expect(controller.status()).toEqual({ state: 'off' });
     expect(fork.kills).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('ends the stop when the child exits on its own, with no kill', async () => {
+  it('ends the stop when the child exits on its own, with no kill and no timer left', async () => {
     const { controller, fork } = await listeningScripted();
     const stopping = controller.stop();
     await settle();
@@ -634,6 +635,7 @@ describe('controller timing at the default tuning', () => {
     await stopping;
     expect(controller.status()).toEqual({ state: 'off' });
     expect(fork.kills).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('stops with no timer when no child is running', async () => {
@@ -711,10 +713,11 @@ async function listeningChild() {
 describe('child stop grace at the default tuning', () => {
   fakeClock();
 
-  it('exits 0 at once when nothing is in flight', async () => {
+  it('exits 0 at once when nothing is in flight, with no timer left', async () => {
     const { deliver, exit } = await listeningChild();
     deliver({ type: 'stop' });
     expect(await exit.promise).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('gives a hung commit 5 s, then cuts the request and exits 0', async () => {
