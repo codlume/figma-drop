@@ -144,9 +144,13 @@ export function ImageViewer({
   const overflows =
     shown !== null && (shown.width > stageSize.width || shown.height > stageSize.height);
 
-  useEffect(() => {
-    if (!dialog.current?.open) dialog.current?.showModal();
+  useLayoutEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
     stage.current?.focus();
+    // A native close hands focus back to the opener, and removing an open dialog drops focus to
+    // the body. A layout cleanup runs before React removes the dialog, whatever unmounts the viewer.
+    return () => element?.close();
   }, []);
 
   useEffect(() => {
@@ -203,11 +207,6 @@ export function ImageViewer({
     '1': () => changeZoom(actualSize),
   };
 
-  function close() {
-    dialog.current?.close();
-    onClose();
-  }
-
   return (
     <dialog
       ref={dialog}
@@ -215,13 +214,13 @@ export function ImageViewer({
       aria-label={`Preview of ${title}`}
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        onClose();
       }}
       onPointerDown={(event) => {
         pressedBackdrop.current = event.target === event.currentTarget;
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget && pressedBackdrop.current) close();
+        if (event.target === event.currentTarget && pressedBackdrop.current) onClose();
       }}
       onKeyDown={(event) => {
         if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -273,7 +272,7 @@ export function ImageViewer({
               icon={<CloseIcon />}
               aria-label="Close"
               aria-keyshortcuts="Escape"
-              onClick={close}
+              onClick={onClose}
             />
           </div>
         </div>
