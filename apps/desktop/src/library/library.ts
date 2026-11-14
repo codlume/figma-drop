@@ -1,5 +1,6 @@
 import * as fsPromises from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { Effect, Semaphore } from 'effect';
 import type {
   CommitResult,
   ExportLookup,
@@ -91,12 +92,10 @@ export async function openLibrary(
   const listeners = new Set<() => void>();
   const outcomes = new Map<StagingId, RevisionId>();
   let openState: OpenState = { state: 'unreadable' };
-  let tail: Promise<unknown> = Promise.resolve();
+  const queue = Semaphore.makeUnsafe(1);
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const run = tail.then(task);
-    tail = run.catch(() => {});
-    return run;
+    return Effect.runPromise(queue.withPermit(Effect.promise(task)));
   }
 
   function command<T>(task: () => Promise<T | CommandError>): Promise<T | CommandError> {
