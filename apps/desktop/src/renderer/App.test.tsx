@@ -59,6 +59,17 @@ const actionButton = (label: string) => within(details()).getByRole('button', { 
 const receiverSwitch = () => screen.findByRole('switch', { name: 'Receiver' });
 const actionStatus = () => within(details()).getByRole('status');
 
+function focusAtFirstMutationWhere(reached: () => boolean) {
+  return new Promise<Element | null>((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (!reached()) return;
+      observer.disconnect();
+      resolve(document.activeElement);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+}
+
 async function openProject(user: ReturnType<typeof userEvent.setup>, projectName: RegExp | string) {
   await user.click(within(await library()).getByRole('option', { name: projectName }));
 }
@@ -356,8 +367,10 @@ describe('image viewer', () => {
     await openNode(user, name('Pushed node'));
     await user.click(opener());
     expect(screen.getByRole('dialog')).toBeVisible();
+    const focusAtClose = focusAtFirstMutationWhere(() => screen.queryByRole('dialog') === null);
     bridgeControl.pushExport();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await focusAtClose).toBe(opener());
     expect(opener()).toHaveFocus();
   });
 
@@ -592,6 +605,9 @@ describe('trash', () => {
     render(<App />);
     await user.click(await screen.findByRole('button', { name: 'Move to Trash' }));
     getSnapshot.mockResolvedValue(emptyLibrary);
+    const focusOnceEmpty = focusAtFirstMutationWhere(
+      () => screen.queryByRole('heading', { name: 'No exports yet' }) !== null,
+    );
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Move to Trash' }),
     );
@@ -599,6 +615,7 @@ describe('trash', () => {
     expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
       'Moved to Trash',
     );
+    expect(await focusOnceEmpty).not.toBe(document.body);
     expect(document.activeElement).not.toBe(document.body);
   });
 
