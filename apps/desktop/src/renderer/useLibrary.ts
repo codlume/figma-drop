@@ -1,3 +1,4 @@
+import { Effect, Latch } from 'effect';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FigmaDropApi } from './bridge.ts';
 import type { ReadySnapshot } from './libraryView.ts';
@@ -22,52 +23,43 @@ const REFRESH_FAILED = 'figma-drop could not refresh the library, so this may be
 
 type Transition = (previous: LibraryState) => LibraryState;
 
-async function fetchTransition(bridge: FigmaDropApi): Promise<Transition> {
-  try {
-    const snapshot = await bridge.library.getSnapshot();
-    return () =>
-      snapshot.state === 'ready'
-        ? { kind: 'ready', snapshot, refreshError: null }
-        : { kind: 'failed', message: snapshot.message };
-  } catch {
-    return (previous) =>
-      previous.kind === 'ready'
-        ? { ...previous, refreshError: REFRESH_FAILED }
-        : { kind: 'failed', message: LOAD_FAILED };
-  }
-}
+const fetchTransition = (bridge: FigmaDropApi) =>
+  Effect.tryPromise(() => bridge.library.getSnapshot()).pipe(
+    Effect.match({
+      onSuccess:
+        (snapshot): Transition =>
+        () =>
+          snapshot.state === 'ready'
+            ? { kind: 'ready', snapshot, refreshError: null }
+            : { kind: 'failed', message: snapshot.message },
+      onFailure: (): Transition => (previous) =>
+        previous.kind === 'ready'
+          ? { ...previous, refreshError: REFRESH_FAILED }
+          : { kind: 'failed', message: LOAD_FAILED },
+    }),
+  );
 
 export function useLibrary(bridge: FigmaDropApi): UseLibrary {
   const [state, setState] = useState<LibraryState>({ kind: 'loading' });
   const load = useRef(() => {});
 
   useEffect(() => {
-    let active = true;
-    let fetching = false;
-    let dirty = false;
-
-    const run = async () => {
-      if (!active) return;
-      if (fetching) {
-        dirty = true;
-        return;
-      }
-      fetching = true;
-      do {
-        dirty = false;
-        const transition = await fetchTransition(bridge);
-        if (active) setState(transition);
-      } while (active && dirty);
-      fetching = false;
-    };
-
-    load.current = () => void run();
+    const fetchOwed = Latch.makeUnsafe(true);
+    load.current = () => void fetchOwed.openUnsafe();
     const unsubscribe = bridge.library.onChanged(load.current);
     window.addEventListener('focus', load.current);
-    load.current();
+
+    const fetches = Effect.runFork(
+      fetchOwed.await.pipe(
+        Effect.andThen(fetchOwed.close),
+        Effect.andThen(fetchTransition(bridge)),
+        Effect.andThen((transition) => Effect.sync(() => setState(transition))),
+        Effect.forever,
+      ),
+    );
 
     return () => {
-      active = false;
+      fetches.interruptUnsafe();
       unsubscribe();
       window.removeEventListener('focus', load.current);
     };
