@@ -168,7 +168,8 @@ export type InstrumentedFs = {
   mutationCount(): number;
   fired(): boolean;
   mutationLog(): string[];
-  hold(method: string): Gate;
+  peakInFlight(): number;
+  hold(method: string, target?: string): Gate;
 };
 
 const HANDLE_MUTATORS = new Set([
@@ -218,12 +219,17 @@ function fsError(code: string, call: FsCall): Error {
 
 export function instrumentFs(): InstrumentedFs {
   const calls: FsCall[] = [];
-  const gates = new Map<string, { reached(): void; released: Promise<void> }>();
+  const gates = new Map<
+    string,
+    { target: string | undefined; reached(): void; released: Promise<void> }
+  >();
   let plan: FaultPlan = { kind: 'none' };
   let mutations = 0;
   let methodHits = 0;
   let dead = false;
   let fired = false;
+  let inFlight = 0;
+  let peakInFlight = 0;
 
   async function run<T>(call: FsCall, real: () => Promise<T>): Promise<T> {
     calls.push(call);
@@ -247,14 +253,20 @@ export function instrumentFs(): InstrumentedFs {
       }
     }
     const gate = gates.get(call.method);
-    if (gate !== undefined) {
+    if (gate !== undefined && (gate.target === undefined || call.args[0] === gate.target)) {
       gates.delete(call.method);
       gate.reached();
       await gate.released;
     }
-    const result = await real();
-    call.landed = true;
-    return result;
+    inFlight += 1;
+    peakInFlight = Math.max(peakInFlight, inFlight);
+    try {
+      const result = await real();
+      call.landed = true;
+      return result;
+    } finally {
+      inFlight -= 1;
+    }
   }
 
   function wrapHandle(handle: FileHandle): FileHandle {
@@ -312,14 +324,16 @@ export function instrumentFs(): InstrumentedFs {
       mutations = 0;
       methodHits = 0;
       fired = false;
+      peakInFlight = inFlight;
     },
     mutationCount: () => mutations,
     fired: () => fired,
     mutationLog: () => calls.filter((call) => call.mutating).map(describeCall),
-    hold(method) {
+    peakInFlight: () => peakInFlight,
+    hold(method, target) {
       const reached = Promise.withResolvers<void>();
       const released = Promise.withResolvers<void>();
-      gates.set(method, { reached: reached.resolve, released: released.promise });
+      gates.set(method, { target, reached: reached.resolve, released: released.promise });
       return { reached: reached.promise, release: released.resolve };
     },
   };

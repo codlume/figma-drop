@@ -1,0 +1,4 @@
+15 rounds, 0 launches never answered
+load average before 12.64 13.04 16.83, after 12.55 12.97 16.70
+before   launch to receiver answering: min 416 ms, median 605 ms, max 888 ms (15 launches)
+after    launch to receiver answering: min 496 ms, median 577 ms, max 933 ms (15 launches)

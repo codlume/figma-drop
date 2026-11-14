@@ -363,6 +363,13 @@ describe('staged rejection', () => {
     ['a missing identity', ({ identity: _identity, ...s }) => s],
     ['an empty figmaNodeId', (s) => ({ ...s, figmaNodeId: '' })],
     ['a non-string figmaNodeId', (s) => ({ ...s, figmaNodeId: 9 })],
+    ['a missing claimedKey', (s) => ({ ...s, identity: { kind: 'unidentified' } })],
+    ['a null identity', (s) => ({ ...s, identity: null })],
+    ['a missing stagingId', ({ stagingId: _stagingId, ...s }) => s],
+    ['a non-string fileName', (s) => ({ ...s, fileName: 1 })],
+    ['a missing nodeName', ({ nodeName: _nodeName, ...s }) => s],
+    ['a non-string exportedAt', (s) => ({ ...s, exportedAt: 0 })],
+    ['an array argument', (s) => Object.assign([], s)],
     ['a null argument', () => null],
     ['an undefined argument', () => undefined],
     ['a string argument', () => 'staged'],
@@ -577,13 +584,57 @@ describe('damaged revisions', () => {
     expect(path.basename(path.dirname(next.path)).slice(0, 6)).toBe('000042');
   });
 
+  const withField = (key: string, value: unknown) => editReceipt((r) => ({ ...r, [key]: value }));
+  const withExtraFile = (entry: unknown) =>
+    editReceipt((r) => ({ ...r, files: [...(r['files'] as unknown[]), entry] }));
+  const RECEIPT_KEYS = [
+    'schemaVersion',
+    'revisionId',
+    'receivedAt',
+    'contentHash',
+    'exportedAt',
+    'identity',
+    'fileName',
+    'figmaNodeId',
+    'nodeName',
+    'files',
+  ];
+
   const unidentifiedCorruptions: Corruption[] = [
     ['unparseable JSON', (dir) => writeFile(receiptPath(dir), '{ nope')],
+    ['JSON null', (dir) => writeFile(receiptPath(dir), 'null')],
+    ['a JSON string', (dir) => writeFile(receiptPath(dir), '"receipt"')],
     ['a wrong revisionId', editReceipt((r) => ({ ...r, revisionId: stagingIdFor(902) }))],
     [
       'a file identity under unidentified/',
       editReceipt((r) => ({ ...r, identity: { kind: 'file', fileKey: 'k' } })),
     ],
+    ...RECEIPT_KEYS.map((key): Corruption => [
+      `no ${key}`,
+      editReceipt(({ [key]: _omitted, ...r }) => r),
+    ]),
+    ['schemaVersion as a string', withField('schemaVersion', '1')],
+    ['a numeric receivedAt', withField('receivedAt', Date.UTC(2026, 0, 1))],
+    ['an unparseable receivedAt', withField('receivedAt', 'yesterday')],
+    ['a short contentHash', withField('contentHash', 'abc')],
+    ['an uppercase contentHash', withField('contentHash', 'A'.repeat(64))],
+    ['a null identity', withField('identity', null)],
+    ['an unknown identity kind', withField('identity', { kind: 'team', claimedKey: 'k' })],
+    ['no claimedKey', withField('identity', { kind: 'unidentified' })],
+    ['a numeric claimedKey', withField('identity', { kind: 'unidentified', claimedKey: 7 })],
+    ['an empty figmaNodeId', withField('figmaNodeId', '')],
+    ['a numeric figmaNodeId', withField('figmaNodeId', 12)],
+    ['a numeric exportedAt', withField('exportedAt', 0)],
+    ['a numeric fileName', withField('fileName', 1)],
+    ['a boolean nodeName', withField('nodeName', true)],
+    ['files as an object', withField('files', {})],
+    ['a null files[] entry', withExtraFile(null)],
+    ['a files[] entry with no path', withExtraFile({ bytes: 1 })],
+    ['a files[] entry with no bytes', withExtraFile({ path: 'extra.json' })],
+    ['negative bytes', withExtraFile({ path: 'extra.json', bytes: -1 })],
+    ['fractional bytes', withExtraFile({ path: 'extra.json', bytes: 1.5 })],
+    ['bytes as a string', withExtraFile({ path: 'extra.json', bytes: '1' })],
+    ['bytes past the safe integer range', withExtraFile({ path: 'extra.json', bytes: 2 ** 53 })],
   ];
 
   it.each(unidentifiedCorruptions)(
@@ -1004,6 +1055,27 @@ describe('receipt round trip', () => {
     });
     const relaunched = await sb.open();
     expect(expectReady(await relaunched.getSnapshot()).unidentified[0]?.state).toBe('ok');
+  });
+
+  it('reads a receipt carrying keys it does not know as valid', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const result = await sb.commit(lib, { png: true });
+    await writeReceiptEdit(revisionDirOf(result), (r) => ({
+      ...r,
+      addedLater: { by: 'a newer build' },
+      identity: { ...(r['identity'] as object), source: 'plugin' },
+      files: (r['files'] as object[]).map((file) => Object.assign(file, { sha256: 'unknown' })),
+    }));
+
+    const relaunched = await sb.open();
+
+    const revisions = projectRevisions(expectReady(await relaunched.getSnapshot()));
+    expect(revisions).toMatchObject([{ id: result.revisionId, state: 'ok' }]);
+    expect(await relaunched.previewFile(result.revisionId)).toEqual({
+      path: path.join(result.path, 'preview.png'),
+      contentType: 'image/png',
+    });
   });
 
   it('does not follow a receipt symlink planted in staging', async () => {

@@ -294,6 +294,25 @@ describe('error mapping', () => {
     });
   });
 
+  it('keeps running queued commands after one of them fails', async () => {
+    const sb = await newSandbox();
+    const fs = instrumentFs();
+    const lib = await sb.open(fs.fs);
+    const doomed = await sb.stage(lib, { content: 'A' });
+    const next = await sb.stage(lib, { content: 'B', figmaNodeId: '2:2' });
+    fs.arm({ kind: 'once', at: 1, code: 'EBUSY' });
+
+    const [failed, committed, snapshot] = await Promise.all([
+      lib.commit(doomed),
+      lib.commit(next),
+      lib.getSnapshot(),
+    ]);
+
+    expectFailure(failed, 'failed');
+    expect(committed).toMatchObject({ ok: true, status: 'committed', revisionId: next.stagingId });
+    expect(idsOf(projectRevisions(expectReady(snapshot)))).toEqual([next.stagingId]);
+  });
+
   it('never rejects when every filesystem call fails', async () => {
     const sb = await newSandbox();
     const fs = instrumentFs();
@@ -524,6 +543,67 @@ describe('an unreadable library', () => {
 
     const c = await sb.commit(lib, { content: 'C' });
     expect(path.basename(path.dirname(c.path)).slice(0, 6)).toBe('000003');
+  });
+
+  it.each(['node', 'project'] as const)(
+    'treats a %s folder trashed between two listings as gone, not the library as unreadable',
+    async (level) => {
+      const sb = await newSandbox();
+      const instrumented = instrumentFs();
+      const lib = await sb.open(instrumented.fs);
+      const kept = await sb.commit(lib, { identity: fileIdentity('kept') });
+      const trashed = await sb.commit(lib, { identity: fileIdentity('trashed') });
+      const nodeDir = path.dirname(revisionDirOf(trashed));
+      const doomed = level === 'node' ? nodeDir : path.dirname(nodeDir);
+      const listing = instrumented.hold('readdir', doomed);
+
+      const snapshot = lib.getSnapshot();
+      await listing.reached;
+      await rm(doomed, { recursive: true });
+      listing.release();
+
+      expect(idsOf(projectRevisions(expectReady(await snapshot)))).toEqual([kept.revisionId]);
+      expectOk(await lib.bundlePath(kept.revisionId));
+      const again = await sb.commit(lib, { identity: fileIdentity('trashed'), content: 'B' });
+      expect(path.basename(path.dirname(again.path)).slice(0, 6)).toBe('000001');
+    },
+  );
+
+  it('rescans before deduplicating against a project folder renamed between two listings', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    const first = await sb.commit(lib);
+    const projectDir = path.dirname(path.dirname(revisionDirOf(first)));
+    const renamed = path.join(path.dirname(projectDir), `renamed-${projectDir.slice(-16)}`);
+    const listing = instrumented.hold('readdir', projectDir);
+
+    const snapshot = lib.getSnapshot();
+    await listing.reached;
+    await rename(projectDir, renamed);
+    listing.release();
+    expectReady(await snapshot);
+
+    const repeat = await lib.commit(await sb.stage(lib));
+
+    expect(repeat).toMatchObject({ ok: true, status: 'skipped', revisionId: first.revisionId });
+    expect(await readdir(path.dirname(projectDir))).toEqual([path.basename(renamed)]);
+  });
+
+  it('still fails a scan when files/ itself vanishes before it is listed', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    await sb.commit(lib);
+    const filesRoot = path.join(sb.root, 'files');
+    const listing = instrumented.hold('readdir', filesRoot);
+
+    const snapshot = lib.getSnapshot();
+    await listing.reached;
+    await rm(filesRoot, { recursive: true });
+    listing.release();
+
+    expect((await snapshot).state).toBe('unreadable');
   });
 
   it('keeps ingesting when one project directory is unreadable', async () => {

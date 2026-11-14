@@ -149,14 +149,15 @@ async function subdirectories(fs: LibraryFs, dir: string): Promise<string[]> {
     .toSorted();
 }
 
-// Null is a refusal, which blocks that one branch so other Figma files keep
-// ingesting. Any other failure says nothing about the branch, so the scan fails.
-async function subdirectoriesUnlessRefused(fs: LibraryFs, dir: string): Promise<string[] | null> {
+// Null blocks that one branch, refused or moved mid-scan, so other Figma files keep
+// ingesting. Any other failure, like a missing root, says nothing about the branch,
+// so the scan fails.
+async function subdirectoriesUnlessBlocked(fs: LibraryFs, dir: string): Promise<string[] | null> {
   try {
     return await subdirectories(fs, dir);
   } catch (cause) {
     const errno = errnoOf(cause);
-    if (errno === 'EACCES' || errno === 'EPERM') return null;
+    if (errno === 'EACCES' || errno === 'EPERM' || errno === 'ENOENT') return null;
     throw cause;
   }
 }
@@ -229,7 +230,7 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   const listAll = <Parent extends { path: string }>(parents: readonly Parent[]) =>
     mapConcurrently(parents, async (parent) => ({
       parent,
-      names: await subdirectoriesUnlessRefused(fs, parent.path),
+      names: await subdirectoriesUnlessBlocked(fs, parent.path),
     }));
 
   const filesRoot = join(root, FILES_DIR);
