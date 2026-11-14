@@ -4,6 +4,7 @@ import type { Socket } from 'node:net';
 import { MAX_BODY_BYTES, REPLY_DEADLINE_MS } from '@figma-drop/export-contract';
 import { parseOpenRequest } from '@figma-drop/export-contract/parser';
 import type { OpenReply, SyncSuccess } from '@figma-drop/export-contract/parser';
+import { Data, Effect, Fiber, Match } from 'effect';
 
 import type { CommitResult } from '../shared/integration';
 import type { CommandErrorCode } from '../shared/library';
@@ -58,14 +59,11 @@ const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const TEXT_HEADERS = { 'Content-Type': 'text/plain; charset=utf-8' };
 const CLOSE = { Connection: 'close' };
 
-type BodyRead = { kind: 'body'; body: Buffer } | { kind: 'too-large' } | { kind: 'aborted' };
+class Rejection extends Data.TaggedError('Rejection')<{ code: RejectionCode }> {}
+class UploadTooLarge extends Data.TaggedError('UploadTooLarge') {}
+class ClientGone extends Data.TaggedError('ClientGone') {}
 
-type Responder = {
-  send(status: number, headers: Record<string, string>, body?: string): void;
-  json(status: number, body: object, headers?: Record<string, string>): void;
-  reject(code: RejectionCode, headers?: Record<string, string>): void;
-  abandon(): void;
-};
+type Responder = ReturnType<typeof createResponder>;
 
 export function createReceiverHandler(options: ReceiverHandlerOptions): ReceiverHandler {
   const limits = { ...DEFAULT_LIMITS, ...options.limits };
@@ -82,34 +80,57 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
       return;
     }
     const { cors, outcome } = decideRequest(facts(req), port);
-    const plain = () => createResponder(res, cors, null, () => {});
-    if (outcome.kind === 'reject') return plain().reject(outcome.code, outcome.headers);
+    const responder = createResponder(res, cors);
+    if (outcome.kind === 'reject') return responder.reject(outcome.code, outcome.headers);
     if (outcome.kind === 'preflight') {
-      return plain().send(204, preflightHeaders(outcome.privateNetwork));
+      return responder.send(204, preflightHeaders(outcome.privateNetwork));
     }
     switch (outcome.route) {
       case 'health':
-        return plain().send(200, TEXT_HEADERS, 'figma-drop receiver\n');
+        return responder.send(200, TEXT_HEADERS, 'figma-drop receiver\n');
       case 'pickFolder':
-        return plain().reject('pickFolderUnsupported');
+        return responder.reject('pickFolderUnsupported');
       case 'open':
-        return replyOnThrow(
-          open,
-          req,
-          createResponder(res, cors, limits.deadlineMs, () => {}),
-          'focusFailed',
-        );
-      case 'sync': {
-        if (inFlight) return plain().reject('busy');
-        const slot = Promise.withResolvers<void>();
-        inFlight = slot.promise;
-        const responder = createResponder(res, cors, limits.deadlineMs, () => {
-          if (inFlight === slot.promise) inFlight = null;
-          slot.resolve();
+        if (declaresMoreThan(req, limits.maxOpenBodyBytes)) return refuseUpload(req, responder);
+        void answer(open(req), 'focusFailed', req, res, responder);
+        return;
+      case 'sync':
+        if (inFlight) return responder.reject('busy');
+        if (declaresMoreThan(req, limits.maxBodyBytes)) return refuseUpload(req, responder);
+        inFlight = answer(sync(req), 'saveFailed', req, res, responder).then(() => {
+          inFlight = null;
         });
-        return replyOnThrow(sync, req, responder, 'saveFailed');
-      }
     }
+  }
+
+  // The work runs on its own fiber, which the race never interrupts: a commit that
+  // outlives its reply still discards what it staged.
+  function answer(
+    work: Effect.Effect<object, Rejection | UploadTooLarge | ClientGone>,
+    fallback: RejectionCode,
+    req: IncomingMessage,
+    res: ServerResponse,
+    responder: Responder,
+  ) {
+    const working = Effect.runFork(
+      work.pipe(Effect.catchDefect(() => Effect.fail(new Rejection({ code: fallback })))),
+    );
+    return Effect.runPromiseExit(
+      Fiber.join(working).pipe(
+        Effect.timeout(limits.deadlineMs),
+        Effect.raceFirst(closed(res)),
+        Effect.match({
+          onSuccess: (body) => responder.json(200, body),
+          onFailure: (failure) =>
+            Match.valueTags(failure, {
+              Rejection: ({ code }) => responder.reject(code),
+              TimeoutError: () => responder.reject('deadlineExceeded', CLOSE),
+              UploadTooLarge: () => refuseUpload(req, responder),
+              ClientGone: () => {},
+            }),
+        }),
+      ),
+    );
   }
 
   // Closing with body bytes unread makes the OS send a reset, which can wipe the
@@ -127,83 +148,67 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
     socket.once('close', () => clearTimeout(timer));
   }
 
-  async function sync(req: IncomingMessage, responder: Responder): Promise<void> {
-    if (declaresMoreThan(req, limits.maxBodyBytes)) return refuseUpload(req, responder);
-    const read = await readBody(req, limits.maxBodyBytes);
-    if (read.kind === 'aborted') return responder.abandon();
-    if (read.kind === 'too-large') return refuseUpload(req, responder);
+  const sync = Effect.fnUntraced(function* (req: IncomingMessage) {
+    const body = yield* readBody(req, limits.maxBodyBytes);
 
     notify('parse-start');
     let prepared;
     try {
-      prepared = prepareExport(read.body);
+      prepared = prepareExport(body);
     } finally {
       notify('parse-end');
     }
-    if (!prepared.ok) return responder.reject(prepared.rejection);
+    if (!prepared.ok) return yield* new Rejection({ code: prepared.rejection });
+    const { lookup } = prepared.prepared;
 
     // A hit skips the disk, so a retry of a committed export succeeds on a full
     // disk. Anything else falls through, because commit is the authority.
-    const known = await backend.findExport(prepared.prepared.lookup).catch(() => null);
-    if (known?.ok) return responder.json(200, syncSuccess(known));
+    const known = yield* Effect.tryPromise(() => backend.findExport(lookup)).pipe(
+      Effect.orElseSucceed(() => null),
+    );
+    if (known?.ok) return syncSuccess(known);
 
-    const staged = await stageExport(prepared.prepared, stagingDir);
-    if (!staged.ok) return responder.reject(staged.rejection);
+    const stage = yield* Effect.promise(() => stageExport(prepared.prepared, stagingDir));
+    if (!stage.ok) return yield* new Rejection({ code: stage.rejection });
+    const { staged } = stage;
 
-    let committed: CommitResult;
-    try {
-      committed = await backend.commit(staged.staged);
-    } catch {
-      await discardStaging(stagingDir, staged.staged.stagingId);
-      return responder.reject('libraryUnavailable');
-    }
-    if (committed.ok) return responder.json(200, syncSuccess(committed));
-    await discardStaging(stagingDir, staged.staged.stagingId);
-    responder.reject(COMMIT_FAILURES[committed.code]);
-  }
+    return yield* Effect.tryPromise({
+      try: () => backend.commit(staged),
+      catch: () => new Rejection({ code: 'libraryUnavailable' }),
+    }).pipe(
+      Effect.flatMap((committed) =>
+        committed.ok
+          ? Effect.succeed(syncSuccess(committed))
+          : Effect.fail(new Rejection({ code: COMMIT_FAILURES[committed.code] })),
+      ),
+      Effect.tapError(() => Effect.promise(() => discardStaging(stagingDir, staged.stagingId))),
+    );
+  });
 
-  async function open(req: IncomingMessage, responder: Responder): Promise<void> {
-    if (declaresMoreThan(req, limits.maxOpenBodyBytes)) return refuseUpload(req, responder);
-    const read = await readBody(req, limits.maxOpenBodyBytes);
-    if (read.kind === 'aborted') return responder.abandon();
-    if (read.kind === 'too-large') return refuseUpload(req, responder);
-    let value: unknown;
-    try {
-      value = JSON.parse(read.body.toString('utf8'));
-    } catch {
-      return responder.reject('malformedJson');
-    }
+  const open = Effect.fnUntraced(function* (req: IncomingMessage) {
+    const body = yield* readBody(req, limits.maxOpenBodyBytes);
+    const value = yield* Effect.try({
+      try: (): unknown => JSON.parse(body.toString('utf8')),
+      catch: () => new Rejection({ code: 'malformedJson' }),
+    });
     const parsed = parseOpenRequest(value);
-    if (!parsed) return responder.reject('invalidOpenRequest');
+    if (!parsed) return yield* new Rejection({ code: 'invalidOpenRequest' });
     if (parsed.path.length > limits.maxOpenPathLength) {
-      return responder.reject('unknownExport');
+      return yield* new Rejection({ code: 'unknownExport' });
     }
-    let found: boolean;
-    try {
-      found = await backend.focus(parsed.path);
-    } catch {
-      return responder.reject('focusFailed');
-    }
-    if (!found) return responder.reject('unknownExport');
-    const reply: OpenReply = { ok: true };
-    responder.json(200, reply);
-  }
+    const found = yield* Effect.tryPromise({
+      try: () => backend.focus(parsed.path),
+      catch: () => new Rejection({ code: 'focusFailed' }),
+    });
+    if (!found) return yield* new Rejection({ code: 'unknownExport' });
+    return { ok: true } satisfies OpenReply;
+  });
 
   return {
     handle,
     idle: () => inFlight ?? Promise.resolve(),
     requestTimeoutMs: limits.deadlineMs + 10_000,
   };
-}
-
-// Replies now, because otherwise the sender waits out the whole deadline.
-function replyOnThrow(
-  run: (req: IncomingMessage, responder: Responder) => Promise<void>,
-  req: IncomingMessage,
-  responder: Responder,
-  fallback: RejectionCode,
-): void {
-  run(req, responder).catch(() => responder.reject(fallback));
 }
 
 function facts(req: IncomingMessage): RequestFacts {
@@ -234,56 +239,42 @@ function declaresMoreThan(req: IncomingMessage, cap: number): boolean {
   return Number.isFinite(declared) && declared > cap;
 }
 
-function readBody(req: IncomingMessage, cap: number): Promise<BodyRead> {
-  return new Promise((resolve) => {
+function readBody(
+  req: IncomingMessage,
+  cap: number,
+): Effect.Effect<Buffer, UploadTooLarge | ClientGone> {
+  return Effect.callback((resume) => {
     const chunks: Buffer[] = [];
     let size = 0;
-    let done = false;
-    const finish = (result: BodyRead) => {
-      if (done) return;
-      done = true;
-      resolve(result);
-    };
-    req.on('data', (chunk: Buffer) => {
-      if (done) return;
+    const onData = (chunk: Buffer) => {
       size += chunk.length;
-      if (size > cap) {
-        // The socket outlives this during the discard, and so would these buffers.
-        chunks.length = 0;
-        req.pause();
-        finish({ kind: 'too-large' });
+      if (size <= cap) {
+        chunks.push(chunk);
         return;
       }
-      chunks.push(chunk);
-    });
-    req.on('end', () => finish({ kind: 'body', body: Buffer.concat(chunks) }));
-    req.on('error', () => finish({ kind: 'aborted' }));
-    req.on('close', () => finish({ kind: 'aborted' }));
+      // The socket outlives this during the discard, and so would these buffers.
+      chunks.length = 0;
+      req.off('data', onData);
+      req.pause();
+      resume(Effect.fail(new UploadTooLarge()));
+    };
+    req.on('data', onData);
+    req.on('end', () => resume(Effect.succeed(Buffer.concat(chunks))));
+    req.on('error', () => resume(Effect.fail(new ClientGone())));
+    req.on('close', () => resume(Effect.fail(new ClientGone())));
   });
 }
 
-// The one way out of a request. CORS rides on every reply, the first reply
-// wins, and a late result after the deadline or a client abort writes nothing.
-function createResponder(
-  res: ServerResponse,
-  cors: boolean,
-  deadlineMs: number | null,
-  onSettled: () => void,
-): Responder {
-  let settled = false;
-  const settle = () => {
-    if (settled) return false;
-    settled = true;
-    if (timer) clearTimeout(timer);
-    res.off('close', abandon);
-    onSettled();
-    return true;
-  };
-  const abandon = () => {
-    settle();
-  };
+function closed(res: ServerResponse): Effect.Effect<never, ClientGone> {
+  return Effect.callback((resume) => {
+    const onClose = () => resume(Effect.fail(new ClientGone()));
+    res.once('close', onClose);
+    return Effect.sync(() => res.off('close', onClose));
+  });
+}
+
+function createResponder(res: ServerResponse, cors: boolean) {
   const send = (status: number, headers: Record<string, string>, body?: string) => {
-    if (!settle()) return;
     if (res.destroyed) return;
     res.writeHead(status, { ...corsHeaders(cors), ...headers });
     res.end(body);
@@ -294,8 +285,5 @@ function createResponder(
     const { status, error } = REJECTIONS[code];
     json(status, { error }, headers);
   };
-  const timer =
-    deadlineMs === null ? null : setTimeout(() => reject('deadlineExceeded', CLOSE), deadlineMs);
-  res.on('close', abandon);
-  return { send, json, reject, abandon };
+  return { send, json, reject };
 }

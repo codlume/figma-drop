@@ -1,0 +1,75 @@
+{
+  "replies": {
+    "first": [200, "null"],
+    "repeatSamePath": true,
+    "changedNewPath": true,
+    "otherFile": 200,
+    "noKey": 200,
+    "badOrigin": [
+      403,
+      null,
+      {
+        "error": "This origin is not allowed."
+      }
+    ]
+  },
+  "beforeRestart": {
+    "state": "ready",
+    "projects": [
+      {
+        "fileKey": "SyntheticKeyB2",
+        "nodes": ["1:2 x1"]
+      },
+      {
+        "fileKey": "SyntheticKeyA1",
+        "nodes": ["1:2 x2"]
+      }
+    ],
+    "unidentified": 1
+  },
+  "filesBeforeRestart": "figma-components.json,figma-components.json,figma-components.json,figma-components.json,meta.json,meta.json,meta.json,meta.json,node.json,node.json,node.json,node.json,preview.html,preview.html,preview.html,preview.html,preview.svg,preview.svg,preview.svg,preview.svg,receipt.json,receipt.json,receipt.json,receipt.json",
+  "pageErrors": [],
+  "quit": {
+    "code": 0,
+    "signal": null
+  },
+  "portClosedAfterQuit": true,
+  "afterRestart": {
+    "state": "ready",
+    "projects": [
+      {
+        "fileKey": "SyntheticKeyB2",
+        "nodes": ["1:2 x1"]
+      },
+      {
+        "fileKey": "SyntheticKeyA1",
+        "nodes": ["1:2 x2"]
+      }
+    ],
+    "unidentified": 1
+  },
+  "filesAfterRestart": "figma-components.json,figma-components.json,figma-components.json,figma-components.json,meta.json,meta.json,meta.json,meta.json,node.json,node.json,node.json,node.json,preview.html,preview.html,preview.html,preview.html,preview.svg,preview.svg,preview.svg,preview.svg,receipt.json,receipt.json,receipt.json,receipt.json",
+  "afterRestartReplies": {
+    "latestConverges": true,
+    "revertAddsRevision": true
+  },
+  "afterRevert": {
+    "state": "ready",
+    "projects": [
+      {
+        "fileKey": "SyntheticKeyA1",
+        "nodes": ["1:2 x3"]
+      },
+      {
+        "fileKey": "SyntheticKeyB2",
+        "nodes": ["1:2 x1"]
+      }
+    ],
+    "unidentified": 1
+  },
+  "secondQuit": {
+    "code": 0,
+    "signal": null
+  },
+  "neededSigkill": false
+}
