@@ -84,6 +84,10 @@ function nestedJson(depth: number, innermost = ''): string {
   return `${'['.repeat(depth)}${innermost}${']'.repeat(depth)}`;
 }
 
+function indented(value: unknown): Buffer {
+  return Buffer.from(JSON.stringify(value, null, 2));
+}
+
 describe('prepareExport rejections', () => {
   it.each(['', 'not json', '{"node":', '{"node":{}}}'])('reads %j as malformed JSON', (body) => {
     expect(rejection(body)).toBe('malformedJson');
@@ -287,6 +291,35 @@ describe('prepareExport bundle', () => {
 
   it('writes the tree with two-space indent', () => {
     expect(text(prepared({ node: { id: '1:2' } }), 'node.json')).toBe('{\n  "id": "1:2"\n}');
+  });
+
+  it('writes every JSON file byte for byte as JSON.stringify indents it', () => {
+    const tricky = {
+      name: 'Łódź ✓ 😀 "quoted" \\ back/slash',
+      structureInText: 'a,b:c{d}[e]\n\t',
+      loneSurrogate: '\ud800',
+      control: '\u0001\u007f\u2028',
+      empty: [{}, [], '', [[]], [{}], { a: {} }],
+      numbers: [0, -0, 1.5e-7, 1e21, -123456789.125],
+      literals: [null, true, false],
+      'a "key": with, [structure]': { deep: [[[{ deeper: [1, [2, [3]]] }]]] },
+    };
+    const sent = {
+      node: { id: '1:2', ...tricky },
+      components: [tricky, []],
+      remoteMasters: [tricky],
+      variables: { tokens: [tricky], collections: [] },
+      styles: { styles: [tricky] },
+    };
+    const exported = prepared(sent);
+    expect(Buffer.from(file(exported, 'node.json'))).toEqual(indented(sent.node));
+    expect(Buffer.from(file(exported, 'figma-components.json'))).toEqual(indented(sent.components));
+    expect(Buffer.from(file(exported, 'remote-masters.json'))).toEqual(
+      indented(sent.remoteMasters),
+    );
+    expect(Buffer.from(file(exported, 'variables.json'))).toEqual(indented(sent.variables));
+    expect(Buffer.from(file(exported, 'styles.json'))).toEqual(indented(sent.styles));
+    expect(Buffer.from(file(exported, 'meta.json'))).toEqual(indented(meta(exported)));
   });
 
   it('falls back to compact JSON when the indent passes the string limit', () => {
