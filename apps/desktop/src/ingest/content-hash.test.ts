@@ -62,6 +62,29 @@ describe('hashExport', () => {
     expect(hashExport({ a: `${long}b` })).not.toBe(hashExport({ a: `${long}c` }));
   });
 
+  it('keeps the digest of a fixed payload, so hashes in existing receipts still match', () => {
+    const units = 'aé✓😀\ud800"\\';
+    const sized = (length: number) =>
+      units.repeat(Math.ceil(length / units.length)).slice(0, length);
+    const payload = parsed(
+      JSON.stringify({
+        fileKey: 'fixtureFileKey',
+        exportedAt: 'excluded',
+        node: {
+          numbers: [0, -0, 1.5, -1e300, 2 ** 53],
+          literals: [null, true, false],
+          empty: [{}, [], ''],
+          everyShortLength: Array.from({ length: 130 }, (_, length) => sized(length)),
+          aroundTheChunks: [16_383, 16_384, 16_385, 32_767, 32_769, 70_001].map(sized),
+          [sized(40)]: { [sized(200)]: 1 },
+        },
+      }),
+    );
+    expect(hashExport(payload)).toBe(
+      'cd3f301ff9880cb09970d3912b899eaf757bd9e9dfefb103dccf57399348c8ec',
+    );
+  });
+
   it('accepts nesting at the limit and rejects one level more', () => {
     expect(hashExport({ a: nested(MAX_JSON_DEPTH - 1) })).not.toBeNull();
     expect(hashExport({ a: nested(MAX_JSON_DEPTH) })).toBeNull();

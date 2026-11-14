@@ -259,7 +259,12 @@ function readBody(
       resume(Effect.fail(new UploadTooLarge()));
     };
     req.on('data', onData);
-    req.on('end', () => resume(Effect.succeed(Buffer.concat(chunks))));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      // The request outlives the read, and so would these buffers.
+      chunks.length = 0;
+      resume(Effect.succeed(body));
+    });
     req.on('error', () => resume(Effect.fail(new ClientGone())));
     req.on('close', () => resume(Effect.fail(new ClientGone())));
   });

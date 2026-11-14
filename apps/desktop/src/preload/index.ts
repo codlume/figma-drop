@@ -15,7 +15,7 @@ subscribe<FocusTarget>(IPC.appFocusExport, (target) => {
 
 const api: FigmaDropApi = {
   library: {
-    getSnapshot: () => ipcRenderer.invoke(IPC.librarySnapshot),
+    getSnapshot: (source) => ipcRenderer.invoke(IPC.librarySnapshot, source),
     onChanged: (listener) => subscribe<void>(IPC.libraryChanged, listener),
     reveal: (revisionId) => ipcRenderer.invoke(IPC.libraryReveal, revisionId),
     copyPath: (revisionId) => ipcRenderer.invoke(IPC.libraryCopyPath, revisionId),

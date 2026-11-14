@@ -1,6 +1,6 @@
 import { Effect, Latch } from 'effect';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FigmaDropApi } from './bridge.ts';
+import type { FigmaDropApi, SnapshotSource } from './bridge.ts';
 import type { ReadySnapshot } from './libraryView.ts';
 
 export type LibraryState =
@@ -23,8 +23,8 @@ const REFRESH_FAILED = 'figma-drop could not refresh the library, so this may be
 
 type Transition = (previous: LibraryState) => LibraryState;
 
-const fetchTransition = (bridge: FigmaDropApi) =>
-  Effect.tryPromise(() => bridge.library.getSnapshot()).pipe(
+const fetchTransition = (bridge: FigmaDropApi, source: SnapshotSource) =>
+  Effect.tryPromise(() => bridge.library.getSnapshot(source)).pipe(
     Effect.match({
       onSuccess:
         (snapshot): Transition =>
@@ -39,20 +39,35 @@ const fetchTransition = (bridge: FigmaDropApi) =>
     }),
   );
 
+function sourceCoveringBoth(a: SnapshotSource, b: SnapshotSource): SnapshotSource {
+  return a === 'disk' || b === 'disk' ? 'disk' : 'memory';
+}
+
 export function useLibrary(bridge: FigmaDropApi): UseLibrary {
   const [state, setState] = useState<LibraryState>({ kind: 'loading' });
   const load = useRef(() => {});
 
   useEffect(() => {
     const fetchOwed = Latch.makeUnsafe(true);
-    load.current = () => void fetchOwed.openUnsafe();
-    const unsubscribe = bridge.library.onChanged(load.current);
+    let owed: SnapshotSource = 'disk';
+    const owe = (source: SnapshotSource) => {
+      owed = sourceCoveringBoth(owed, source);
+      fetchOwed.openUnsafe();
+    };
+    const takeOwed = Effect.sync(() => {
+      const source = owed;
+      owed = 'memory';
+      return source;
+    });
+    load.current = () => owe('disk');
+    const unsubscribe = bridge.library.onChanged(() => owe('memory'));
     window.addEventListener('focus', load.current);
 
     const fetches = Effect.runFork(
       fetchOwed.await.pipe(
         Effect.andThen(fetchOwed.close),
-        Effect.andThen(fetchTransition(bridge)),
+        Effect.andThen(takeOwed),
+        Effect.andThen((source) => fetchTransition(bridge, source)),
         Effect.andThen((transition) => Effect.sync(() => setState(transition))),
         Effect.forever,
       ),

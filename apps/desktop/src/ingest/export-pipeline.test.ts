@@ -84,6 +84,10 @@ function nestedJson(depth: number, innermost = ''): string {
   return `${'['.repeat(depth)}${innermost}${']'.repeat(depth)}`;
 }
 
+function indented(value: unknown): Buffer {
+  return Buffer.from(JSON.stringify(value, null, 2));
+}
+
 describe('prepareExport rejections', () => {
   it.each(['', 'not json', '{"node":', '{"node":{}}}'])('reads %j as malformed JSON', (body) => {
     expect(rejection(body)).toBe('malformedJson');
@@ -287,6 +291,35 @@ describe('prepareExport bundle', () => {
 
   it('writes the tree with two-space indent', () => {
     expect(text(prepared({ node: { id: '1:2' } }), 'node.json')).toBe('{\n  "id": "1:2"\n}');
+  });
+
+  it('writes every JSON file byte for byte as JSON.stringify indents it', () => {
+    const tricky = {
+      name: 'Łódź ✓ 😀 "quoted" \\ back/slash',
+      structureInText: 'a,b:c{d}[e]\n\t',
+      loneSurrogate: '\ud800',
+      control: '\u0001\u007f\u2028',
+      empty: [{}, [], '', [[]], [{}], { a: {} }],
+      numbers: [0, -0, 1.5e-7, 1e21, -123456789.125],
+      literals: [null, true, false],
+      'a "key": with, [structure]': { deep: [[[{ deeper: [1, [2, [3]]] }]]] },
+    };
+    const sent = {
+      node: { id: '1:2', ...tricky },
+      components: [tricky, []],
+      remoteMasters: [tricky],
+      variables: { tokens: [tricky], collections: [] },
+      styles: { styles: [tricky] },
+    };
+    const exported = prepared(sent);
+    expect(Buffer.from(file(exported, 'node.json'))).toEqual(indented(sent.node));
+    expect(Buffer.from(file(exported, 'figma-components.json'))).toEqual(indented(sent.components));
+    expect(Buffer.from(file(exported, 'remote-masters.json'))).toEqual(
+      indented(sent.remoteMasters),
+    );
+    expect(Buffer.from(file(exported, 'variables.json'))).toEqual(indented(sent.variables));
+    expect(Buffer.from(file(exported, 'styles.json'))).toEqual(indented(sent.styles));
+    expect(Buffer.from(file(exported, 'meta.json'))).toEqual(indented(meta(exported)));
   });
 
   it('falls back to compact JSON when the indent passes the string limit', () => {
@@ -527,6 +560,36 @@ describe('staging', () => {
         const written = await fs.readFile(join(stagingDir, stagingId, 'bundle', relativePath));
         expect(written.equals(Buffer.from(bytes))).toBe(true);
       }
+    });
+
+    it('writes each of 300 assets once, with its own bytes', async () => {
+      const assets = Array.from({ length: 300 }, (_, index) => ({
+        name: `asset-${index}.bin`,
+        base64: Buffer.from(`bytes of asset ${index}`).toString('base64'),
+      }));
+      const exported = prepared({ assets });
+      const result = await stageExport(exported, stagingDir);
+      if (!result.ok) throw new Error(result.rejection);
+
+      expect(await stagedPaths(result.staged.stagingId)).toEqual([...paths(exported)].toSorted());
+      for (const { name, base64 } of assets) {
+        const written = await fs.readFile(
+          join(stagingDir, result.staged.stagingId, 'bundle', 'preview.assets', name),
+        );
+        expect(written.toString('base64')).toBe(base64);
+      }
+    });
+
+    it('leaves nothing behind when one write among 300 fails while others are in flight', async () => {
+      let writes = 0;
+      faults.writeFile = () => {
+        writes += 1;
+        if (writes === 20) throw errno('ENOSPC');
+      };
+      const exported = prepared({ assets: emptyAssets(300, 'asset-') });
+      expect(await stageExport(exported, stagingDir)).toEqual({ ok: false, rejection: 'diskFull' });
+      expect(await fs.readdir(stagingDir)).toEqual([]);
+      expect(writes).toBeLessThan(exported.files.length);
     });
 
     it('takes no part of the staging id from the payload', async () => {

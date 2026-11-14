@@ -8,7 +8,7 @@ type Api = FigmaDropApi;
 
 // Each handler takes `unknown`, because everything crossing IPC is parsed here.
 export type Commands = {
-  [IPC.librarySnapshot]: Api['library']['getSnapshot'];
+  [IPC.librarySnapshot]: (source: unknown) => ReturnType<Api['library']['getSnapshot']>;
   [IPC.libraryReveal]: (revisionId: unknown) => ReturnType<Api['library']['reveal']>;
   [IPC.libraryCopyPath]: (revisionId: unknown) => ReturnType<Api['library']['copyPath']>;
   [IPC.libraryCopyToFolder]: (revisionId: unknown) => ReturnType<Api['library']['copyToFolder']>;
@@ -42,7 +42,7 @@ export function createCommands({
     };
 
   return {
-    [IPC.librarySnapshot]: () => library.getSnapshot(),
+    [IPC.librarySnapshot]: (source) => library.getSnapshot(source === 'memory' ? 'memory' : 'disk'),
     [IPC.libraryReveal]: onRevision(async (open, revisionId) => {
       const bundle = await open.bundlePath(revisionId);
       if (!bundle.ok) return bundle;

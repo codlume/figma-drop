@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { BUNDLE_FILES } from '@figma-drop/export-contract';
 import type { ExportLookup, PreviewFile } from '../shared/integration';
 import {
@@ -33,7 +33,7 @@ export type RevisionRecord =
   | { state: 'ok'; receipt: Receipt }
   | { state: 'damaged'; receivedAt: string };
 
-type RevisionBase = { id: RevisionId; dir: string; record: RevisionRecord };
+type RevisionBase = { id: RevisionId; dir: string; bundle: string; record: RevisionRecord };
 
 export type ProjectRevision = RevisionBase & {
   kind: 'project';
@@ -76,8 +76,8 @@ const REPLY_PREVIEWS = [
   BUNDLE_FILES.previewHtml,
 ] as const;
 
-export function bundleDir(revision: CatalogRevision): string {
-  return join(revision.dir, 'bundle');
+export function bundleIn(revisionDir: string): string {
+  return join(revisionDir, 'bundle');
 }
 
 function hasFile(receipt: Receipt, path: string): boolean {
@@ -92,7 +92,7 @@ export function replyPreview(revision: CatalogRevision): string | null {
   if (revision.record.state !== 'ok') return null;
   const { receipt } = revision.record;
   const file = REPLY_PREVIEWS.find((name) => hasFile(receipt, name));
-  return file ? join(bundleDir(revision), file) : null;
+  return file ? join(revision.bundle, file) : null;
 }
 
 function receiptOf(revision: CatalogRevision): Receipt | null {
@@ -166,7 +166,7 @@ export function planRevision(catalog: Catalog, root: string, receipt: Receipt): 
   const nodeSlug = slug(receipt.nodeName || receipt.figmaNodeId);
   if (receipt.identity.kind === 'unidentified') {
     const dir = join(root, UNIDENTIFIED_DIR, `${nodeSlug}-${id}`);
-    return { kind: 'unidentified', id, dir, slug: nodeSlug, record };
+    return { kind: 'unidentified', id, dir, bundle: bundleIn(dir), slug: nodeSlug, record };
   }
   const projectId = projectIdOf(receipt.identity.fileKey);
   const nodeHash = nodeHashOf(receipt.figmaNodeId);
@@ -176,7 +176,18 @@ export function planRevision(catalog: Catalog, root: string, receipt: Receipt): 
   const nodeDir = catalog.nodeDirs.get(nodeId) ?? hashedDir(nodeSlug, nodeHash);
   const seq = (latestOf(nodeRevisions(catalog, nodeId))?.seq ?? 0) + 1;
   const dir = join(root, FILES_DIR, projectDir.name, nodeDir.name, revisionDirName(seq, id));
-  return { kind: 'project', id, dir, projectId, nodeId, seq, projectDir, nodeDir, record };
+  return {
+    kind: 'project',
+    id,
+    dir,
+    bundle: bundleIn(dir),
+    projectId,
+    nodeId,
+    seq,
+    projectDir,
+    nodeDir,
+    record,
+  };
 }
 
 export function addRevision(catalog: Catalog, revision: CatalogRevision): Catalog {
@@ -214,7 +225,7 @@ export function locate(catalog: Catalog, path: string): FocusTarget | null {
         ? { kind: 'project', projectId: revision.projectId }
         : target;
     }
-    const bundle = bundleDir(revision);
+    const { bundle } = revision;
     if (path === bundle) return target;
     const topLevelFiles = receiptOf(revision)?.files.filter((file) => !file.path.includes('/'));
     if (topLevelFiles?.some((file) => path === join(bundle, file.path))) return target;
@@ -222,8 +233,19 @@ export function locate(catalog: Catalog, path: string): FocusTarget | null {
   return null;
 }
 
-function newestFirst(a: string, b: string): number {
-  return Date.parse(b) - Date.parse(a);
+type NewestFirst = (a: string, b: string) => number;
+
+function newestFirstParsedOnce(): NewestFirst {
+  const parsed = new Map<string, number>();
+  const timeOf = (iso: string): number => {
+    let time = parsed.get(iso);
+    if (time === undefined) {
+      time = Date.parse(iso);
+      parsed.set(iso, time);
+    }
+    return time;
+  };
+  return (a, b) => timeOf(b) - timeOf(a);
 }
 
 function toRevision(revision: CatalogRevision): Revision {
@@ -234,7 +256,7 @@ function toRevision(revision: CatalogRevision): Revision {
     preview:
       receipt && imagePreview(receipt) ? { url: previewUrl(revision.id), kind: 'image' } : null,
     state: revision.record.state,
-    bundlePath: bundleDir(revision),
+    bundlePath: revision.bundle,
   };
 }
 
@@ -277,6 +299,7 @@ function toProject(
   projectId: ProjectId,
   projectDir: HashedDir,
   revisions: readonly ProjectRevision[],
+  newestFirst: NewestFirst,
 ): Project {
   const byNode = new Map<ExportNodeId, ProjectRevision[]>();
   for (const revision of revisions) {
@@ -305,10 +328,28 @@ function toProject(
   };
 }
 
+function byName(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+function byDirectory(a: CatalogRevision, b: CatalogRevision): number {
+  if (a.kind === 'project' && b.kind === 'project') {
+    return (
+      byName(a.projectDir.name, b.projectDir.name) ||
+      byName(a.nodeDir.name, b.nodeDir.name) ||
+      byName(basename(a.dir), basename(b.dir))
+    );
+  }
+  if (a.kind !== b.kind) return a.kind === 'project' ? -1 : 1;
+  return byName(basename(a.dir), basename(b.dir));
+}
+
 export function toSnapshot(catalog: Catalog): LibrarySnapshot {
+  const newestFirst = newestFirstParsedOnce();
   const byProject = new Map<ProjectId, ProjectRevision[]>();
   const unidentified: UnidentifiedRevision[] = [];
-  for (const revision of catalog.revisions.values()) {
+  for (const revision of [...catalog.revisions.values()].toSorted(byDirectory)) {
     if (revision.kind === 'unidentified') {
       unidentified.push(revision);
       continue;
@@ -320,7 +361,7 @@ export function toSnapshot(catalog: Catalog): LibrarySnapshot {
   const projects = [...byProject.values()]
     .flatMap((group) => {
       const latest = latestOf(group);
-      return latest ? [toProject(latest.projectId, latest.projectDir, group)] : [];
+      return latest ? [toProject(latest.projectId, latest.projectDir, group, newestFirst)] : [];
     })
     .toSorted((a, b) => newestFirst(a.updatedAt, b.updatedAt));
   const entries = unidentified.map(toUnidentifiedEntry).toSorted((a, b) => {

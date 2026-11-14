@@ -83,7 +83,9 @@ describe('hostile names', () => {
     await expectContained(sb, result.path, ['files']);
     expect(await readdir(path.join(sb.root, 'files'))).toEqual([`${slug}-${sha16('KEY')}`]);
     const relaunched = await sb.open();
-    expect(projectFor(expectReady(await relaunched.getSnapshot()), 'KEY').fileName).toBe(name);
+    expect(projectFor(expectReady(await relaunched.getSnapshot('disk')), 'KEY').fileName).toBe(
+      name,
+    );
   });
 
   it.each(HOSTILE_NAMES)('keeps a node named %s inside the root', async (_label, name, slug) => {
@@ -95,7 +97,7 @@ describe('hostile names', () => {
     await expectContained(sb, result.path, ['files']);
     expect(path.basename(path.dirname(revisionDirOf(result)))).toBe(`${slug}-${sha16('1:2')}`);
     const relaunched = await sb.open();
-    const project = projectFor(expectReady(await relaunched.getSnapshot()), 'file-key-a');
+    const project = projectFor(expectReady(await relaunched.getSnapshot('disk')), 'file-key-a');
     expect(nodeFor(project, '1:2').name).toBe(name);
   });
 
@@ -107,7 +109,7 @@ describe('hostile names', () => {
 
     await expectContained(sb, result.path, ['files']);
     const relaunched = await sb.open();
-    const project = projectFor(expectReady(await relaunched.getSnapshot()), value);
+    const project = projectFor(expectReady(await relaunched.getSnapshot('disk')), value);
     expect(project.fileKey).toBe(value);
     expect(nodeFor(project, value).figmaNodeId).toBe(value);
     expect(path.basename(path.dirname(revisionDirOf(result))).endsWith(`-${sha16(value)}`)).toBe(
@@ -128,7 +130,7 @@ describe('hostile names', () => {
 
     await expectContained(sb, result.path, ['unidentified']);
     const relaunched = await sb.open();
-    const entry = expectReady(await relaunched.getSnapshot()).unidentified[0];
+    const entry = expectReady(await relaunched.getSnapshot('disk')).unidentified[0];
     expect(entry).toMatchObject({
       state: 'ok',
       claimedKey: value,
@@ -147,7 +149,7 @@ describe('hostile names', () => {
 
     expect(path.basename(path.dirname(revisionDirOf(lower)))).toBe(`button-${sha16('1:1')}`);
     expect(path.basename(path.dirname(revisionDirOf(upper)))).toBe(`button-${sha16('2:2')}`);
-    const project = projectFor(expectReady(await lib.getSnapshot()), 'file-key-a');
+    const project = projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a');
     expect(nodeFor(project, '1:1').name).toBe('Button');
     expect(nodeFor(project, '2:2').name).toBe('BUTTON');
   });
@@ -159,7 +161,7 @@ describe('hostile names', () => {
     await sb.commit(lib, { identity: fileIdentity('AbCd'), fileName: 'Button' });
     await sb.commit(lib, { identity: fileIdentity('aBcD'), fileName: 'BUTTON' });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(projectFor(snapshot, 'AbCd').fileName).toBe('Button');
     expect(projectFor(snapshot, 'aBcD').fileName).toBe('BUTTON');
     expect((await readdir(path.join(sb.root, 'files'))).toSorted()).toEqual(
@@ -178,7 +180,7 @@ describe('hostile names', () => {
     const result = await sb.commit(lib, { extraFiles: { 'receipt.json': forged } });
 
     const relaunched = await sb.open();
-    const snapshot = expectReady(await relaunched.getSnapshot());
+    const snapshot = expectReady(await relaunched.getSnapshot('disk'));
     expect(snapshot.projects.map(({ fileKey }) => fileKey)).toEqual(['file-key-a']);
     expect(await readFile(path.join(result.path, 'receipt.json'), 'utf8')).toBe(forged);
   });
@@ -190,7 +192,7 @@ async function catalogState(sb: Sandbox, lib: Library): Promise<CatalogState> {
   return {
     files: await treeOf(path.join(sb.root, 'files')),
     unidentified: await treeOf(path.join(sb.root, 'unidentified')),
-    snapshot: await lib.getSnapshot(),
+    snapshot: await lib.getSnapshot('disk'),
   };
 }
 
@@ -399,7 +401,9 @@ describe('staged rejection', () => {
     expect(await exists(path.join(result.path, 'preview.assets', longName))).toBe(true);
     expect(await exists(path.join(result.path, 'review-notes.md'))).toBe(true);
     const relaunched = await sb.open();
-    expect(projectRevisions(expectReady(await relaunched.getSnapshot()))[0]?.state).toBe('ok');
+    expect(projectRevisions(expectReady(await relaunched.getSnapshot('disk')))[0]?.state).toBe(
+      'ok',
+    );
   });
 });
 
@@ -489,7 +493,7 @@ describe('damaged revisions', () => {
     const relaunched = await sb.open();
     expect(await treeOf(revisionDir)).toEqual(tree);
 
-    const snapshot = expectReady(await relaunched.getSnapshot());
+    const snapshot = expectReady(await relaunched.getSnapshot('disk'));
     expect(projectRevisions(snapshot)).toEqual([
       {
         id: first.revisionId,
@@ -508,7 +512,7 @@ describe('damaged revisions', () => {
     expect(repeat.status).toBe('committed');
     expect(path.basename(path.dirname(repeat.path))).toBe(`000002-${staged.stagingId}`);
     expect(await treeOf(revisionDir)).toEqual(tree);
-    const after = expectReady(await relaunched.getSnapshot());
+    const after = expectReady(await relaunched.getSnapshot('disk'));
     expect(projectRevisions(after).map(({ id, state }) => ({ id, state }))).toEqual([
       { id: staged.stagingId, state: 'ok' },
       { id: first.revisionId, state: 'damaged' },
@@ -526,7 +530,7 @@ describe('damaged revisions', () => {
     });
     await writeFile(receiptPath(revisionDirOf(first)), 'garbage');
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(snapshot.projects).toHaveLength(1);
     const project = snapshot.projects[0];
@@ -549,7 +553,7 @@ describe('damaged revisions', () => {
     const bad = await sb.commit(lib, { content: 'B', fileName: 'Bad Name', nodeName: 'Bad Node' });
     await writeFile(receiptPath(revisionDirOf(bad)), 'garbage');
 
-    const project = projectFor(expectReady(await lib.getSnapshot()), 'file-key-a');
+    const project = projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a');
 
     expect(project.fileName).toBe('Good Name');
     expect(nodeFor(project, '1:2').name).toBe('Good Node');
@@ -653,7 +657,7 @@ describe('damaged revisions', () => {
       const slug = path.basename(revisionDir).slice(0, -(first.revisionId.length + 1));
 
       const relaunched = await sb.open();
-      const snapshot = expectReady(await relaunched.getSnapshot());
+      const snapshot = expectReady(await relaunched.getSnapshot('disk'));
 
       expect(snapshot.unidentified).toEqual([
         {
@@ -684,7 +688,7 @@ describe('damaged revisions', () => {
     const target = path.join(path.dirname(revisionDirOf(stays)), `000005-${moved.revisionId}`);
     await rename(revisionDirOf(moved), target);
 
-    const snapshot = expectReady(await (await sb.open()).getSnapshot());
+    const snapshot = expectReady(await (await sb.open()).getSnapshot('disk'));
 
     const revision = projectRevisions(snapshot).find(({ id }) => id === moved.revisionId);
     expect(revision).toMatchObject({ state: 'damaged', bundlePath: path.join(target, 'bundle') });
@@ -697,7 +701,7 @@ describe('damaged revisions', () => {
     const target = path.join(sb.root, 'unidentified', `moved-${moved.revisionId}`);
     await rename(revisionDirOf(moved), target);
 
-    const snapshot = expectReady(await (await sb.open()).getSnapshot());
+    const snapshot = expectReady(await (await sb.open()).getSnapshot('disk'));
 
     expect(snapshot.unidentified).toHaveLength(1);
     expect(snapshot.unidentified[0]).toMatchObject({ id: moved.revisionId, state: 'damaged' });
@@ -711,7 +715,7 @@ describe('damaged revisions', () => {
     const target = path.join(path.dirname(revisionDirOf(anchor)), `000002-${moved.revisionId}`);
     await rename(revisionDirOf(moved), target);
 
-    const snapshot = expectReady(await (await sb.open()).getSnapshot());
+    const snapshot = expectReady(await (await sb.open()).getSnapshot('disk'));
 
     expect(snapshot.unidentified).toEqual([]);
     expect(projectRevisions(snapshot).find(({ id }) => id === moved.revisionId)?.state).toBe(
@@ -762,7 +766,7 @@ describe('scan boundaries', () => {
     const outside = await treeOf(sb.outside);
 
     const relaunched = await sb.open();
-    const snapshot = expectReady(await relaunched.getSnapshot());
+    const snapshot = expectReady(await relaunched.getSnapshot('disk'));
 
     expect(idsOf(projectRevisions(snapshot))).toEqual([real.revisionId]);
     expect(snapshot.unidentified).toEqual([]);
@@ -1007,7 +1011,7 @@ describe('locate', () => {
     await lib.locate(`${result.path}/../bundle`);
     expect(fs.calls).toEqual([]);
 
-    await lib.getSnapshot();
+    await lib.getSnapshot('disk');
     expect(fs.calls.length).toBeGreaterThan(0);
   });
 
@@ -1054,7 +1058,7 @@ describe('receipt round trip', () => {
       nodeName: null,
     });
     const relaunched = await sb.open();
-    expect(expectReady(await relaunched.getSnapshot()).unidentified[0]?.state).toBe('ok');
+    expect(expectReady(await relaunched.getSnapshot('disk')).unidentified[0]?.state).toBe('ok');
   });
 
   it('reads a receipt carrying keys it does not know as valid', async () => {
@@ -1070,7 +1074,7 @@ describe('receipt round trip', () => {
 
     const relaunched = await sb.open();
 
-    const revisions = projectRevisions(expectReady(await relaunched.getSnapshot()));
+    const revisions = projectRevisions(expectReady(await relaunched.getSnapshot('disk')));
     expect(revisions).toMatchObject([{ id: result.revisionId, state: 'ok' }]);
     expect(await relaunched.previewFile(result.revisionId)).toEqual({
       path: path.join(result.path, 'preview.png'),
@@ -1088,6 +1092,6 @@ describe('receipt round trip', () => {
     expect(await lib.commit(staged)).toMatchObject({ ok: false });
 
     expect(await readFile(target, 'utf8')).toBe(SECRET);
-    expect(expectReady(await lib.getSnapshot()).projects).toEqual([]);
+    expect(expectReady(await lib.getSnapshot('disk')).projects).toEqual([]);
   });
 });

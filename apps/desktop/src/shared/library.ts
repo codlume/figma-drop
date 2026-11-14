@@ -49,6 +49,8 @@ export type LibrarySnapshot =
       unidentified: readonly [];
     };
 
+export type SnapshotSource = 'disk' | 'memory';
+
 export type CommandErrorCode = 'not-found' | 'damaged' | 'disk-full' | 'unavailable' | 'failed';
 export type CommandError = { ok: false; code: CommandErrorCode; message: string };
 export type CommandResult<Success extends object = object> =

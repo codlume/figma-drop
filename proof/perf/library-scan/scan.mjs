@@ -22,7 +22,7 @@ const clone = [];
 let fingerprint;
 for (let i = 0; i < Number(runsArg); i += 1) {
   const t0 = performance.now();
-  const catalog = await scanCatalog(fs, root);
+  const { catalog } = await scanCatalog(fs, root);
   const t1 = performance.now();
   const snapshot = toSnapshot(catalog);
   const t2 = performance.now();

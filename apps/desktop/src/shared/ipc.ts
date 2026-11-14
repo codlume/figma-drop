@@ -4,6 +4,7 @@ import type {
   FocusTarget,
   LibrarySnapshot,
   RevisionId,
+  SnapshotSource,
 } from './library';
 import type { ReceiverStatus } from './receiver';
 
@@ -12,7 +13,7 @@ export type Unsubscribe = () => void;
 // The whole renderer surface, exposed frozen as `window.figmaDrop`.
 export interface FigmaDropApi {
   library: {
-    getSnapshot(): Promise<LibrarySnapshot>;
+    getSnapshot(source: SnapshotSource): Promise<LibrarySnapshot>;
     onChanged(listener: () => void): Unsubscribe;
     reveal(revisionId: RevisionId): Promise<CommandResult>;
     copyPath(revisionId: RevisionId): Promise<CommandResult>;

@@ -39,10 +39,13 @@ function isAlias(value: unknown): value is VariableAlias {
 }
 
 // Aliases are searched everywhere, because paints and effects nest their own.
-function* aliasIds(value: unknown): Generator<string> {
-  if (isAlias(value)) yield value.id;
-  else if (typeof value === 'object' && value !== null) {
-    for (const nested of Object.values(value)) yield* aliasIds(nested);
+function collectAliasIds(value: object, ids: string[]): void {
+  if (isAlias(value)) {
+    ids.push(value.id);
+    return;
+  }
+  for (const nested of Object.values(value)) {
+    if (typeof nested === 'object' && nested !== null) collectAliasIds(nested, ids);
   }
 }
 
@@ -102,11 +105,11 @@ function toToken(
 
 export async function collectVariables(
   figma: FigmaApi,
-  serialized: unknown,
+  serialized: object,
 ): Promise<VariablesExport | undefined> {
   const local = await attempt(() => figma.variables.getLocalVariableCollectionsAsync());
   const queue = (local ?? []).flatMap((collection) => collection.variableIds);
-  queue.push(...aliasIds(serialized));
+  collectAliasIds(serialized, queue);
   if (queue.length === 0) return undefined;
 
   const resolved = new Map<string, Variable | null>();
@@ -114,7 +117,7 @@ export async function collectVariables(
     if (resolved.has(id)) continue;
     const variable = await attempt(() => figma.variables.getVariableByIdAsync(id));
     resolved.set(id, variable);
-    if (variable) queue.push(...aliasIds(variable.valuesByMode));
+    if (variable) collectAliasIds(variable.valuesByMode, queue);
   }
 
   const collections = new Map<string, VariableCollection | null>();

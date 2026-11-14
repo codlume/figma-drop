@@ -12,6 +12,7 @@ import type {
   RevisionId,
 } from '../shared/library';
 import {
+  bundleIn,
   FILES_DIR,
   UNIDENTIFIED_DIR,
   type Catalog,
@@ -163,29 +164,74 @@ async function subdirectoriesUnlessBlocked(fs: LibraryFs, dir: string): Promise<
   }
 }
 
+type FileIdentity = Pick<Stats, 'dev' | 'ino' | 'size' | 'mtimeMs' | 'ctimeMs'>;
+type RememberedReceipt = { identity: FileIdentity; receipt: Receipt };
+export type ReceiptMemory = ReadonlyMap<string, RememberedReceipt>;
+
+// A file can change again inside the timestamp tick its stat reports, and the stat would still
+// match. Only a file left alone for longer than a coarse tick, 2 seconds on FAT, is remembered.
+const SETTLED_AFTER_MS = 5_000;
+
+function isSettled(info: FileIdentity, now: number): boolean {
+  return now - info.ctimeMs >= SETTLED_AFTER_MS;
+}
+
+function isSameFile(a: FileIdentity, b: FileIdentity): boolean {
+  return (
+    a.ino === b.ino &&
+    a.ctimeMs === b.ctimeMs &&
+    a.mtimeMs === b.mtimeMs &&
+    a.size === b.size &&
+    a.dev === b.dev
+  );
+}
+
+type ScanMemo = {
+  known: ReceiptMemory;
+  seen: Map<string, RememberedReceipt>;
+  now: number;
+};
+
 async function readReceipt(
   fs: LibraryFs,
   path: string,
   home: ReceiptHome,
+  memo: ScanMemo,
 ): Promise<Receipt | null> {
   try {
     const info = await fs.lstat(path);
     if (!info.isFile() || info.size > MAX_RECEIPT_BYTES) return null;
-    return parseReceipt(await fs.readFile(path, 'utf8'), home);
+    const settled = isSettled(info, memo.now);
+    const known = memo.known.get(path);
+    if (known && settled && isSameFile(known.identity, info)) {
+      memo.seen.set(path, known);
+      return known.receipt;
+    }
+    const receipt = parseReceipt(await fs.readFile(path, 'utf8'), home);
+    if (receipt && settled) {
+      const { dev, ino, size, mtimeMs, ctimeMs } = info;
+      memo.seen.set(path, { identity: { dev, ino, size, mtimeMs, ctimeMs }, receipt });
+    }
+    return receipt;
   } catch {
     return null;
   }
 }
 
-async function readRecord(fs: LibraryFs, dir: string, home: ReceiptHome): Promise<RevisionRecord> {
-  const receipt = await readReceipt(fs, join(dir, RECEIPT_FILE), home);
-  const bundle = await lstatOrNull(fs, join(dir, 'bundle')).catch(() => null);
-  if (receipt && bundle?.isDirectory()) return { state: 'ok', receipt };
+async function readRecord(
+  fs: LibraryFs,
+  { dir, bundle }: { dir: string; bundle: string },
+  home: ReceiptHome,
+  memo: ScanMemo,
+): Promise<RevisionRecord> {
+  const receipt = await readReceipt(fs, join(dir, RECEIPT_FILE), home, memo);
+  const bundleInfo = await lstatOrNull(fs, bundle).catch(() => null);
+  if (receipt && bundleInfo?.isDirectory()) return { state: 'ok', receipt };
   const info = await lstatOrNull(fs, dir).catch(() => null);
   return { state: 'damaged', receivedAt: (info?.mtime ?? new Date(0)).toISOString() };
 }
 
-// Every snapshot rescans, and each step is a thread-pool round trip, so one-at-a-time
+// Every disk snapshot rescans, and each step is a thread-pool round trip, so one-at-a-time
 // I/O leaves the scan waiting on latency. The bound keeps file descriptors well below
 // any limit, because a receipt read that fails reads as damaged.
 const SCAN_CONCURRENCY = 32;
@@ -208,7 +254,13 @@ type ScannedProject = { path: string; dir: HashedDir; id: ProjectId };
 type ScannedNode = { path: string; dir: HashedDir; id: ExportNodeId; project: ScannedProject };
 
 // Order matters: when two directories claim one revision id, the first one listed wins.
-export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog> {
+export async function scanCatalog(
+  fs: LibraryFs,
+  root: string,
+  known: ReceiptMemory = new Map(),
+  now: () => Date = () => new Date(),
+): Promise<{ catalog: Catalog; receipts: ReceiptMemory }> {
+  const memo: ScanMemo = { known, seen: new Map(), now: now().getTime() };
   const revisions = new Map<RevisionId, CatalogRevision>();
   const projectDirs = new Map<ProjectId, HashedDir>();
   const nodeDirs = new Map<ExportNodeId, HashedDir>();
@@ -254,17 +306,21 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   }
   const projectRevisions = await mapConcurrently(
     revisionDirs,
-    async ({ node, seq, id, dir }): Promise<ProjectRevision> => ({
-      kind: 'project',
-      seq,
-      id,
-      dir,
-      projectId: node.project.id,
-      nodeId: node.id,
-      projectDir: node.project.dir,
-      nodeDir: node.dir,
-      record: await readRecord(fs, dir, { kind: 'project', revisionId: id, nodeId: node.id }),
-    }),
+    async ({ node, seq, id, dir }): Promise<ProjectRevision> => {
+      const at = { dir, bundle: bundleIn(dir) };
+      const home: ReceiptHome = { kind: 'project', revisionId: id, nodeId: node.id };
+      return {
+        kind: 'project',
+        seq,
+        id,
+        ...at,
+        projectId: node.project.id,
+        nodeId: node.id,
+        projectDir: node.project.dir,
+        nodeDir: node.dir,
+        record: await readRecord(fs, at, home, memo),
+      };
+    },
   );
   for (const revision of projectRevisions) keepFirst(revision);
 
@@ -275,17 +331,20 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   });
   const unidentified = await mapConcurrently(
     unidentifiedDirs,
-    async ({ slug, id, dir }): Promise<UnidentifiedRevision> => ({
-      kind: 'unidentified',
-      slug,
-      id,
-      dir,
-      record: await readRecord(fs, dir, { kind: 'unidentified', revisionId: id }),
-    }),
+    async ({ slug, id, dir }): Promise<UnidentifiedRevision> => {
+      const at = { dir, bundle: bundleIn(dir) };
+      return {
+        kind: 'unidentified',
+        slug,
+        id,
+        ...at,
+        record: await readRecord(fs, at, { kind: 'unidentified', revisionId: id }, memo),
+      };
+    },
   );
   for (const revision of unidentified) keepFirst(revision);
 
-  return { revisions, projectDirs, nodeDirs, blocked };
+  return { catalog: { revisions, projectDirs, nodeDirs, blocked }, receipts: memo.seen };
 }
 
 async function fsyncPath(fs: LibraryFs, path: string, flags: number): Promise<void> {

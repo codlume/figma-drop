@@ -14,12 +14,12 @@ import type {
   CommandResult,
   LibrarySnapshot,
   RevisionId,
+  SnapshotSource,
   StagingId,
 } from '../shared/library';
 import {
   addRevision,
   BLOCKED,
-  bundleDir,
   decide,
   imagePreview,
   locate,
@@ -48,6 +48,7 @@ import {
   sweepStaging,
   writeReceipt,
   type LibraryFs,
+  type ReceiptMemory,
 } from './disk';
 import { revisionIdOf, slug } from './names';
 import {
@@ -76,7 +77,7 @@ function commitResult(
     ok: true,
     status,
     revisionId: revision.id,
-    path: bundleDir(revision),
+    path: revision.bundle,
     ...(preview ? { preview } : {}),
   };
 }
@@ -93,6 +94,7 @@ export async function openLibrary(
   const outcomes = new Map<StagingId, RevisionId>();
   let openState: OpenState = { state: 'unreadable' };
   const queue = Semaphore.makeUnsafe(1);
+  let receipts: ReceiptMemory = new Map();
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
     return Effect.runPromise(queue.withPermit(Effect.promise(task)));
@@ -109,9 +111,10 @@ export async function openLibrary(
   async function load(): Promise<Catalog | null> {
     try {
       await ensureLayout(fs, root);
-      const catalog = await scanCatalog(fs, root);
-      openState = { state: 'ready', catalog };
-      return catalog;
+      const scan = await scanCatalog(fs, root, receipts, now);
+      receipts = scan.receipts;
+      openState = { state: 'ready', catalog: scan.catalog };
+      return scan.catalog;
     } catch {
       openState = { state: 'unreadable' };
       return null;
@@ -134,7 +137,7 @@ export async function openLibrary(
   }
 
   async function isLive(revision: CatalogRevision): Promise<boolean> {
-    const where = await contain(fs, root, bundleDir(revision));
+    const where = await contain(fs, root, revision.bundle);
     return where.state === 'inside' && where.info.isDirectory();
   }
 
@@ -241,7 +244,7 @@ export async function openLibrary(
     if (!revision) return commandError('not-found');
     if (revision.record.state === 'damaged') return commandError('damaged');
     const { receipt } = revision.record;
-    const source = bundleDir(revision);
+    const source = revision.bundle;
     const bundle = await contain(fs, root, source);
     if (bundle.state === 'vanished') return commandError('not-found');
     if (bundle.state === 'refused' || !bundle.info.isDirectory()) return commandError('damaged');
@@ -266,7 +269,7 @@ export async function openLibrary(
     if (!catalog) return commandError('unavailable');
     const revision = catalog.revisions.get(revisionId);
     if (!revision) return commandError('not-found');
-    const path = bundleDir(revision);
+    const path = revision.bundle;
     const where = await contain(fs, root, path);
     if (where.state === 'vanished') return commandError('not-found');
     if (where.state === 'refused' || !where.info.isDirectory()) return commandError('damaged');
@@ -278,15 +281,15 @@ export async function openLibrary(
     if (revision?.record.state !== 'ok') return null;
     const image = imagePreview(revision.record.receipt);
     if (!image) return null;
-    const path = join(bundleDir(revision), image.file);
+    const path = join(revision.bundle, image.file);
     const where = await contain(fs, root, path);
     return where.state === 'inside' && where.info.isFile()
       ? { path, contentType: image.contentType }
       : null;
   }
 
-  async function snapshot(): Promise<LibrarySnapshot> {
-    const catalog = await load();
+  async function snapshot(source: SnapshotSource): Promise<LibrarySnapshot> {
+    const catalog = (source === 'memory' && readyCatalog()) || (await load());
     return catalog
       ? toSnapshot(catalog)
       : { state: 'unreadable', message: UNREADABLE_MESSAGE, projects: [], unidentified: [] };
@@ -315,7 +318,7 @@ export async function openLibrary(
       if (!parsed) return Promise.resolve(commandError('failed'));
       return command(() => findLookup(parsed));
     },
-    getSnapshot: () => enqueue(snapshot),
+    getSnapshot: (source) => enqueue(() => snapshot(source)),
     onChanged(listener) {
       listeners.add(listener);
       return () => {

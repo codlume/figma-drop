@@ -49,10 +49,14 @@ export function isHidden(node: BaseNode): boolean {
   return read(node, 'visible') === false;
 }
 
-export function* visibleNodes(node: BaseNode): Generator<BaseNode> {
-  if (isHidden(node)) return;
-  yield node;
-  for (const child of childrenOf(node)) yield* visibleNodes(child);
+export function* visibleNodes(root: BaseNode): Generator<BaseNode> {
+  const pending: (BaseNode | undefined)[] = [root];
+  for (let node = pending.pop(); node; node = pending.pop()) {
+    if (isHidden(node)) continue;
+    yield node;
+    const children = childrenOf(node);
+    for (let index = children.length - 1; index >= 0; index -= 1) pending.push(children[index]);
+  }
 }
 
 export function visiblePaints(node: BaseNode): readonly Paint[] {

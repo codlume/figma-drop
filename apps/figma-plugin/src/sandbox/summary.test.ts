@@ -121,6 +121,30 @@ describe('summary', () => {
     });
   });
 
+  it('tallies in document order, a nested layer before the next sibling of its parent', async () => {
+    const fake = createFakeFigma();
+    const root = fake.node('FRAME', {
+      children: [
+        fake.node('GROUP', {
+          children: [fake.node('TEXT', { characters: 'nested' }), fake.node('RECTANGLE')],
+        }),
+        fake.node('TEXT', { characters: 'sibling' }),
+        fake.node('ELLIPSE'),
+      ],
+    });
+
+    const { summary } = await exportNode(fake.figma, root);
+
+    expect(Object.keys(summary?.nodeTypes as object)).toEqual([
+      'FRAME',
+      'GROUP',
+      'TEXT',
+      'RECTANGLE',
+      'ELLIPSE',
+    ]);
+    expect(summary?.textSamples).toEqual(['nested', 'sibling']);
+  });
+
   it('reports zero text layers when there are none', async () => {
     const fake = createFakeFigma();
     const { summary } = await exportNode(fake.figma, fake.node('RECTANGLE'));

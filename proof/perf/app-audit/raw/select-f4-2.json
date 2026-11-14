@@ -1,0 +1,50 @@
+{
+  "app": "f4",
+  "errors": [],
+  "rendererPid": 1920743,
+  "openDesignSystem": {
+    "wallMs": 552,
+    "images": {
+      "total": 243,
+      "settled": 243,
+      "decoded": 243
+    },
+    "mainCpuMs": 600,
+    "rendererCpuMs": 410,
+    "gpuCpuMs": 20,
+    "networkCpuMs": 0,
+    "rendererHeapMb": 7.8,
+    "domNodes": 2979,
+    "rendererRssMb": 197
+  },
+  "openCheckout": {
+    "wallMs": 269,
+    "images": {
+      "total": 133,
+      "settled": 133,
+      "decoded": 133
+    },
+    "mainCpuMs": 260,
+    "rendererCpuMs": 340,
+    "gpuCpuMs": 10,
+    "networkCpuMs": 0,
+    "rendererHeapMb": 6.5,
+    "domNodes": 1973,
+    "rendererRssMb": 224
+  },
+  "openLongHistory": {
+    "wallMs": 35,
+    "images": {
+      "total": 133,
+      "settled": 133,
+      "decoded": 133
+    },
+    "mainCpuMs": 0,
+    "rendererCpuMs": 50,
+    "gpuCpuMs": 0,
+    "networkCpuMs": 0,
+    "rendererHeapMb": 7.8,
+    "domNodes": 1973,
+    "rendererRssMb": 224
+  }
+}

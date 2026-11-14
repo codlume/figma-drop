@@ -81,15 +81,15 @@ function identity(node: BaseNode): SerializedNode {
   return { id: node.id, name: node.name, type: node.type };
 }
 
-function allowlistedKeys(figma: FigmaApi, node: BaseNode): Record<string, unknown> {
-  const copied: Record<string, unknown> = {};
+function allowlisted(node: BaseNode, mixed: symbol): SerializedNode {
+  const serialized = identity(node);
   for (const key of NODE_KEYS) {
     const value = read(node, key);
     if (value === undefined) continue;
     if (value === '' && EMPTY_MEANS_ABSENT.has(key)) continue;
-    copied[key] = value === figma.mixed ? 'MIXED' : value;
+    serialized[key] = value === mixed ? 'MIXED' : value;
   }
-  return copied;
+  return serialized;
 }
 
 function styledSegments(text: TextNode): Record<string, unknown>[] | undefined {
@@ -145,6 +145,7 @@ export async function serializeTree(
   root: BaseNode,
   cap: number,
 ): Promise<{ tree: SerializedNode; truncated: boolean }> {
+  const { mixed } = figma;
   let visited = 0;
   let truncated = false;
 
@@ -155,8 +156,8 @@ export async function serializeTree(
       truncated = true;
       return { ...identity(node), truncated: true };
     }
-    const copied = allowlistedKeys(figma, node);
-    const serialized = { ...identity(node), ...copied, ...(await derivedKeys(node, copied)) };
+    const serialized = allowlisted(node, mixed);
+    Object.assign(serialized, await derivedKeys(node, serialized));
     const children = read(node, 'children');
     if (Array.isArray(children)) {
       serialized.children = [];
@@ -169,7 +170,13 @@ export async function serializeTree(
   return { tree, truncated };
 }
 
-export function* serializedNodes(tree: SerializedNode): Generator<SerializedNode> {
-  yield tree;
-  for (const child of tree.children ?? []) yield* serializedNodes(child);
+function appendNodes(tree: SerializedNode, nodes: SerializedNode[]): void {
+  nodes.push(tree);
+  for (const child of tree.children ?? []) appendNodes(child, nodes);
+}
+
+export function serializedNodes(tree: SerializedNode): SerializedNode[] {
+  const nodes: SerializedNode[] = [];
+  appendNodes(tree, nodes);
+  return nodes;
 }
