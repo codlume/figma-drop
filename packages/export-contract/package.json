@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "effect": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
