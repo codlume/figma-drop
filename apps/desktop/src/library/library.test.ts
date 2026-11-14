@@ -7,6 +7,7 @@ import {
   rm,
   stat,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
@@ -37,6 +38,7 @@ import {
   unidentified,
   useSandboxes,
   asRevisionId,
+  type InstrumentedFs,
   type Sandbox,
 } from './fixtures';
 
@@ -998,6 +1000,69 @@ describe('relaunch', () => {
     expect(repeat).toMatchObject({ status: 'skipped', revisionId: c });
     const repeatOfOlder = await sb.commit(relaunched, { content: 'A' });
     expect(repeatOfOlder.status).toBe('committed');
+  });
+});
+
+const receiptReads = (instrumented: InstrumentedFs): number =>
+  instrumented.calls.filter(({ method }) => method === 'readFile').length;
+
+const letFilesSettle = (sb: Sandbox) => sb.clock.set(new Date(Date.now() + 60_000).toISOString());
+
+describe('rescan', () => {
+  it('reads a settled receipt once, and shapes the same snapshot from what it remembers', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    await sb.commit(lib, { content: 'A', png: true });
+    await sb.commit(lib, { content: 'B' });
+    await sb.commit(lib, { identity: unidentified('u') });
+    letFilesSettle(sb);
+    const readsBefore = receiptReads(instrumented);
+    const first = await lib.getSnapshot('disk');
+    const readsByFirst = receiptReads(instrumented) - readsBefore;
+
+    const second = await lib.getSnapshot('disk');
+
+    expect(readsByFirst).toBe(3);
+    expect(receiptReads(instrumented) - readsBefore).toBe(readsByFirst);
+    expect(second).toEqual(first);
+    expect(await (await sb.open()).getSnapshot('disk')).toEqual(first);
+  });
+
+  it('reads a receipt again while its file has not settled', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    await sb.commit(lib);
+    sb.clock.set(new Date().toISOString());
+    await lib.getSnapshot('disk');
+    const readsBefore = receiptReads(instrumented);
+
+    await lib.getSnapshot('disk');
+
+    expect(receiptReads(instrumented) - readsBefore).toBe(1);
+  });
+
+  it('shows a remembered receipt rewritten in place at the same size, then damaged', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const entry = await sb.commit(lib, { identity: unidentified('u'), nodeName: 'Before' });
+    const receiptPath = path.join(revisionDirOf(entry), 'receipt.json');
+    letFilesSettle(sb);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified[0]?.name).toBe('Before');
+    const rewriteLater = async (text: string) => {
+      await writeFile(receiptPath, text);
+      const later = new Date(Date.now() + 1_000);
+      await utimes(receiptPath, later, later);
+    };
+
+    const receipt = await readReceipt(revisionDirOf(entry));
+    await rewriteLater(JSON.stringify({ ...receipt, nodeName: 'Edited' }, null, 2));
+    expect((await stat(receiptPath)).size).toBe(JSON.stringify(receipt, null, 2).length);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified[0]?.name).toBe('Edited');
+
+    await rewriteLater('garbage');
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified[0]?.state).toBe('damaged');
   });
 });
 

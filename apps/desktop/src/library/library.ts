@@ -48,6 +48,7 @@ import {
   sweepStaging,
   writeReceipt,
   type LibraryFs,
+  type ReceiptMemory,
 } from './disk';
 import { revisionIdOf, slug } from './names';
 import {
@@ -93,6 +94,7 @@ export async function openLibrary(
   const outcomes = new Map<StagingId, RevisionId>();
   let openState: OpenState = { state: 'unreadable' };
   const queue = Semaphore.makeUnsafe(1);
+  let receipts: ReceiptMemory = new Map();
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
     return Effect.runPromise(queue.withPermit(Effect.promise(task)));
@@ -109,9 +111,10 @@ export async function openLibrary(
   async function load(): Promise<Catalog | null> {
     try {
       await ensureLayout(fs, root);
-      const catalog = await scanCatalog(fs, root);
-      openState = { state: 'ready', catalog };
-      return catalog;
+      const scan = await scanCatalog(fs, root, receipts, now);
+      receipts = scan.receipts;
+      openState = { state: 'ready', catalog: scan.catalog };
+      return scan.catalog;
     } catch {
       openState = { state: 'unreadable' };
       return null;
