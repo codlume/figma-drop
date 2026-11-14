@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { classifyFileIdentity, parseExportPayload } from './parser.ts';
+import { classifyFileIdentity, parseExportPayload, parseOpenRequest } from './parser.ts';
 
 const node = { id: '1:2', name: 'Frame', type: 'FRAME' };
 
@@ -127,6 +127,71 @@ describe('parseExportPayload', () => {
     });
   });
 
+  it('keeps unknown fields inside image entries', () => {
+    const images = [{ extra: 'x', base64: 'AAAA', name: 'h.png', imageHash: 'h' }];
+    expect(parseExportPayload({ node, images })).toEqual({ ok: true, payload: { node, images } });
+  });
+
+  it.each([
+    'fileKey',
+    'fileName',
+    'nodeId',
+    'nodeName',
+    'exportedAt',
+    'outputDir',
+    'folderName',
+    'summary',
+    'components',
+    'remoteMasters',
+    'variables',
+    'styles',
+    'svg',
+    'png',
+    'assets',
+    'images',
+    'contractVersion',
+    'batchId',
+  ])('rejects a null %s, because absent fields are omitted', (field) => {
+    expect(parseExportPayload({ node, [field]: null })).toEqual({
+      ok: false,
+      error: `invalid export: ${field}`,
+    });
+  });
+
+  it('rejects a null imageHash inside an image entry', () => {
+    const images = [{ imageHash: null, name: 'h.png', base64: '' }];
+    expect(parseExportPayload({ node, images })).toEqual({
+      ok: false,
+      error: 'invalid export: images.0.imageHash',
+    });
+  });
+
+  it('rejects a contract version that JSON overflows to Infinity', () => {
+    expect(parseExportPayload(JSON.parse('{"node":{},"contractVersion":1e400}'))).toEqual({
+      ok: false,
+      error: 'invalid export: contractVersion',
+    });
+  });
+
+  it('passes trees through by reference without walking them', () => {
+    const deep: Record<string, unknown> = {};
+    let cursor = deep;
+    for (let depth = 0; depth < 200_000; depth += 1) {
+      const child: Record<string, unknown> = {};
+      cursor.child = child;
+      cursor = child;
+    }
+    const result = parseExportPayload({ node: deep, components: [deep], summary: deep });
+    expect(result.ok && result.payload.node).toBe(deep);
+  });
+
+  it('never lets a __proto__ key set a field or the prototype', () => {
+    const result = parseExportPayload(JSON.parse('{"__proto__":{"fileKey":"forged"},"node":{}}'));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.payload.fileKey).toBeUndefined();
+    expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+  });
+
   it('never throws on junk and never says the forbidden words', () => {
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
@@ -156,5 +221,22 @@ describe('parseExportPayload', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.toLowerCase()).not.toContain('output folder');
     }
+  });
+});
+
+describe('parseOpenRequest', () => {
+  it('accepts a path and keeps unknown fields', () => {
+    expect(parseOpenRequest({ path: '/a', extra: 1 })).toEqual({ path: '/a', extra: 1 });
+  });
+
+  it.each([
+    ['null', null],
+    ['an array', [{ path: '/a' }]],
+    ['a string', '/a'],
+    ['an object without a path', {}],
+    ['a null path', { path: null }],
+    ['a numeric path', { path: 1 }],
+  ])('rejects %s', (_label, value) => {
+    expect(parseOpenRequest(value)).toBeUndefined();
   });
 });

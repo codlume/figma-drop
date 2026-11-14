@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 
 import { MAX_BODY_BYTES, REPLY_DEADLINE_MS } from '@figma-drop/export-contract';
-import { openRequestSchema } from '@figma-drop/export-contract/parser';
+import { parseOpenRequest } from '@figma-drop/export-contract/parser';
 import type { OpenReply, SyncSuccess } from '@figma-drop/export-contract/parser';
 
 import type { CommitResult } from '../shared/integration';
@@ -173,14 +173,14 @@ export function createReceiverHandler(options: ReceiverHandlerOptions): Receiver
     } catch {
       return responder.reject('malformedJson');
     }
-    const parsed = openRequestSchema.safeParse(value);
-    if (!parsed.success) return responder.reject('invalidOpenRequest');
-    if (parsed.data.path.length > limits.maxOpenPathLength) {
+    const parsed = parseOpenRequest(value);
+    if (!parsed) return responder.reject('invalidOpenRequest');
+    if (parsed.path.length > limits.maxOpenPathLength) {
       return responder.reject('unknownExport');
     }
     let found: boolean;
     try {
-      found = await backend.focus(parsed.data.path);
+      found = await backend.focus(parsed.path);
     } catch {
       return responder.reject('focusFailed');
     }

@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
 
-// The zod runtime measured 90 KB minified in code.js, well past all the code the
-// sandbox should hold. The cap exists to catch that import, not to save bytes.
+// A schema runtime in code.js dwarfs all the code the sandbox should hold: zod
+// measured 90 KB minified. The cap exists to catch a parser import, not to save
+// bytes.
 const MAX_CODE_BYTES = 64 * 1024;
 
 function sandboxFailures(code) {

@@ -33,6 +33,9 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: 6.1.1
       version: 6.1.1
+    effect:
+      specifier: 4.1.4
+      version: 4.1.4
     jsdom:
       specifier: 31.0.0
       version: 31.0.0
@@ -48,9 +51,6 @@ catalogs:
     vite-plus:
       specifier: 0.3.3
       version: 0.3.3
-    zod:
-      specifier: 4.6.7
-      version: 4.6.7
 
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@0.3.3
@@ -79,6 +79,9 @@ importers:
       '@stylexjs/stylex':
         specifier: 'catalog:'
         version: 0.19.1
+      effect:
+        specifier: 'catalog:'
+        version: 4.1.4
     devDependencies:
       '@stylexjs/unplugin':
         specifier: 'catalog:'
@@ -153,9 +156,9 @@ importers:
 
   packages/export-contract:
     dependencies:
-      zod:
+      effect:
         specifier: 'catalog:'
-        version: 4.6.7
+        version: 4.1.4
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -1206,6 +1209,9 @@ packages:
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
 
+  effect@4.1.4:
+    resolution: {integrity: sha512-Tgrv/9FN+TZYyOn8XSli+fVqAfwDrDAkiX5Uu9vztINb675VTQdhD0gWI5Kzvhlh9QqzjZvw72iugqw5pwoghQ==}
+
   electron-to-chromium@1.5.477:
     resolution: {integrity: sha512-PN++F4zWZoVDGWinxMnSCpVqKhqFOJfLXxdU8bYJKudAEsHL/XKVITOKWVbfMt1r276Mi9RDLU9VHx9uKJ4RMQ==}
 
@@ -1568,6 +1574,7 @@ packages:
 
   tldts-core@7.4.20:
     resolution: {integrity: sha512-C630TWXZCZmLq0F2bW4QqwnaaxCQ/svpAqvJwnC4JvgEM5ohhBnGsEzTLSOXcN+xjz+kEaHS5uoWIw2klnqd0A==}
+    deprecated: Partial release, see https://github.com/remusao/tldts/issues/2735. Use >=7.4.22.
 
   tldts@7.4.19:
     resolution: {integrity: sha512-48dH6aSpQnpbzDUc4vIQZ1VjB8tkK+e8c1yx05/SZK+rkssgjEOlxDd/yU8/a4vGYQ9vRgJr9dwMq9TJ0b3X2Q==}
@@ -1719,9 +1726,6 @@ packages:
 
   yuku-parser@0.9.5:
     resolution: {integrity: sha512-IBnAdNVMswWbJcM7woPluOudectJzFjJ1N8jVRxP9Uq4CIv5hZdBIcdmtRbFDYF/Ph2j2gVup4YJ4N9mh0jYFA==}
-
-  zod@4.6.7:
-    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
@@ -2460,6 +2464,8 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
+  effect@4.1.4: {}
+
   electron-to-chromium@1.5.477: {}
 
   electron@44.4.5:
@@ -2993,5 +2999,3 @@ snapshots:
       '@yuku-parser/binding-linux-x64-musl': 0.9.5
       '@yuku-parser/binding-win32-arm64': 0.9.5
       '@yuku-parser/binding-win32-x64': 0.9.5
-
-  zod@4.6.7: {}
