@@ -128,14 +128,12 @@ export function PreviewImage({
   alt,
   size,
   onOpen,
-  openerRef,
 }: {
   readonly revision: Revision;
   readonly alt: string;
   readonly size: Size;
   /** Makes a loaded preview a button. Damaged, missing, and failed previews stay inert. */
   readonly onOpen?: () => void;
-  readonly openerRef?: Ref<HTMLButtonElement>;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const url = revision.preview?.url ?? null;
@@ -176,7 +174,6 @@ export function PreviewImage({
   if (onOpen === undefined) return image;
   return (
     <button
-      ref={openerRef}
       type="button"
       aria-haspopup="dialog"
       aria-label="Open image viewer"

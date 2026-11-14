@@ -1,5 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { ActionFeedback } from './ActionBar.tsx';
 import { getBridge, type FigmaDropApi, type FocusTarget, type RevisionId } from './bridge.ts';
 import { DetailPane } from './DetailPane.tsx';
@@ -85,7 +93,7 @@ function useFocusAfterTrash(
   main: RefObject<HTMLElement | null>,
 ) {
   const handled = useRef<ActionState | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (action.kind !== 'done' || action.action !== 'trash') return;
     const fresh = handled.current !== action;
     handled.current = action;
