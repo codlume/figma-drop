@@ -15,14 +15,17 @@ const plainObject = Schema.declare(
 );
 const plainArray = Schema.declare((value): value is unknown[] => Array.isArray(value));
 
-const asset = openObject({ name: Schema.String, base64: Schema.String });
-const image = openObject({
+const assetFields = { name: Schema.String, base64: Schema.String };
+const imageFields = {
   imageHash: Schema.optional(Schema.String),
   name: Schema.String,
   base64: Schema.String,
-});
+};
 
-const exportPayload = openObject({
+const exportFields = <Asset extends Schema.Top, Image extends Schema.Top>(
+  asset: Asset,
+  image: Image,
+) => ({
   node: plainObject,
   fileKey: Schema.optional(Schema.String),
   fileName: Schema.optional(Schema.String),
@@ -44,6 +47,7 @@ const exportPayload = openObject({
   batchId: Schema.optional(Schema.String),
 });
 
+const exportPayload = openObject(exportFields(openObject(assetFields), openObject(imageFields)));
 const openRequest = openObject({ path: Schema.String });
 
 export type ExportPayload = typeof exportPayload.Type;
@@ -51,15 +55,23 @@ export type OpenRequest = typeof openRequest.Type;
 
 export type ParseResult = { ok: true; payload: ExportPayload } | { ok: false; error: string };
 
-const decodeExportPayload = Schema.decodeUnknownResult(exportPayload);
+// Decoding an open object copies every unknown key into a new object, one at a
+// time, and a hostile body can carry millions.
+const knownExportFields = Schema.Struct(
+  exportFields(Schema.Struct(assetFields), Schema.Struct(imageFields)),
+);
+const hasValidExportFields = Schema.is(knownExportFields);
+const decodeKnownExportFields = Schema.decodeUnknownResult(knownExportFields);
 const decodeOpenRequest = Schema.decodeUnknownResult(openRequest);
 const formatIssue = SchemaIssue.makeFormatterStandardSchemaV1();
 
 export function parseExportPayload(value: unknown): ParseResult {
-  const parsed = decodeExportPayload(value);
-  if (Result.isSuccess(parsed)) return { ok: true, payload: parsed.success };
-  const path = formatIssue(parsed.failure.issue).issues[0]?.path ?? [];
-  return { ok: false, error: `invalid export: ${path.join('.') || 'body'}` };
+  if (hasValidExportFields(value)) return { ok: true, payload: value };
+  const rejected = decodeKnownExportFields(value);
+  const path = Result.isFailure(rejected)
+    ? formatIssue(rejected.failure.issue).issues[0]?.path
+    : [];
+  return { ok: false, error: `invalid export: ${path?.join('.') || 'body'}` };
 }
 
 export function parseOpenRequest(value: unknown): OpenRequest | undefined {
