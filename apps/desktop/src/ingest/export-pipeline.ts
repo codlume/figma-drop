@@ -12,6 +12,8 @@ import type { RejectionCode } from './rejections';
 
 const STAGING_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+const CONCURRENT_WRITES = 8;
+
 export type PreparedExport = {
   lookup: ExportLookup;
   describe(stagingId: StagedExport['stagingId']): StagedExport;
@@ -88,13 +90,31 @@ export async function stageExport(
     for (const directory of directories) {
       await mkdir(join(bundleDir, directory), { recursive: true });
     }
-    for (const { relativePath, bytes } of prepared.files) {
-      await writeFile(join(bundleDir, relativePath), bytes, { flag: 'wx' });
-    }
+    await writeFiles(bundleDir, prepared.files);
     return { ok: true, staged: prepared.describe(stagingId) };
   } catch (error) {
     await removeQuietly(entry);
     return { ok: false, rejection: isDiskFull(error) ? 'diskFull' : 'saveFailed' };
+  }
+}
+
+async function writeFiles(bundleDir: string, files: readonly BundleFile[]): Promise<void> {
+  const unclaimed = files[Symbol.iterator]();
+  let anyFailed = false;
+  const writeUntilAnyFails = async () => {
+    for (const { relativePath, bytes } of unclaimed) {
+      try {
+        await writeFile(join(bundleDir, relativePath), bytes, { flag: 'wx' });
+      } catch (error) {
+        anyFailed = true;
+        throw error;
+      }
+      if (anyFailed) return;
+    }
+  };
+  const writers = Array.from({ length: CONCURRENT_WRITES }, writeUntilAnyFails);
+  for (const writer of await Promise.allSettled(writers)) {
+    if (writer.status === 'rejected') throw writer.reason;
   }
 }
 

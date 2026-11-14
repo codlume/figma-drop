@@ -562,6 +562,36 @@ describe('staging', () => {
       }
     });
 
+    it('writes each of 300 assets once, with its own bytes', async () => {
+      const assets = Array.from({ length: 300 }, (_, index) => ({
+        name: `asset-${index}.bin`,
+        base64: Buffer.from(`bytes of asset ${index}`).toString('base64'),
+      }));
+      const exported = prepared({ assets });
+      const result = await stageExport(exported, stagingDir);
+      if (!result.ok) throw new Error(result.rejection);
+
+      expect(await stagedPaths(result.staged.stagingId)).toEqual([...paths(exported)].toSorted());
+      for (const { name, base64 } of assets) {
+        const written = await fs.readFile(
+          join(stagingDir, result.staged.stagingId, 'bundle', 'preview.assets', name),
+        );
+        expect(written.toString('base64')).toBe(base64);
+      }
+    });
+
+    it('leaves nothing behind when one write among 300 fails while others are in flight', async () => {
+      let writes = 0;
+      faults.writeFile = () => {
+        writes += 1;
+        if (writes === 20) throw errno('ENOSPC');
+      };
+      const exported = prepared({ assets: emptyAssets(300, 'asset-') });
+      expect(await stageExport(exported, stagingDir)).toEqual({ ok: false, rejection: 'diskFull' });
+      expect(await fs.readdir(stagingDir)).toEqual([]);
+      expect(writes).toBeLessThan(exported.files.length);
+    });
+
     it('takes no part of the staging id from the payload', async () => {
       const staged = [await stageExport(prepared(), stagingDir)];
       staged.push(await stageExport(prepared(), stagingDir));
