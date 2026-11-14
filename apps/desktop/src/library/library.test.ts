@@ -54,7 +54,11 @@ describe('disk layout', () => {
 
     expect(lib.stagingDir).toBe(path.join(sb.root, '.staging'));
     expect((await readdir(sb.root)).toSorted()).toEqual(['.staging', 'files', 'unidentified']);
-    expect(await lib.getSnapshot()).toEqual({ state: 'ready', projects: [], unidentified: [] });
+    expect(await lib.getSnapshot('disk')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
   });
 
   it('publishes a project revision at the promised path with its bytes intact', async () => {
@@ -193,7 +197,7 @@ describe('grouping', () => {
     const a = await sb.commit(lib, { identity: fileIdentity('key-a'), fileName: 'Alpha' });
     const b = await sb.commit(lib, { identity: fileIdentity('key-b'), fileName: 'Beta' });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(snapshot.projects).toHaveLength(2);
     expect(projectFor(snapshot, 'key-a')).toMatchObject({ fileKey: 'key-a', fileName: 'Alpha' });
@@ -211,7 +215,7 @@ describe('grouping', () => {
     const b = await lib.commit(staged);
 
     expect(b).toMatchObject({ ok: true, status: 'committed', revisionId: staged.stagingId });
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(snapshot.projects.map(({ fileName }) => fileName)).toEqual(['Untitled', 'Untitled']);
     expect(projectRevisions(snapshot)).toHaveLength(2);
     expect(revisionDirOf(a)).not.toBe(revisionDirOf(expectOk(b)));
@@ -230,7 +234,7 @@ describe('grouping', () => {
       nodeName: 'New Node',
     });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(snapshot.projects).toHaveLength(1);
     const project = projectFor(snapshot, 'file-key-a');
@@ -250,7 +254,7 @@ describe('grouping', () => {
     await sb.commit(lib, { identity: fileIdentity('key-a') });
     await sb.commit(lib, { identity: fileIdentity('key-b') });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(nodeFor(projectFor(snapshot, 'key-a'), '1:2').id).toBe(
       `${sha16('key-a')}-${sha16('1:2')}`,
@@ -270,7 +274,7 @@ describe('grouping', () => {
 
     expect(claimed).toMatchObject({ ok: true, status: 'committed', revisionId: staged.stagingId });
     expect(path.dirname(revisionDirOf(expectOk(claimed)))).toBe(path.join(sb.root, 'unidentified'));
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(idsOf(projectRevisions(snapshot))).toEqual([real.revisionId]);
     expect(idsOf(snapshot.unidentified)).toEqual([staged.stagingId]);
   });
@@ -282,7 +286,7 @@ describe('grouping', () => {
     const staged = await sb.stage(lib, { identity: fileIdentity('shared-key'), content: 'A' });
 
     expect(await lib.commit(staged)).toMatchObject({ ok: true, status: 'committed' });
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(snapshot.projects).toHaveLength(1);
     expect(snapshot.unidentified).toHaveLength(1);
   });
@@ -292,7 +296,7 @@ describe('grouping', () => {
     const lib = await sb.open();
     await sb.commit(lib, { identity: fileIdentity('current'), fileName: 'current' });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(projectFor(snapshot, 'current').fileKey).toBe('current');
     expect(snapshot.unidentified).toEqual([]);
@@ -332,7 +336,10 @@ describe('revision history', () => {
     expect(await readReceipt(revisionDirOf(first))).toMatchObject({
       exportedAt: '2026-01-01T00:00:00.000Z',
     });
-    const node = nodeFor(projectFor(expectReady(await lib.getSnapshot()), 'file-key-a'), '1:2');
+    const node = nodeFor(
+      projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a'),
+      '1:2',
+    );
     expect(node.revisions).toHaveLength(1);
   });
 
@@ -344,7 +351,10 @@ describe('revision history', () => {
     const a2 = await sb.commit(lib, { content: 'A' });
 
     expect([a1.status, b.status, a2.status]).toEqual(['committed', 'committed', 'committed']);
-    const node = nodeFor(projectFor(expectReady(await lib.getSnapshot()), 'file-key-a'), '1:2');
+    const node = nodeFor(
+      projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a'),
+      '1:2',
+    );
     expect(idsOf(node.revisions)).toEqual([a2.revisionId, b.revisionId, a1.revisionId]);
   });
 
@@ -408,7 +418,9 @@ describe('unidentified convergence', () => {
       path: first.path,
       preview: path.join(first.path, 'preview.svg'),
     });
-    expect(idsOf(expectReady(await lib.getSnapshot()).unidentified)).toEqual([first.revisionId]);
+    expect(idsOf(expectReady(await lib.getSnapshot('disk')).unidentified)).toEqual([
+      first.revisionId,
+    ]);
     expect(await readdir(lib.stagingDir)).toEqual([]);
   });
 
@@ -421,7 +433,7 @@ describe('unidentified convergence', () => {
     const repeat = await sb.commit(lib, { identity: unidentified('k'), content: 'A' });
 
     expect(repeat).toMatchObject({ status: 'converged', revisionId: a.revisionId });
-    expect(expectReady(await lib.getSnapshot()).unidentified).toHaveLength(2);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified).toHaveLength(2);
   });
 
   it.each<[string, { claimedKey: string | null; figmaNodeId: string; content: string }]>([
@@ -444,7 +456,7 @@ describe('unidentified convergence', () => {
     });
 
     expect(other.status).toBe('committed');
-    expect(expectReady(await lib.getSnapshot()).unidentified).toHaveLength(2);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified).toHaveLength(2);
   });
 });
 
@@ -458,7 +470,7 @@ describe('idempotent commit', () => {
     const replay = await lib.commit(staged);
 
     expect(replay).toStrictEqual({ ...first, status: 'converged' });
-    const after = expectReady(await lib.getSnapshot());
+    const after = expectReady(await lib.getSnapshot('disk'));
     expect(idsOf(projectRevisions(after))).toEqual([first.revisionId]);
   });
 
@@ -472,7 +484,7 @@ describe('idempotent commit', () => {
     const replay = await relaunched.commit(staged);
 
     expect(replay).toStrictEqual({ ...first, status: 'converged' });
-    expect(projectRevisions(expectReady(await relaunched.getSnapshot()))).toHaveLength(1);
+    expect(projectRevisions(expectReady(await relaunched.getSnapshot('disk')))).toHaveLength(1);
   });
 
   it('replays the staging id of an older revision without touching the newer one', async () => {
@@ -485,7 +497,10 @@ describe('idempotent commit', () => {
     const replay = await lib.commit(staged);
 
     expect(replay).toMatchObject({ ok: true, status: 'converged', revisionId: a.revisionId });
-    const node = nodeFor(projectFor(expectReady(await lib.getSnapshot()), 'file-key-a'), '1:2');
+    const node = nodeFor(
+      projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a'),
+      '1:2',
+    );
     expect(idsOf(node.revisions)).toEqual([b.revisionId, a.revisionId]);
   });
 
@@ -528,7 +543,7 @@ describe('idempotent commit', () => {
     const replay = await relaunched.commit(staged);
 
     expect(replay).toMatchObject({ ok: true, revisionId: first.revisionId, path: first.path });
-    expect(projectRevisions(expectReady(await relaunched.getSnapshot()))).toHaveLength(1);
+    expect(projectRevisions(expectReady(await relaunched.getSnapshot('disk')))).toHaveLength(1);
   });
 
   it('replays a converged unidentified staging id', async () => {
@@ -570,7 +585,7 @@ describe('idempotent commit', () => {
     ]);
     expect(new Set(results.map(({ revisionId }) => revisionId)).size).toBe(1);
     expect(new Set(results.map(({ path: reply }) => reply)).size).toBe(1);
-    expect(projectRevisions(expectReady(await lib.getSnapshot()))).toHaveLength(1);
+    expect(projectRevisions(expectReady(await lib.getSnapshot('disk')))).toHaveLength(1);
     expect(await readdir(lib.stagingDir)).toEqual([]);
   });
 
@@ -588,7 +603,7 @@ describe('idempotent commit', () => {
       'converged',
       'converged',
     ]);
-    expect(expectReady(await lib.getSnapshot()).unidentified).toHaveLength(1);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified).toHaveLength(1);
   });
 
   it('yields one revision when one staging id is committed twice at once', async () => {
@@ -777,12 +792,12 @@ describe('relaunch', () => {
     const sb = await newSandbox();
     await seedCatalog(sb);
     const first = await sb.open();
-    const before = await first.getSnapshot();
+    const before = await first.getSnapshot('disk');
     expect(expectReady(before).projects).toHaveLength(3);
 
     const relaunched = await sb.open();
 
-    expect(await relaunched.getSnapshot()).toEqual(before);
+    expect(await relaunched.getSnapshot('disk')).toEqual(before);
   });
 
   it('keeps every committed revision when the library holds more than one scan reads at once', async () => {
@@ -800,7 +815,7 @@ describe('relaunch', () => {
       committed.push(result.revisionId);
     }
 
-    const snapshot = expectReady(await (await sb.open()).getSnapshot());
+    const snapshot = expectReady(await (await sb.open()).getSnapshot('disk'));
 
     const all = [...projectRevisions(snapshot), ...snapshot.unidentified];
     const oldestFirst = all.toSorted((a, b) => a.receivedAt.localeCompare(b.receivedAt));
@@ -819,7 +834,7 @@ describe('relaunch', () => {
     );
     instrumented.arm();
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(snapshot.unidentified).toHaveLength(receiptlessIds.length);
     expect(instrumented.peakInFlight()).toBeGreaterThan(1);
@@ -848,7 +863,7 @@ describe('relaunch', () => {
       );
       await cp(revisionDirOf(original), copy, { recursive: true });
 
-      const snapshot = expectReady(await (await sb.open()).getSnapshot());
+      const snapshot = expectReady(await (await sb.open()).getSnapshot('disk'));
 
       const winnerDir = { original: revisionDirOf(original), copy }[winner];
       const claims = projectRevisions(snapshot).filter(({ id }) => id === original.revisionId);
@@ -877,7 +892,7 @@ describe('relaunch', () => {
     await cp(originalDir, copy, { recursive: true });
     const originalRead = instrumented.hold('lstat', path.join(originalDir, 'receipt.json'));
 
-    const snapshot = lib.getSnapshot();
+    const snapshot = lib.getSnapshot('disk');
     await originalRead.reached;
     await vi.waitFor(() =>
       expect(instrumented.calls).toContainEqual(
@@ -944,12 +959,12 @@ describe('relaunch', () => {
     const inFlightDir = path.join(lib.stagingDir, inFlight.stagingId);
     const before = await treeOf(inFlightDir);
 
-    await lib.getSnapshot();
+    await lib.getSnapshot('disk');
     const other = await sb.commit(lib, { content: 'other', figmaNodeId: '2:2' });
     await sb.commit(lib, { content: 'other', figmaNodeId: '2:2' });
     expectOk(await lib.copyTo(other.revisionId, sb.dest));
     expectOk(await lib.trash(other.revisionId));
-    await lib.getSnapshot();
+    await lib.getSnapshot('disk');
 
     expect(await treeOf(inFlightDir)).toEqual(before);
     expect(await lib.commit(inFlight)).toMatchObject({ ok: true, status: 'committed' });
@@ -969,7 +984,7 @@ describe('relaunch', () => {
 
     const relaunched = await sb.open();
     const node = nodeFor(
-      projectFor(expectReady(await relaunched.getSnapshot()), 'file-key-a'),
+      projectFor(expectReady(await relaunched.getSnapshot('disk')), 'file-key-a'),
       '1:2',
     );
 
@@ -1000,7 +1015,7 @@ describe('snapshot', () => {
     });
     const result = expectOk(await lib.commit(staged));
 
-    expect(await lib.getSnapshot()).toEqual({
+    expect(await lib.getSnapshot('disk')).toEqual({
       state: 'ready',
       unidentified: [],
       projects: [
@@ -1042,7 +1057,7 @@ describe('snapshot', () => {
     });
     const result = expectOk(await lib.commit(staged));
 
-    expect(await lib.getSnapshot()).toEqual({
+    expect(await lib.getSnapshot('disk')).toEqual({
       state: 'ready',
       projects: [],
       unidentified: [
@@ -1069,7 +1084,7 @@ describe('snapshot', () => {
     await sb.commit(lib, { identity: fileIdentity('key-a'), figmaNodeId: '2:2' });
     await sb.commit(lib, { identity: fileIdentity('key-a'), figmaNodeId: '1:1', content: 'B' });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(snapshot.projects.map(({ fileKey }) => fileKey)).toEqual(['key-a', 'key-b']);
     expect(snapshot.projects[0]?.updatedAt).toBe(sb.clock.iso());
@@ -1087,7 +1102,7 @@ describe('snapshot', () => {
     const newest = await sb.commit(lib, { identity: unidentified('c') });
     await writeFile(path.join(revisionDirOf(broken), 'receipt.json'), 'garbage');
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(idsOf(snapshot.unidentified)).toEqual([
       newest.revisionId,
@@ -1102,7 +1117,7 @@ describe('snapshot', () => {
     await sb.commit(lib, { content: 'A', fileName: 'Named File', nodeName: 'Named Node' });
     await sb.commit(lib, { content: 'B', fileName: null, nodeName: null });
 
-    const project = projectFor(expectReady(await lib.getSnapshot()), 'file-key-a');
+    const project = projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a');
 
     expect(project.fileName).toBe('Named File');
     expect(nodeFor(project, '1:2').name).toBe('Named Node');
@@ -1114,7 +1129,7 @@ describe('snapshot', () => {
     await sb.commit(lib, { nodeName: null, figmaNodeId: '12:34' });
     await sb.commit(lib, { identity: unidentified(null), nodeName: null, figmaNodeId: '56:78' });
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(nodeFor(projectFor(snapshot, 'file-key-a'), '12:34').name).toBe('12:34');
     expect(snapshot.unidentified[0]).toMatchObject({ name: '56:78', figmaNodeId: '56:78' });
@@ -1131,10 +1146,65 @@ describe('snapshot', () => {
     });
     await rename(revisionDirOf(gone), path.join(sb.outside, 'moved-away'));
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
 
     expect(idsOf(projectRevisions(snapshot))).toEqual([kept.revisionId]);
     expect(changes).toBe(0);
+  });
+
+  it('reads a memory snapshot without a rescan, so a Finder change waits for the next disk snapshot', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const gone = await sb.commit(lib, { content: 'A' });
+    const kept = await sb.commit(lib, { content: 'B' });
+    await rename(revisionDirOf(gone), path.join(sb.outside, 'moved-away'));
+
+    const held = expectReady(await lib.getSnapshot('memory'));
+    const rescanned = expectReady(await lib.getSnapshot('disk'));
+
+    expect(idsOf(projectRevisions(held))).toEqual([kept.revisionId, gone.revisionId]);
+    expect(idsOf(projectRevisions(rescanned))).toEqual([kept.revisionId]);
+    expect(await lib.getSnapshot('memory')).toEqual(rescanned);
+  });
+
+  it('gives a memory snapshot equal to a rescan after commits and a trash, with every receipt time tied', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const commitAtOneInstant = async (options: Parameters<Sandbox['stage']>[1]) =>
+      expectOk(await lib.commit(await sb.stage(lib, options)));
+    const zulu = { identity: fileIdentity('key-z'), fileName: 'Zulu' };
+    const alpha = { identity: fileIdentity('key-a'), fileName: 'Alpha' };
+    await commitAtOneInstant({ ...zulu, figmaNodeId: '9:9', nodeName: 'Zeta' });
+    await commitAtOneInstant({ identity: unidentified('z'), nodeName: 'Zeta' });
+    await commitAtOneInstant({ ...zulu, figmaNodeId: '1:1', nodeName: 'Able' });
+    await commitAtOneInstant({ ...alpha, figmaNodeId: '5:5', nodeName: 'Mike' });
+    const trashed = await commitAtOneInstant({ ...alpha, figmaNodeId: '2:2', nodeName: 'Echo' });
+    await commitAtOneInstant({ identity: unidentified('a'), nodeName: 'Able' });
+    await commitAtOneInstant({ ...zulu, figmaNodeId: '9:9', nodeName: 'Zeta', content: 'B' });
+    await commitAtOneInstant({ ...alpha, figmaNodeId: '0:1', nodeName: 'Bravo' });
+
+    const held = expectReady(await lib.getSnapshot('memory'));
+    expect(held).toEqual(await (await sb.open()).getSnapshot('disk'));
+    expect(held.projects.map(({ fileName }) => fileName)).toEqual(['Alpha', 'Zulu']);
+
+    expectOk(await lib.trash(trashed.revisionId));
+
+    expect(await lib.getSnapshot('memory')).toEqual(await (await sb.open()).getSnapshot('disk'));
+  });
+
+  it('rescans for a memory snapshot while the library is unreadable, and recovers', async () => {
+    const sb = await newSandbox();
+    await writeFile(sb.root, 'not a directory');
+    const lib = await sb.open();
+
+    expect((await lib.getSnapshot('memory')).state).toBe('unreadable');
+
+    await rm(sb.root);
+    expect(await lib.getSnapshot('memory')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
   });
 
   it('hides project and node directories that hold no revisions', async () => {
@@ -1143,7 +1213,11 @@ describe('snapshot', () => {
     const empty = path.join(sb.root, 'files', `empty-${sha16('nothing')}`);
     await mkdir(path.join(empty, `node-${sha16('1:1')}`), { recursive: true });
 
-    expect(await lib.getSnapshot()).toEqual({ state: 'ready', projects: [], unidentified: [] });
+    expect(await lib.getSnapshot('disk')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
   });
 });
 
@@ -1180,7 +1254,7 @@ describe('previews', () => {
     if (replyFile === null) expect(result).not.toHaveProperty('preview');
     else expect(result.preview).toBe(path.join(result.path, replyFile));
 
-    const revision = projectRevisions(expectReady(await lib.getSnapshot()))[0];
+    const revision = projectRevisions(expectReady(await lib.getSnapshot('disk')))[0];
     expect(revision?.preview).toEqual(
       image === null ? null : { url: previewUrl(result.revisionId), kind: 'image' },
     );
@@ -1197,7 +1271,7 @@ describe('previews', () => {
 
     const result = await sb.commit(lib, { identity: unidentified(null), svg: true });
 
-    expect(expectReady(await lib.getSnapshot()).unidentified[0]?.preview).toEqual({
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified[0]?.preview).toEqual({
       url: previewUrl(result.revisionId),
       kind: 'image',
     });
@@ -1235,7 +1309,7 @@ describe('onChanged', () => {
     const lib = await sb.open();
     const seen: Promise<unknown>[] = [];
     lib.onChanged(() => {
-      seen.push(lib.getSnapshot());
+      seen.push(lib.getSnapshot('disk'));
     });
 
     const result = await sb.commit(lib);
@@ -1271,7 +1345,7 @@ describe('onChanged', () => {
 
     await sb.commit(lib);
     await sb.commit(lib, { identity: unidentified(null) });
-    await lib.getSnapshot();
+    await lib.getSnapshot('disk');
     sb.trash.mode = 'throw';
     await lib.trash(first.revisionId);
     expect(changes).toBe(0);

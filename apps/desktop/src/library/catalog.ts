@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { BUNDLE_FILES } from '@figma-drop/export-contract';
 import type { ExportLookup, PreviewFile } from '../shared/integration';
 import {
@@ -305,10 +305,27 @@ function toProject(
   };
 }
 
+function byName(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+function byDirectory(a: CatalogRevision, b: CatalogRevision): number {
+  if (a.kind === 'project' && b.kind === 'project') {
+    return (
+      byName(a.projectDir.name, b.projectDir.name) ||
+      byName(a.nodeDir.name, b.nodeDir.name) ||
+      byName(basename(a.dir), basename(b.dir))
+    );
+  }
+  if (a.kind !== b.kind) return a.kind === 'project' ? -1 : 1;
+  return byName(basename(a.dir), basename(b.dir));
+}
+
 export function toSnapshot(catalog: Catalog): LibrarySnapshot {
   const byProject = new Map<ProjectId, ProjectRevision[]>();
   const unidentified: UnidentifiedRevision[] = [];
-  for (const revision of catalog.revisions.values()) {
+  for (const revision of [...catalog.revisions.values()].toSorted(byDirectory)) {
     if (revision.kind === 'unidentified') {
       unidentified.push(revision);
       continue;

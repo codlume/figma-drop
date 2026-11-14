@@ -14,6 +14,7 @@ import type {
   CommandResult,
   LibrarySnapshot,
   RevisionId,
+  SnapshotSource,
   StagingId,
 } from '../shared/library';
 import {
@@ -285,8 +286,8 @@ export async function openLibrary(
       : null;
   }
 
-  async function snapshot(): Promise<LibrarySnapshot> {
-    const catalog = await load();
+  async function snapshot(source: SnapshotSource): Promise<LibrarySnapshot> {
+    const catalog = (source === 'memory' && readyCatalog()) || (await load());
     return catalog
       ? toSnapshot(catalog)
       : { state: 'unreadable', message: UNREADABLE_MESSAGE, projects: [], unidentified: [] };
@@ -315,7 +316,7 @@ export async function openLibrary(
       if (!parsed) return Promise.resolve(commandError('failed'));
       return command(() => findLookup(parsed));
     },
-    getSnapshot: () => enqueue(snapshot),
+    getSnapshot: (source) => enqueue(() => snapshot(source)),
     onChanged(listener) {
       listeners.add(listener);
       return () => {

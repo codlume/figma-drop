@@ -283,7 +283,7 @@ describe('trash', () => {
 
     expect(sb.trash.calls).toEqual([revisionDirOf(trashed)]);
     expect(await exists(revisionDirOf(trashed))).toBe(false);
-    expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot())))).toEqual([
+    expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot('disk'))))).toEqual([
       kept.revisionId,
     ]);
     expect(await lib.locate(trashed.path)).toBeNull();
@@ -298,7 +298,7 @@ describe('trash', () => {
     expectOk(await lib.trash(entry.revisionId));
 
     expect(sb.trash.calls).toEqual([revisionDirOf(entry)]);
-    expect(expectReady(await lib.getSnapshot()).unidentified).toEqual([]);
+    expect(expectReady(await lib.getSnapshot('disk')).unidentified).toEqual([]);
     expect(await readdir(path.join(sb.root, 'unidentified'))).toEqual([]);
   });
 
@@ -306,14 +306,14 @@ describe('trash', () => {
     const sb = await newSandbox();
     const lib = await sb.open();
     const result = await sb.commit(lib);
-    const snapshot = await lib.getSnapshot();
+    const snapshot = await lib.getSnapshot('disk');
     const tree = await treeOf(sb.root);
     sb.trash.mode = 'throw';
 
     expectFailure(await lib.trash(result.revisionId), 'failed');
 
     expect(sb.trash.calls).toHaveLength(1);
-    expect(await lib.getSnapshot()).toEqual(snapshot);
+    expect(await lib.getSnapshot('disk')).toEqual(snapshot);
     expect(await treeOf(sb.root)).toEqual(tree);
     expect(await lib.locate(result.path)).toEqual({
       kind: 'revision',
@@ -331,7 +331,11 @@ describe('trash', () => {
 
     expectOk(await lib.trash(result.revisionId));
 
-    expect(await lib.getSnapshot()).toEqual({ state: 'ready', projects: [], unidentified: [] });
+    expect(await lib.getSnapshot('disk')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
     expect(await readdir(path.join(sb.root, 'files'))).toEqual([]);
   });
 
@@ -343,7 +347,7 @@ describe('trash', () => {
 
     expectOk(await lib.trash(gone.revisionId));
 
-    const project = projectFor(expectReady(await lib.getSnapshot()), 'file-key-a');
+    const project = projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a');
     expect(project.nodes.map(({ figmaNodeId }) => figmaNodeId)).toEqual(['2:2']);
     expect(idsOf(nodeFor(project, '2:2').revisions)).toEqual([kept.revisionId]);
     expect(await exists(kept.path)).toBe(true);
@@ -359,7 +363,11 @@ describe('trash', () => {
     expectOk(await lib.trash(result.revisionId));
 
     expect(await readFile(path.join(nodeDir, 'stray.txt'), 'utf8')).toBe('mine');
-    expect(await lib.getSnapshot()).toEqual({ state: 'ready', projects: [], unidentified: [] });
+    expect(await lib.getSnapshot('disk')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
   });
 
   it('still succeeds when removing the empty directories fails', async () => {
@@ -383,7 +391,7 @@ describe('trash', () => {
     expectOk(await relaunched.trash(result.revisionId));
 
     expect(sb.trash.calls).toEqual([revisionDirOf(result)]);
-    expect(await relaunched.getSnapshot()).toEqual({
+    expect(await relaunched.getSnapshot('disk')).toEqual({
       state: 'ready',
       projects: [],
       unidentified: [],
@@ -461,7 +469,7 @@ describe('trash', () => {
     await lib.copyTo(a.revisionId, path.join(sb.dest, 'missing'));
     expectOk(await lib.trash(b.revisionId));
     await writeFile(path.join(revisionDirOf(a), 'receipt.json'), 'garbage');
-    await lib.getSnapshot();
+    await lib.getSnapshot('disk');
     expectOk(await lib.trash(a.revisionId));
 
     const removals = fs.calls.filter(({ method }) => method === 'rm' || method === 'rmdir');

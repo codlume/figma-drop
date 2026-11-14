@@ -127,18 +127,21 @@ describe('scenarios', () => {
     ['empty', emptyLibrary],
   ])('%s resolves its library', async (scenario, expected) => {
     const { bridge } = createSyntheticBridge({ scenario });
-    await expect(bridge.library.getSnapshot()).resolves.toEqual(expected);
+    await expect(bridge.library.getSnapshot('disk')).resolves.toEqual(expected);
   });
 
   it('loading never settles', async () => {
     const { bridge } = createSyntheticBridge({ scenario: 'loading' });
-    const outcome = await Promise.race([bridge.library.getSnapshot(), Promise.resolve('pending')]);
+    const outcome = await Promise.race([
+      bridge.library.getSnapshot('disk'),
+      Promise.resolve('pending'),
+    ]);
     expect(outcome).toBe('pending');
   });
 
   it('unreadable reports its state with a message and no data', async () => {
     const { bridge } = createSyntheticBridge({ scenario: 'unreadable' });
-    await expect(bridge.library.getSnapshot()).resolves.toEqual({
+    await expect(bridge.library.getSnapshot('disk')).resolves.toEqual({
       state: 'unreadable',
       message: expect.stringContaining('Synthetic'),
       projects: [],
@@ -148,7 +151,7 @@ describe('scenarios', () => {
 
   it('snapshot-rejects rejects', async () => {
     const { bridge } = createSyntheticBridge({ scenario: 'snapshot-rejects' });
-    await expect(bridge.library.getSnapshot()).rejects.toThrow();
+    await expect(bridge.library.getSnapshot('disk')).rejects.toThrow();
   });
 
   it.each<[ScenarioName, ReceiverStatus['state']]>([
@@ -204,7 +207,7 @@ describe('trash', () => {
 
     await expect(bridge.library.trash(revisionOf('Hero banner'))).resolves.toEqual({ ok: true });
 
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     const hero = library.projects.flatMap((p) => p.nodes).find((n) => n.name.includes('Hero'));
     expect(hero?.revisions).toHaveLength(2);
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -218,7 +221,7 @@ describe('trash', () => {
 
     await bridge.library.trash(id);
 
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     expect(library.projects.map((p) => p.id)).not.toContain(project.id);
     expect(library.projects).toHaveLength(projects.length - 1);
   });
@@ -230,7 +233,7 @@ describe('trash', () => {
 
     await bridge.library.trash(id);
 
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     expect(library.unidentified.map((entry) => entry.id)).not.toContain(id);
   });
 
@@ -254,7 +257,7 @@ describe('trash', () => {
     await expect(bridge.library.trash(id)).resolves.toMatchObject({ ok: false, code: 'not-found' });
 
     expect(onChanged).not.toHaveBeenCalled();
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     const ids = library.projects
       .flatMap((p) => p.nodes)
       .flatMap((n) => n.revisions.map((r) => r.id));
@@ -337,7 +340,7 @@ describe('control', () => {
     const first = control.pushExport();
     const second = control.pushExport();
 
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     expect(library.projects).toHaveLength(1);
     expect(library.projects[0]?.nodes[0]?.revisions.map((r) => r.id)).toEqual([second, first]);
     expect(onChanged).toHaveBeenCalledTimes(2);
@@ -348,7 +351,7 @@ describe('control', () => {
 
     const id = control.pushExport('unidentified');
 
-    const library = await readyLibrary(bridge.library.getSnapshot());
+    const library = await readyLibrary(bridge.library.getSnapshot('disk'));
     expect(library.projects).toEqual([]);
     expect(library.unidentified.map((entry) => entry.id)).toEqual([id]);
   });
@@ -374,7 +377,7 @@ describe('control', () => {
 
     control.recover();
 
-    await expect(bridge.library.getSnapshot()).resolves.toEqual(populatedLibrary);
+    await expect(bridge.library.getSnapshot('disk')).resolves.toEqual(populatedLibrary);
     expect(onChanged).not.toHaveBeenCalled();
   });
 
@@ -386,7 +389,7 @@ describe('control', () => {
     bridge.receiver.onStatus(onStatus);
 
     control.setScenario('empty');
-    await expect(bridge.library.getSnapshot()).resolves.toEqual(emptyLibrary);
+    await expect(bridge.library.getSnapshot('disk')).resolves.toEqual(emptyLibrary);
     expect(onChanged).toHaveBeenCalledTimes(1);
 
     control.setScenario('port-conflict');

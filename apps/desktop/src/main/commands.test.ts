@@ -44,7 +44,25 @@ describe('with the library', () => {
     const snapshot = { state: 'ready', projects: [], unidentified: [] } as const;
     const library = fakeLibrary({ getSnapshot: vi.fn(async () => snapshot) });
     const commands = createCommands({ library, receiver, desktop: fakeDesktop() });
-    expect(await commands[IPC.librarySnapshot]()).toBe(snapshot);
+    expect(await commands[IPC.librarySnapshot]('memory')).toBe(snapshot);
+  });
+
+  it.each([
+    ['memory', 'memory'],
+    ['disk', 'disk'],
+    [undefined, 'disk'],
+    [{ source: 'memory' }, 'disk'],
+  ])('reads a snapshot asked for as %j from the %s', async (asked, source) => {
+    const getSnapshot = vi.fn(
+      async () => ({ state: 'ready', projects: [], unidentified: [] }) as const,
+    );
+    const commands = createCommands({
+      library: fakeLibrary({ getSnapshot }),
+      receiver,
+      desktop: fakeDesktop(),
+    });
+    await commands[IPC.librarySnapshot](asked);
+    expect(getSnapshot).toHaveBeenCalledWith(source);
   });
 
   it('reveals the path the library names', async () => {

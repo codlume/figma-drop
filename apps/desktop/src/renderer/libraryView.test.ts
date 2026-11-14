@@ -203,7 +203,7 @@ describe('resolveView', () => {
     const id = htmlOnly.revisions[0]?.id;
     if (!id) throw new Error('no fixture revision');
     await bridge.library.trash(id);
-    const after = await bridge.library.getSnapshot();
+    const after = await bridge.library.getSnapshot('disk');
     if (after.state !== 'ready') throw new Error('expected ready');
 
     const main = projectMain(
@@ -446,7 +446,7 @@ describe('selectionForFocus', () => {
   it('is null before the refetch lands, then resolves on the next snapshot', async () => {
     const { bridge, control } = createSyntheticBridge({ scenario: 'empty' });
     const read = async (): Promise<ReadySnapshot> => {
-      const snapshot = await bridge.library.getSnapshot();
+      const snapshot = await bridge.library.getSnapshot('disk');
       if (snapshot.state !== 'ready') throw new Error('expected ready');
       return snapshot;
     };

@@ -185,7 +185,7 @@ async function readRecord(fs: LibraryFs, dir: string, home: ReceiptHome): Promis
   return { state: 'damaged', receivedAt: (info?.mtime ?? new Date(0)).toISOString() };
 }
 
-// Every snapshot rescans, and each step is a thread-pool round trip, so one-at-a-time
+// Every disk snapshot rescans, and each step is a thread-pool round trip, so one-at-a-time
 // I/O leaves the scan waiting on latency. The bound keeps file descriptors well below
 // any limit, because a receipt read that fails reads as damaged.
 const SCAN_CONCURRENCY = 32;

@@ -86,7 +86,7 @@ async function rig(scenario: Scenario): Promise<Rig> {
     lib,
     staged,
     stagedBundle: await treeOf(path.join(lib.stagingDir, staged.stagingId, 'bundle')),
-    baseline: expectReady(await lib.getSnapshot()),
+    baseline: expectReady(await lib.getSnapshot('disk')),
     disk: await catalogFiles(sb),
   };
 }
@@ -124,7 +124,7 @@ async function expectConsistentAfterRelaunch(
   label: string,
 ): Promise<void> {
   const reopened = await sb.open();
-  const snapshot = expectReady(await reopened.getSnapshot());
+  const snapshot = expectReady(await reopened.getSnapshot('disk'));
   const rows = catalogRows(snapshot);
   const { [staged.stagingId]: landedRow, ...others } = rows;
 
@@ -167,7 +167,7 @@ async function expectConsistentAfterRelaunch(
   expect(reply.revisionId, label).toBe(landed === undefined ? retried.stagingId : staged.stagingId);
   expect(await exists(reply.path), label).toBe(true);
 
-  const final = expectReady(await (await sb.open()).getSnapshot());
+  const final = expectReady(await (await sb.open()).getSnapshot('disk'));
   expect(Object.keys(catalogRows(final)).toSorted(), `${label}: exactly one revision`).toEqual(
     [...Object.keys(catalogRows(baseline)), reply.revisionId].toSorted(),
   );
@@ -211,7 +211,7 @@ describe.each(SCENARIOS)('commit of $name', (scenario) => {
       } else {
         expect(result, label).toMatchObject({ ok: false, code: 'disk-full' });
         if (!result.ok) expectSafeMessage(result.message);
-        const rows = catalogRows(expectReady(await lib.getSnapshot()));
+        const rows = catalogRows(expectReady(await lib.getSnapshot('disk')));
         expect(rows, label).toEqual(catalogRows(context.baseline));
       }
       await expectConsistentAfterRelaunch(context, scenario, label);
@@ -305,7 +305,7 @@ describe('error mapping', () => {
     const [failed, committed, snapshot] = await Promise.all([
       lib.commit(doomed),
       lib.commit(next),
-      lib.getSnapshot(),
+      lib.getSnapshot('disk'),
     ]);
 
     expectFailure(failed, 'failed');
@@ -346,7 +346,7 @@ describe('an oversized export', () => {
 
     expect(await lib.commit(staged)).toMatchObject({ ok: false, code: 'failed' });
 
-    expect(expectReady(await lib.getSnapshot()).projects).toEqual([]);
+    expect(expectReady(await lib.getSnapshot('disk')).projects).toEqual([]);
   });
 });
 
@@ -366,7 +366,7 @@ describe('listeners', () => {
 });
 
 async function expectUnreadable(lib: Library, sb: Sandbox): Promise<void> {
-  const snapshot = await lib.getSnapshot();
+  const snapshot = await lib.getSnapshot('disk');
   expect(snapshot).toMatchObject({ state: 'unreadable', projects: [], unidentified: [] });
   if (snapshot.state !== 'ready') expectSafeMessage(snapshot.message);
 
@@ -399,7 +399,11 @@ describe('an unreadable library', () => {
     await expectUnreadable(lib, sb);
 
     await rm(sb.root);
-    expect(await lib.getSnapshot()).toEqual({ state: 'ready', projects: [], unidentified: [] });
+    expect(await lib.getSnapshot('disk')).toEqual({
+      state: 'ready',
+      projects: [],
+      unidentified: [],
+    });
     expect(await sb.commit(lib)).toMatchObject({ status: 'committed' });
   });
 
@@ -414,7 +418,7 @@ describe('an unreadable library', () => {
       await expectUnreadable(lib, sb);
 
       await chmod(sb.root, 0o755);
-      expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot())))).toEqual([
+      expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot('disk'))))).toEqual([
         first.revisionId,
       ]);
       expect(await lib.locate(first.path)).toEqual({
@@ -446,7 +450,7 @@ describe('an unreadable library', () => {
     await rm(sb.root);
     const inFlight = await sb.stage(lib, { content: 'in flight' });
 
-    expectReady(await lib.getSnapshot());
+    expectReady(await lib.getSnapshot('disk'));
     await sb.commit(lib, { content: 'other' });
 
     expect(await lib.commit(inFlight)).toMatchObject({ ok: true, status: 'committed' });
@@ -464,7 +468,7 @@ describe('an unreadable library', () => {
 
     try {
       for (const opened of [lib, await sb.open()]) {
-        expectReady(await opened.getSnapshot());
+        expectReady(await opened.getSnapshot('disk'));
         expect(
           await sb.commit(opened, { identity: fileIdentity('other'), content: `f${mode}` }),
         ).toMatchObject({ status: expect.stringMatching(/committed|skipped/) });
@@ -480,7 +484,7 @@ describe('an unreadable library', () => {
       await chmod(nodeDir, 0o755);
     }
 
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(idsOf(nodeFor(projectFor(snapshot, 'blocked'), '1:2').revisions)).toEqual([
       blocked.revisionId,
     ]);
@@ -511,7 +515,10 @@ describe('an unreadable library', () => {
     expect(path.basename(path.dirname(c.path)).slice(0, 6)).toBe('000003');
     const revert = await sb.commit(lib, { content: 'B' });
     expect(revert).toMatchObject({ status: 'committed' });
-    const node = nodeFor(projectFor(expectReady(await lib.getSnapshot()), 'file-key-a'), '1:2');
+    const node = nodeFor(
+      projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a'),
+      '1:2',
+    );
     expect(node.revisions[0]?.id).toBe(revert.revisionId);
     expect(node.revisions).toHaveLength(4);
   });
@@ -539,7 +546,7 @@ describe('an unreadable library', () => {
     await sb.commit(lib, { content: 'B' });
     instrumented.arm({ kind: 'method', method: 'readdir', nth: 3, code: 'EMFILE' });
 
-    expect((await lib.getSnapshot()).state).toBe('unreadable');
+    expect((await lib.getSnapshot('disk')).state).toBe('unreadable');
 
     const c = await sb.commit(lib, { content: 'C' });
     expect(path.basename(path.dirname(c.path)).slice(0, 6)).toBe('000003');
@@ -557,7 +564,7 @@ describe('an unreadable library', () => {
       const doomed = level === 'node' ? nodeDir : path.dirname(nodeDir);
       const listing = instrumented.hold('readdir', doomed);
 
-      const snapshot = lib.getSnapshot();
+      const snapshot = lib.getSnapshot('disk');
       await listing.reached;
       await rm(doomed, { recursive: true });
       listing.release();
@@ -578,7 +585,7 @@ describe('an unreadable library', () => {
     const renamed = path.join(path.dirname(projectDir), `renamed-${projectDir.slice(-16)}`);
     const listing = instrumented.hold('readdir', projectDir);
 
-    const snapshot = lib.getSnapshot();
+    const snapshot = lib.getSnapshot('disk');
     await listing.reached;
     await rename(projectDir, renamed);
     listing.release();
@@ -598,7 +605,7 @@ describe('an unreadable library', () => {
     const filesRoot = path.join(sb.root, 'files');
     const listing = instrumented.hold('readdir', filesRoot);
 
-    const snapshot = lib.getSnapshot();
+    const snapshot = lib.getSnapshot('disk');
     await listing.reached;
     await rm(filesRoot, { recursive: true });
     listing.release();
@@ -615,14 +622,14 @@ describe('an unreadable library', () => {
 
     try {
       const relaunched = await sb.open();
-      expectReady(await relaunched.getSnapshot());
+      expectReady(await relaunched.getSnapshot('disk'));
       expect(
         await sb.commit(relaunched, { identity: fileIdentity('other'), content: 'after' }),
       ).toMatchObject({ status: 'committed' });
     } finally {
       await chmod(projectDir, 0o755);
     }
-    expect(projectFor(expectReady(await lib.getSnapshot()), 'blocked').nodes).toHaveLength(1);
+    expect(projectFor(expectReady(await lib.getSnapshot('disk')), 'blocked').nodes).toHaveLength(1);
   });
 
   it('treats a file at files/ as unreadable', async () => {
@@ -634,7 +641,7 @@ describe('an unreadable library', () => {
     await expectUnreadable(lib, sb);
 
     await rm(path.join(sb.root, 'files'));
-    expectReady(await lib.getSnapshot());
+    expectReady(await lib.getSnapshot('disk'));
   });
 
   it('does not sweep through a .staging symlink, and recovers once it is gone', async () => {
@@ -649,7 +656,7 @@ describe('an unreadable library', () => {
     expect(await treeOf(sb.outside)).toEqual(outside);
 
     await rm(path.join(sb.root, '.staging'));
-    expectReady(await lib.getSnapshot());
+    expectReady(await lib.getSnapshot('disk'));
     expect((await stat(path.join(sb.root, '.staging'))).isDirectory()).toBe(true);
     expect(await treeOf(sb.outside)).toEqual(outside);
     expect(await sb.commit(lib)).toMatchObject({ status: 'committed' });
@@ -674,7 +681,7 @@ describe('an unreadable library', () => {
     await chmod(sb.root, 0o000);
 
     try {
-      const snapshot = await lib.getSnapshot();
+      const snapshot = await lib.getSnapshot('disk');
       expect(snapshot.state).not.toBe('ready');
       expect(snapshot).toMatchObject({ projects: [], unidentified: [] });
       expectFailure(await lib.commit(inFlight), 'unavailable');
@@ -682,7 +689,7 @@ describe('an unreadable library', () => {
       await chmod(sb.root, 0o755);
     }
 
-    expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot())))).toEqual([
+    expect(idsOf(projectRevisions(expectReady(await lib.getSnapshot('disk'))))).toEqual([
       first.revisionId,
     ]);
     expect(await lib.commit(inFlight)).toMatchObject({ ok: true, status: 'committed' });
@@ -701,7 +708,7 @@ describe('changes behind the library', () => {
 
     expect(repeat).toMatchObject({ status: 'committed', revisionId: staged.stagingId });
     expect(await exists(repeat.path)).toBe(true);
-    const snapshot = expectReady(await lib.getSnapshot());
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
     expect(idsOf(projectRevisions(snapshot))).toEqual([staged.stagingId]);
   });
 
@@ -727,7 +734,7 @@ describe('changes behind the library', () => {
     await rm(first.path, { recursive: true });
     const receipt = await readReceipt(revisionDirOf(first));
 
-    const [revision] = projectRevisions(expectReady(await lib.getSnapshot()));
+    const [revision] = projectRevisions(expectReady(await lib.getSnapshot('disk')));
 
     expect(revision).toMatchObject({ id: first.revisionId, state: 'damaged', preview: null });
     expect(await lib.previewFile(first.revisionId)).toBeNull();
@@ -757,7 +764,9 @@ describe('changes behind the library', () => {
     const repeat = expectOk(await lib.commit(staged));
 
     expect(repeat).toMatchObject({ status: 'committed', revisionId: staged.stagingId });
-    expect(idsOf(expectReady(await lib.getSnapshot()).unidentified)).toEqual([staged.stagingId]);
+    expect(idsOf(expectReady(await lib.getSnapshot('disk')).unidentified)).toEqual([
+      staged.stagingId,
+    ]);
   });
 
   it('finds nothing when only the bundle was deleted and the receipt remains', async () => {
@@ -820,7 +829,10 @@ describe('changes behind the library', () => {
     const third = await sb.commit(lib, { content: 'C' });
 
     expect(path.basename(path.dirname(third.path)).slice(0, 6)).toBe('000003');
-    const node = nodeFor(projectFor(expectReady(await lib.getSnapshot()), 'file-key-a'), '1:2');
+    const node = nodeFor(
+      projectFor(expectReady(await lib.getSnapshot('disk')), 'file-key-a'),
+      '1:2',
+    );
     expect(idsOf(node.revisions)).toEqual([third.revisionId, second.revisionId]);
   });
 });

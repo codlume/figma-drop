@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
-import type { LibrarySnapshot } from './bridge.ts';
+import type { LibrarySnapshot, SnapshotSource } from './bridge.ts';
 import { createSyntheticBridge } from './synthetic/createSyntheticBridge.ts';
 import { emptyLibrary, populatedLibrary } from './synthetic/fixtures.ts';
 import { useLibrary } from './useLibrary.ts';
@@ -16,7 +16,7 @@ const unreadable: LibrarySnapshot = {
 function answeredByHand() {
   const { bridge, control } = createSyntheticBridge();
   const requests: PromiseWithResolvers<LibrarySnapshot>[] = [];
-  const getSnapshot = vi.fn(() => {
+  const getSnapshot = vi.fn((_source?: SnapshotSource) => {
     const request = Promise.withResolvers<LibrarySnapshot>();
     requests.push(request);
     return request.promise;
@@ -111,6 +111,38 @@ describe('useLibrary', () => {
 
     expect(getSnapshot).toHaveBeenCalledTimes(2);
     expect(result.current.state).toMatchObject({ snapshot: populatedLibrary });
+  });
+
+  it('rescans on mount, focus, refresh and retry, and reads memory after a change', async () => {
+    const { bridge, control, getSnapshot, answer } = answeredByHand();
+    const { result } = renderHook(() => useLibrary(bridge));
+    await answer(0, populatedLibrary);
+    act(() => void control.pushExport());
+    await answer(1, populatedLibrary);
+    act(() => void window.dispatchEvent(new Event('focus')));
+    await answer(2, populatedLibrary);
+    act(() => result.current.refresh());
+    await answer(3, populatedLibrary);
+    act(() => result.current.retry());
+    await answer(4, populatedLibrary);
+
+    expect(getSnapshot.mock.calls).toEqual([['disk'], ['memory'], ['disk'], ['disk'], ['disk']]);
+  });
+
+  it('rescans when a focus lands among changes during a fetch, then reads memory again', async () => {
+    const { bridge, control, getSnapshot, answer } = answeredByHand();
+    renderHook(() => useLibrary(bridge));
+
+    control.pushExport();
+    window.dispatchEvent(new Event('focus'));
+    control.pushExport();
+    await answer(0, emptyLibrary);
+    await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(2));
+    await answer(1, populatedLibrary);
+    act(() => void control.pushExport());
+    await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(3));
+
+    expect(getSnapshot.mock.calls).toEqual([['disk'], ['disk'], ['memory']]);
   });
 
   it('is safe under a StrictMode double mount', async () => {

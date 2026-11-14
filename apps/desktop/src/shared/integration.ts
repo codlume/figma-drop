@@ -1,4 +1,11 @@
-import type { CommandResult, FocusTarget, LibrarySnapshot, RevisionId, StagingId } from './library';
+import type {
+  CommandResult,
+  FocusTarget,
+  LibrarySnapshot,
+  RevisionId,
+  SnapshotSource,
+  StagingId,
+} from './library';
 import type { Unsubscribe } from './ipc';
 import type { ReceiverStatus } from './receiver';
 
@@ -40,7 +47,7 @@ export type PreviewFile = { path: string; contentType: 'image/png' | 'image/svg+
 
 // Revision ids are untrusted catalog keys. Look them up, and never build a path from one.
 export interface Library extends ReceiverLibrary {
-  getSnapshot(): Promise<LibrarySnapshot>;
+  getSnapshot(source: SnapshotSource): Promise<LibrarySnapshot>;
   onChanged(listener: () => void): Unsubscribe;
   bundlePath(revisionId: RevisionId): Promise<CommandResult<{ path: string }>>;
   copyTo(revisionId: RevisionId, destinationDir: string): Promise<CommandResult<{ path: string }>>;
