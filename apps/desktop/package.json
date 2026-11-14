@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@figma-drop/export-contract": "workspace:*",
-    "@stylexjs/stylex": "catalog:"
+    "@stylexjs/stylex": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@stylexjs/unplugin": "catalog:",
