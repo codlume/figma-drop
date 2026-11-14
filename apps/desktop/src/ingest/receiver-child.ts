@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+
 import { bindListeners } from './listeners';
 import type { Listeners } from './listeners';
 import { findPortHolder } from './port-holder';
@@ -117,7 +119,9 @@ export function runReceiverChild(host: ChildHost, options: ChildOptions = {}): R
     phase = { phase: 'stopping' };
     host.post({ type: 'status', status: { state: 'stopping' } });
     const closed = listeners.close();
-    await Promise.race([handler.idle(), delay(stopGraceMs)]);
+    await Effect.runPromise(
+      Effect.promise(() => handler.idle()).pipe(Effect.timeoutOption(stopGraceMs)),
+    );
     listeners.closeAllConnections();
     await closed;
     host.exit(0);
@@ -158,11 +162,4 @@ function portConflict(
   holder: PortHolder | undefined,
 ): Extract<ChildMessage, { type: 'status' }>['status'] {
   return holder ? { state: 'port-conflict', port, holder } : { state: 'port-conflict', port };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref();
-  });
 }
