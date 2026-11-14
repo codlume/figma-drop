@@ -106,7 +106,7 @@ export async function collectVariables(
 ): Promise<VariablesExport | undefined> {
   const local = await attempt(() => figma.variables.getLocalVariableCollectionsAsync());
   const queue = (local ?? []).flatMap((collection) => collection.variableIds);
-  queue.push(...aliasIds(serialized));
+  for (const id of aliasIds(serialized)) queue.push(id);
   if (queue.length === 0) return undefined;
 
   const resolved = new Map<string, Variable | null>();
@@ -114,7 +114,7 @@ export async function collectVariables(
     if (resolved.has(id)) continue;
     const variable = await attempt(() => figma.variables.getVariableByIdAsync(id));
     resolved.set(id, variable);
-    if (variable) queue.push(...aliasIds(variable.valuesByMode));
+    if (variable) for (const alias of aliasIds(variable.valuesByMode)) queue.push(alias);
   }
 
   const collections = new Map<string, VariableCollection | null>();

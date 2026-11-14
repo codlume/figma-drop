@@ -121,6 +121,24 @@ describe('variables', () => {
     expect(tokenNames(raw).sort()).toEqual(['V:bound', 'V:effect', 'V:paint']);
   });
 
+  it('finds more aliases than one function call takes as arguments', async () => {
+    const fake = createFakeFigma();
+    fake.addCollection({ id: 'C:9', name: 'Library', modes: MODES, remote: true });
+    fake.addVariable({
+      id: 'V:paint',
+      name: 'paint',
+      remote: true,
+      resolvedType: 'COLOR',
+      variableCollectionId: 'C:9',
+      valuesByMode: { '1:0': { r: 0, g: 0, b: 0, a: 1 } },
+    });
+    const fills = Array.from({ length: 200_000 }, () => alias('V:paint'));
+
+    const raw = await exportNode(fake.figma, fake.node('RECTANGLE', { boundVariables: { fills } }));
+
+    expect(tokenNames(raw)).toEqual(['paint']);
+  });
+
   it('finds aliases in remote masters and in styles', async () => {
     const fake = createFakeFigma();
     fake.addCollection({ id: 'C:9', name: 'Library', modes: MODES, remote: true });
