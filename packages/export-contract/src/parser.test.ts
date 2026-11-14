@@ -4,6 +4,14 @@ import { classifyFileIdentity, parseExportPayload, parseOpenRequest } from './pa
 
 const node = { id: '1:2', name: 'Frame', type: 'FRAME' };
 
+function unlisted<T extends object>(target: T): T {
+  return new Proxy(target, {
+    ownKeys: () => {
+      throw new Error('enumerated');
+    },
+  });
+}
+
 describe('classifyFileIdentity', () => {
   it('treats a key distinct from the file name as a file identity', () => {
     expect(classifyFileIdentity({ fileKey: 'abc123', fileName: 'Designs' })).toEqual({
@@ -183,6 +191,22 @@ describe('parseExportPayload', () => {
     }
     const result = parseExportPayload({ node: deep, components: [deep], summary: deep });
     expect(result.ok && result.payload.node).toBe(deep);
+  });
+
+  it('never enumerates a payload or an asset entry, so unknown keys cost nothing', () => {
+    const wire = unlisted({
+      node,
+      futureField: 1,
+      assets: [unlisted({ name: 'a.png', base64: 'AAAA', futureAssetField: 1 })],
+      images: [unlisted({ name: 'h.png', base64: 'AAAA', futureImageField: 1 })],
+    });
+    expect(parseExportPayload(wire)).toEqual({ ok: true, payload: expect.anything() });
+  });
+
+  it('returns the payload it was given, unknown keys and all', () => {
+    const wire = JSON.parse('{"node":{},"futureField":1,"__proto__":{"fileKey":"forged"}}');
+    const result = parseExportPayload(wire);
+    expect(result.ok && result.payload).toBe(wire);
   });
 
   it('never lets a __proto__ key set a field or the prototype', () => {
