@@ -1,5 +1,5 @@
 import { connect } from 'node:net';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import type { ForkedProcess, ReceiverLibrary } from '../shared/integration';
 import type { ReceiverStatus } from '../shared/receiver';
@@ -80,6 +80,7 @@ class ScriptedFork implements ForkedProcess {
   private readonly messageListeners: Listener<unknown>[] = [];
   private readonly exitListeners: Listener<number>[] = [];
   readonly killed = deferred<void>();
+  kills = 0;
   exited = false;
   exitOnKill: boolean;
 
@@ -101,6 +102,7 @@ class ScriptedFork implements ForkedProcess {
   }
 
   kill(): boolean {
+    this.kills += 1;
     this.killed.resolve();
     if (this.exitOnKill) this.exit(137);
     return true;
@@ -182,7 +184,7 @@ async function realController(
   return { controller, port, library, forks, statuses };
 }
 
-function scriptedController(tuning: ControllerTuning = {}, exitOnKill = true) {
+function scriptedController(tuning: ControllerTuning | 'defaults' = {}, exitOnKill = true) {
   const forks: ScriptedFork[] = [];
   const forkWaiters: Array<() => void> = [];
   // Operations run on the serialized queue, so a fork lands on a later tick.
@@ -221,7 +223,7 @@ function scriptedController(tuning: ControllerTuning = {}, exitOnKill = true) {
         return path === 'known';
       },
     },
-    { stopTimeoutMs: 50, ...tuning },
+    tuning === 'defaults' ? undefined : { stopTimeoutMs: 50, ...tuning },
   );
   controller.onStatus((status) => statuses.push(status));
   return { controller, forks, forked, statuses, library };
@@ -547,6 +549,182 @@ describe('parseChildMessage', () => {
       }),
     ).toBeNull();
     expect(parseChildMessage({ type: 'status', status: { state: 'failed' } })).toBeNull();
+  });
+});
+
+async function listeningScripted(exitOnKill = true) {
+  const scripted = scriptedController('defaults', exitOnKill);
+  const starting = scripted.controller.start();
+  const fork = await scripted.forked(0);
+  fork.send({ type: 'status', status: { state: 'listening', port: 4000 } });
+  await starting;
+  return { ...scripted, fork };
+}
+
+function fakeClock(): void {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+}
+
+function fireNextTimer(): number {
+  const before = Date.now();
+  vi.advanceTimersToNextTimer();
+  return Date.now() - before;
+}
+
+describe('controller timing at the default tuning', () => {
+  fakeClock();
+
+  it('kills a child 30 s into a parse', async () => {
+    const { controller, fork, forked } = await listeningScripted();
+    fork.send({ type: 'parse-start' });
+    expect(fork.kills).toBe(0);
+    expect(fireNextTimer()).toBe(30_000);
+    expect(fork.kills).toBe(1);
+    await forked(1);
+    expect(controller.status()).toEqual({ state: 'starting' });
+  });
+
+  it('disarms the watchdog at parse-end and gives the next parse a full 30 s', async () => {
+    const { fork } = await listeningScripted();
+    fork.send({ type: 'parse-start' });
+    vi.advanceTimersByTime(29_999);
+    fork.send({ type: 'parse-end' });
+    expect(vi.getTimerCount()).toBe(0);
+    fork.send({ type: 'parse-start' });
+    expect(fireNextTimer()).toBe(30_000);
+    expect(fork.kills).toBe(1);
+  });
+
+  it('kills a child that ignores stop after 7 s and ends at off 7 s after the kill', async () => {
+    const { controller, fork } = await listeningScripted(false);
+    const stopping = controller.stop();
+    await settle();
+    expect(fork.posted.at(-1)).toEqual({ type: 'stop' });
+    expect(fork.kills).toBe(0);
+    expect(fireNextTimer()).toBe(7000);
+    await fork.killed.promise;
+    expect(controller.status()).toEqual({ state: 'stopping' });
+    expect(fireNextTimer()).toBe(7000);
+    await stopping;
+    expect(controller.status()).toEqual({ state: 'off' });
+    expect(fork.kills).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ends the stop when the killed child exits', async () => {
+    const { controller, fork } = await listeningScripted();
+    const stopping = controller.stop();
+    await settle();
+    expect(fireNextTimer()).toBe(7000);
+    await stopping;
+    expect(controller.status()).toEqual({ state: 'off' });
+    expect(fork.kills).toBe(1);
+  });
+
+  it('ends the stop when the child exits on its own, with no kill', async () => {
+    const { controller, fork } = await listeningScripted();
+    const stopping = controller.stop();
+    await settle();
+    fork.exit(0);
+    await stopping;
+    expect(controller.status()).toEqual({ state: 'off' });
+    expect(fork.kills).toBe(0);
+  });
+
+  it('stops with no timer when no child is running', async () => {
+    const { controller, forked } = scriptedController('defaults');
+    await controller.stop();
+    expect(vi.getTimerCount()).toBe(0);
+    const starting = controller.start();
+    const fork = await forked(0);
+    fork.send({ type: 'status', status: { state: 'port-conflict', port: 4000 } });
+    await starting;
+    expect(controller.status()).toEqual({ state: 'port-conflict', port: 4000 });
+    await controller.stop();
+    expect(controller.status()).toEqual({ state: 'off' });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives up on the third exit inside 60 s', async () => {
+    const { controller, forks } = await listeningScripted();
+    forks[0]!.exit(1);
+    vi.advanceTimersByTime(1);
+    forks[1]!.exit(1);
+    vi.advanceTimersByTime(59_998);
+    expect(controller.status()).toEqual({ state: 'starting' });
+    forks[2]!.exit(1);
+    expect(controller.status()).toMatchObject({ state: 'failed' });
+    expect(forks).toHaveLength(3);
+  });
+
+  it('forgets an exit once it is 60 s old', async () => {
+    const { controller, forks } = await listeningScripted();
+    forks[0]!.exit(1);
+    vi.advanceTimersByTime(1);
+    forks[1]!.exit(1);
+    vi.advanceTimersByTime(59_999);
+    forks[2]!.exit(1);
+    expect(controller.status()).toEqual({ state: 'starting' });
+    forks[3]!.exit(1);
+    expect(controller.status()).toMatchObject({ state: 'failed' });
+    expect(forks).toHaveLength(4);
+  });
+});
+
+async function listeningChild() {
+  const scratch = await scratchDir();
+  const port = await freePort();
+  const listening = deferred<void>();
+  const committing = deferred<void>();
+  const exit = deferred<number>();
+  let deliver!: (message: MainMessage) => void;
+  const child = runReceiverChild({
+    post: (message) => {
+      if (message.type === 'status' && message.status.state === 'listening') listening.resolve();
+      if (message.type !== 'call') return;
+      if (message.call.method === 'commit') return committing.resolve();
+      deliver({
+        type: 'reply',
+        callId: message.callId,
+        result: { method: 'findExport', result: null },
+      });
+    },
+    onMessage: (listener) => {
+      deliver = listener;
+    },
+    exit: (code) => exit.resolve(code),
+  });
+  cleanups.push(async () => {
+    await child.close();
+    await scratch.cleanup();
+  });
+  deliver({ type: 'start', port, stagingDir: scratch.dir });
+  await listening.promise;
+  return { port, deliver, committing, exit };
+}
+
+describe('child stop grace at the default tuning', () => {
+  fakeClock();
+
+  it('exits 0 at once when nothing is in flight', async () => {
+    const { deliver, exit } = await listeningChild();
+    deliver({ type: 'stop' });
+    expect(await exit.promise).toBe(0);
+  });
+
+  it('gives a hung commit 5 s, then cuts the request and exits 0', async () => {
+    const { port, deliver, committing, exit } = await listeningChild();
+    const inFlight = syncRequest(port, validPayload()).catch((error: Error) => error);
+    await committing.promise;
+    deliver({ type: 'stop' });
+    expect(fireNextTimer()).toBe(5000);
+    expect(await exit.promise).toBe(0);
+    expect(await inFlight).toBeInstanceOf(Error);
   });
 });
 
