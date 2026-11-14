@@ -72,6 +72,27 @@ describe('exceedsValueBudget', () => {
     },
   );
 
+  it('agrees with it on 3000 seeded mixes of quotes, backslashes, and structure', () => {
+    let seed = 0x2f6e2b1;
+    const next = (below: number) => {
+      seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
+      return seed % below;
+    };
+    const pieces = ['"', '"', '\\', '\\\\', ',', '[', '{', 'x'.repeat(70), 'x', '\\"', 'é'];
+    for (let round = 0; round < 3000; round += 1) {
+      let json = '[';
+      for (let piece = next(40); piece >= 0; piece -= 1) json += pieces[next(pieces.length)];
+      const values = countValuesByteByByte(json);
+      expect(over(json, values), json).toBe(false);
+      expect(over(json, values - 1), json).toBe(true);
+    }
+  });
+
+  it('is exact where the body is as long as the budget, and one byte longer', () => {
+    expect(over('[[[[', 4)).toBe(false);
+    expect(over('[[[[[', 4)).toBe(true);
+  });
+
   it('catches the shapes that abort V8 inside JSON.parse', () => {
     expect(over('['.repeat(100), 50)).toBe(true);
     expect(over(`[${'[],'.repeat(100)}[]]`, 50)).toBe(true);

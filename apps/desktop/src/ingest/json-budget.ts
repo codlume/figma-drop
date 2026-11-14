@@ -11,22 +11,52 @@ const OPEN_BRACKET = 0x5b;
 const BACKSLASH = 0x5c;
 const OPEN_BRACE = 0x7b;
 
+const BYTES_STEPPED_BEFORE_SEARCHING = 64;
+
 // Reads bytes because a parser is the thing it protects. Valid JSON agrees with it
 // on where strings end, and invalid JSON fails in JSON.parse at the first bad token.
 export function exceedsValueBudget(body: Buffer, budget = MAX_JSON_VALUES): boolean {
+  const tooShortToExceedBudget = body.length <= budget;
+  if (tooShortToExceedBudget) return false;
   let values = 0;
-  let inString = false;
-  for (let index = 0; index < body.length; index += 1) {
+  let index = 0;
+  while (index < body.length) {
     const byte = body[index];
-    if (inString) {
-      if (byte === BACKSLASH) index += 1;
-      else if (byte === QUOTE) inString = false;
-    } else if (byte === QUOTE) {
-      inString = true;
+    index += 1;
+    if (byte === QUOTE) {
+      index = afterClosingQuote(body, index);
     } else if (byte === COMMA || byte === OPEN_BRACKET || byte === OPEN_BRACE) {
       values += 1;
       if (values > budget) return true;
     }
   }
   return false;
+}
+
+function afterClosingQuote(body: Buffer, afterOpeningQuote: number): number {
+  let index = afterOpeningQuote;
+  const stepUntil = Math.min(body.length, afterOpeningQuote + BYTES_STEPPED_BEFORE_SEARCHING);
+  while (index < stepUntil) {
+    const byte = body[index];
+    index += 1;
+    if (byte === QUOTE) return index;
+    if (byte === BACKSLASH) index += 1;
+  }
+  return afterClosingQuoteBySearch(body, index);
+}
+
+// A backslash hides the byte after it, so a quote closes the string only after an
+// even run of backslashes.
+function afterClosingQuoteBySearch(body: Buffer, unescapedFrom: number): number {
+  let from = unescapedFrom;
+  for (;;) {
+    const quote = body.indexOf(QUOTE, from);
+    if (quote === -1) return body.length;
+    let backslashes = 0;
+    while (quote - backslashes > from && body[quote - backslashes - 1] === BACKSLASH) {
+      backslashes += 1;
+    }
+    from = quote + 1;
+    if (backslashes % 2 === 0) return from;
+  }
 }
