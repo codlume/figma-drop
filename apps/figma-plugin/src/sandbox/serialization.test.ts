@@ -99,6 +99,54 @@ describe('node key sets', () => {
   });
 });
 
+describe('key order', () => {
+  it('writes identity, then the allowlist in its listed order, then derived keys, then children', async () => {
+    const fake = createFakeFigma();
+    const main = fake.node('COMPONENT', { key: 'k' });
+    const instance = fake.node('INSTANCE', {
+      main,
+      fillStyleId: 'S:fill,',
+      children: [fake.node('RECTANGLE')],
+    });
+
+    const { node } = await exportNode(fake.figma, instance);
+
+    expect(Object.keys(node)).toEqual(
+      words(
+        'id name type fillStyleId absoluteBoundingBox backgrounds blendMode boundVariables ' +
+          'componentProperties constraints cornerRadius counterAxisAlignItems ' +
+          'counterAxisSizingMode counterAxisSpacing effects fills height isMask itemSpacing ' +
+          'layoutAlign layoutGrow layoutMode layoutSizingHorizontal layoutSizingVertical ' +
+          'layoutWrap locked opacity paddingBottom paddingLeft paddingRight paddingTop ' +
+          'primaryAxisAlignItems primaryAxisSizingMode rotation strokeAlign strokes strokeWeight ' +
+          'variantProperties visible width x y mainComponentId mainComponentName ' +
+          'mainComponentKey children',
+      ),
+    );
+  });
+
+  it('writes the styled segments of a mixed text after its allowlisted keys', async () => {
+    const fake = createFakeFigma();
+    const text = fake.node('TEXT', {
+      textStyleId: fake.mixed,
+      segments: [{ characters: 'ab', start: 0, end: 2, textStyleId: 'S:t,' }],
+    });
+
+    const { node } = await exportNode(fake.figma, text);
+
+    expect(Object.keys(node)).toEqual(
+      words(
+        'id name type textStyleId absoluteBoundingBox blendMode boundVariables characters ' +
+          'constraints effects fills fontName fontSize fontWeight height isMask layoutAlign ' +
+          'layoutGrow layoutSizingHorizontal layoutSizingVertical letterSpacing lineHeight ' +
+          'locked opacity rotation strokeAlign strokes strokeWeight textAlignHorizontal ' +
+          'textAlignVertical textAutoResize textCase textDecoration visible width x y ' +
+          'styledTextSegments',
+      ),
+    );
+  });
+});
+
 describe('presence rules', () => {
   it('omits a key whose getter throws and keeps the rest', async () => {
     const fake = createFakeFigma();
