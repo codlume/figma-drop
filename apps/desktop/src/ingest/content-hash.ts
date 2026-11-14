@@ -110,11 +110,9 @@ function writeValue(writer: CanonicalWriter, value: unknown, depth: number): boo
   return true;
 }
 
-// Takes the raw `JSON.parse` result rather than the schema's output, because the
-// schema drops a top-level `__proto__` and that key must still change the hash.
-// Returns null when the payload nests beyond MAX_JSON_DEPTH.
-export function hashExport(payload: Readonly<Record<string, unknown>>): string | null {
+// Returns null when the body nests beyond MAX_JSON_DEPTH.
+export function hashExport(parsedBody: Readonly<Record<string, unknown>>): string | null {
   const writer = new CanonicalWriter();
-  const keys = Object.keys(payload).filter((key) => !EXCLUDED_FIELDS.has(key));
-  return writeObject(writer, payload, keys, 1) ? writer.digest() : null;
+  const keys = Object.keys(parsedBody).filter((key) => !EXCLUDED_FIELDS.has(key));
+  return writeObject(writer, parsedBody, keys, 1) ? writer.digest() : null;
 }
