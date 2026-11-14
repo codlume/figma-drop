@@ -1,0 +1,17 @@
+## final 17:37:37 load before: 8.86 10.32 11.08 7/717 2041253
+PASS real utilityProcess listens on IPv4, IPv6, and localhost, with CORS on the probe
+PASS valid export crosses HTTP, stages, and commits through the real library
+PASS repeat differing only in exportedAt, outputDir, folderName is skipped
+PASS A/B/A keeps three revisions
+PASS unknown sources go to Unidentified and never merge by name
+PASS path traversal in key, names, folderName, outputDir, and assets stays contained
+PASS malformed, oversized, bad Host, bad Origin, and wrong content type are refused
+PASS /open stays inside the catalog and /pick-folder opens nothing
+PASS toggle stops both listeners, then starts cleanly
+PASS a killed receiver restarts itself and keeps receiving
+PASS bodies that abort V8 in JSON.parse are refused before parsing, and the receiver stays up
+PASS the worst bodies under the value budget finish without killing the receiver
+PASS revisions and the toggle survive a restart
+PASS quit during a stalled receive exits and leaves no listener
+FAIL assertion failed: conflict names the process that holds it
+exit 1 after 46 s, load after: 9.04 10.13 10.98 6/732 2042781

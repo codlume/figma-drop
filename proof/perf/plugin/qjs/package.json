@@ -1,0 +1,9 @@
+{
+  "name": "plugin-perf-qjs",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "quickjs-emscripten": "0.32.0"
+  }
+}

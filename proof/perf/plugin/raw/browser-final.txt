@@ -1,0 +1,11 @@
+encodeExport and JSON.stringify, 7 alternating rounds per side, ms median [min..max], load average about 4:
+screen   1,005 nodes    2.8 MB asset bytes  body   4.6 MB  encode 101.5 [98.3..133.1] -> 16.5 [14.9..30.2]      stringify 32.4 -> 32.8     POST body sha256 identical b4f01e83364336b6
+page    10,029 nodes   11.8 MB              body  24.8 MB  encode 478.2 [460.5..520.9] -> 75.4 [74.1..114.4]    stringify 199.4 -> 186.4   identical 43f1413267f3c353
+cap     38,994 nodes   31.5 MB              body  76.7 MB  encode 1302.1 [1268.7..1413.4] -> 229.4 [198.7..302.8] stringify 782.3 -> 740.5 identical e5302d4268a67742
+images  10,029 nodes  112.8 MB              body 159.3 MB  encode 4512.0 [4419.4..5031.9] -> 735.6 [646.4..1078.8] stringify 1237.9 -> 1206.8 identical b2a633cea7f1dbad
+
+structuredClone + encodeExport + sendExport to a same-origin sink, 7 alternating rounds per side, ms median [min..max], every POST answered "saved" with the byte count sent:
+screen  body  4.6 MB  total 483.3 [400.3..617.6] -> 336.8 [309.7..507.3]   clone 14.8 -> 14.8    encode 115.2 -> 15.1   send 352.3 [286.4..490.6] -> 303.8 [281.0..477.6]
+page    body 24.8 MB  total 2502.4 [2371.0..2618.5] -> 2071.5 [1946.8..2188.2]  clone 136.4 -> 134.4  encode 642.4 -> 130.5  send 1702.2 [1680.2..1751.8] -> 1765.5 [1692.0..1947.4]
+
+fetch of a 20 MB body to the same sink by body form, ms per POST, 3 each: string 785 766 1063 | Blob 698 644 317 | Uint8Array 731 645 611

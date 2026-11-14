@@ -1,0 +1,113 @@
+# figma-drop plugin perf audit: raw comparison output
+# machine: 6 cores, 11 GB RAM, shared with other benchmark jobs (load average 3 to 35 during the session)
+# Node v26.13.0, quickjs-emscripten 0.32.0, Chromium 157.0.8103.38 headless shell
+
+## base (fc42a4f) -> final (82a66bf), Node, exportNode, 7 alternating processes per side, 3 warm-up + 7 timed exports each
+screen    nodes  1005  cpu ms base 38.5 [35.2..39.9]  work 27.4 [26.1..30.6]  -28.9% disjoint  |  wall ms base 33.9 [31.6..38.0]  work 24.3 [23.6..26.5]  -28.4% disjoint  |  paired cpu ratio 0.748 [0.679..0.808], work faster in 7/7 rounds  |  fastest cpu 31.1 -> 20.7 ms (-33.2%)  |  payload IDENTICAL b4f01e833643  (node, 7 processes per side)
+page      nodes 10029  cpu ms base 302.8 [288.0..334.7]  work 233.1 [219.9..261.2]  -23.0% disjoint  |  wall ms base 289.9 [287.4..332.4]  work 210.3 [200.6..216.5]  -27.5% disjoint  |  paired cpu ratio 0.756 [0.717..0.892], work faster in 7/7 rounds  |  fastest cpu 280.2 -> 204.5 ms (-27.0%)  |  payload IDENTICAL 43f1413267f3  (node, 7 processes per side)
+cap       nodes 38994  cpu ms base 1187.3 [1145.5..1230.1]  work 895.4 [847.3..1002.4]  -24.6% disjoint  |  wall ms base 1153.0 [1137.0..1210.4]  work 830.1 [773.0..921.9]  -28.0% disjoint  |  paired cpu ratio 0.753 [0.721..0.840], work faster in 7/7 rounds  |  fastest cpu 1098.0 -> 821.6 ms (-25.2%)  |  payload IDENTICAL e5302d4268a6  (node, 7 processes per side)
+tokens    nodes 10029  cpu ms base 362.6 [355.5..381.9]  work 296.5 [277.0..320.6]  -18.2% disjoint  |  wall ms base 348.9 [318.9..370.6]  work 251.2 [240.7..288.5]  -28.0% disjoint  |  paired cpu ratio 0.818 [0.725..0.900], work faster in 7/7 rounds  |  fastest cpu 313.0 -> 236.8 ms (-24.3%)  |  payload IDENTICAL 73d940930762  (node, 7 processes per side)
+deep30    nodes 10059  cpu ms base 392.4 [358.4..527.2]  work 269.1 [254.2..302.4]  -31.4% disjoint  |  wall ms base 379.7 [356.6..533.1]  work 293.6 [250.2..930.9]  -22.7% OVERLAP  |  paired cpu ratio 0.694 [0.509..0.806], work faster in 7/7 rounds  |  fastest cpu 344.8 -> 224.2 ms (-35.0%)  |  payload IDENTICAL d869f3b3a883  (node, 7 processes per side)
+nested6   nodes 12729  cpu ms base 410.4 [399.3..447.5]  work 326.2 [311.3..337.7]  -20.5% disjoint  |  wall ms base 406.6 [386.2..432.8]  work 287.4 [283.2..289.4]  -29.3% disjoint  |  paired cpu ratio 0.777 [0.729..0.842], work faster in 7/7 rounds  |  fastest cpu 387.6 -> 279.9 ms (-27.8%)  |  payload IDENTICAL 5ecd7d9a273a  (node, 7 processes per side)
+
+## base -> final, QuickJS, exportNode, 7 alternating processes per side (cap: 5), 1 warm-up + 3 timed exports each (cap: 2)
+screen    nodes  1005  cpu ms base 164.1 [163.4..188.6]  work 92.7 [90.5..102.6]  -43.5% disjoint  |  wall ms base 161.0 [156.0..185.0]  work 92.0 [84.0..139.0]  -42.9% disjoint  |  paired cpu ratio 0.552 [0.507..0.628], work faster in 7/7 rounds  |  fastest cpu 155.2 -> 87.6 ms (-43.6%)  |  payload IDENTICAL cfda1af4-115  (qjs, 7 processes per side)
+page      nodes 10029  cpu ms base 1438.6 [1328.3..1497.5]  work 775.6 [739.7..807.6]  -46.1% disjoint  |  wall ms base 1440.0 [1330.0..1498.0]  work 773.0 [741.0..805.0]  -46.3% disjoint  |  paired cpu ratio 0.539 [0.501..0.584], work faster in 7/7 rounds  |  fastest cpu 1328.0 -> 736.2 ms (-44.6%)  |  payload IDENTICAL 5b9b4807-954  (qjs, 7 processes per side)
+tokens    nodes 10029  cpu ms base 1637.3 [1566.6..1687.9]  work 933.1 [912.7..965.8]  -43.0% disjoint  |  wall ms base 1642.0 [1571.0..1695.0]  work 932.0 [922.0..965.0]  -43.2% disjoint  |  paired cpu ratio 0.570 [0.553..0.594], work faster in 7/7 rounds  |  fastest cpu 1557.2 -> 890.7 ms (-42.8%)  |  payload IDENTICAL a8d27a5d-127  (qjs, 7 processes per side)
+deep30    nodes 10059  cpu ms base 1708.9 [1687.8..1720.3]  work 826.4 [786.8..915.5]  -51.6% disjoint  |  wall ms base 1707.0 [1690.0..1759.0]  work 830.0 [787.0..914.0]  -51.4% disjoint  |  paired cpu ratio 0.484 [0.466..0.533], work faster in 7/7 rounds  |  fastest cpu 1642.6 -> 779.5 ms (-52.5%)  |  payload IDENTICAL c26ae259-940  (qjs, 7 processes per side)
+nested6   nodes 12729  cpu ms base 1819.3 [1796.8..1942.7]  work 1047.9 [1019.8..1096.5]  -42.4% disjoint  |  wall ms base 1828.0 [1795.0..1958.0]  work 1046.0 [1019.0..1099.0]  -42.8% disjoint  |  paired cpu ratio 0.568 [0.542..0.597], work faster in 7/7 rounds  |  fastest cpu 1784.9 -> 994.0 ms (-44.3%)  |  payload IDENTICAL 2d946877-120  (qjs, 7 processes per side)
+cap       nodes 38994  cpu ms base 5422.3 [5241.7..5675.7]  work 2912.1 [2804.9..3312.6]  -46.3% disjoint  |  wall ms base 5435.0 [5260.0..5931.0]  work 2930.0 [2810.0..3320.0]  -46.1% disjoint  |  paired cpu ratio 0.539 [0.513..0.613], work faster in 5/5 rounds  |  fastest cpu 5106.8 -> 2792.2 ms (-45.3%)  |  payload IDENTICAL 4a0bea80-365  (qjs, 5 processes per side)
+
+## POST body identity, base vs final (node identity.mjs)
+screen     1005 nodes     4771822 B  IDENTICAL  sha256 b4f01e83364336b6fe61bbf836e806a22d50893fba47be013b0808b783210efc  clone ok
+page      10029 nodes    26006729 B  IDENTICAL  sha256 43f1413267f3c3531144c7c36dd6545a0ff4871e4debd110ec58433e4c1c0b3a  clone ok
+cap       38994 nodes    80471013 B  IDENTICAL  sha256 e5302d4268a67742ec6b3257f04218d1c68d992ffb6bbbf3ebda8ddfff996534  clone ok
+over      40039 nodes    81281173 B  IDENTICAL  sha256 614c1cbc497408c56f58053669ed374b1c21ed13157b9c9363a02da46ef12c98  clone ok
+deep30    10059 nodes    10763744 B  IDENTICAL  sha256 d869f3b3a88357e4d225f9c2d3e42f366beb812d93d9294d7d5dcca0e4ce0942  clone ok
+deep400   10429 nodes    11071844 B  IDENTICAL  sha256 6020b7a8077413ebfb4dbb6938038b7661bf0432b3dfe43bc71d0cc6755de9bf  clone ok
+deep100    1105 nodes     2661643 B  IDENTICAL  sha256 93e192161bae39f7daf8ef78b96fd14f067c3d67b6b28c866535b3f627e15aa7  clone ok
+deep150    1155 nodes     2703177 B  IDENTICAL  sha256 629bc412063833765d4d69e8ee6c54b2e1b9f7ba94779f7fda77e27608dabeec  clone ok
+deep200    1205 nodes     2744745 B  IDENTICAL  sha256 59470cad67c9e82d02e706cd59022231d060cf0ce569dce005857dc62b765fd3  clone ok
+deep250    1255 nodes     2786287 B  IDENTICAL  sha256 a3032c313e01f75737f3807da042074d11c2727ea20deeba2874b6de7354a49f  clone ok
+deep300    1305 nodes     2827815 B  IDENTICAL  sha256 faade4b229bfee5ba8ec0f0225f1d587c1bdec909703ac9657fe71249ae079a2  clone ok
+deep350    1355 nodes     2869389 B  IDENTICAL  sha256 9a6439b1ba411d6530d15f3afa01765ec8068b304172f8ae53a48165e2e2c21d  clone ok
+deep1000   2005 nodes     3409446 B  IDENTICAL  sha256 c416eb385b00ac2334cc8c38b33e19daf9b6d70a761b031e7e92784a9b1b051b  clone ok
+nested6   12729 nodes    13432314 B  IDENTICAL  sha256 5ecd7d9a273a56fbcf1ed6c84064a502b8c61c8100528e323e79bb39556aee69  clone ok
+nested40  12458 nodes    13631247 B  IDENTICAL  sha256 61098dd4158880d229f93a2e59941aa1644c96ebb977653b0b00da015e3285ec  clone ok
+images    10029 nodes   167030819 B  IDENTICAL  sha256 b2a633cea7f1dbad69ae7a5e1bc22e326d705bb3570b345514fdf4d9455e8e9c  clone ok
+tokens    10029 nodes    14153214 B  IDENTICAL  sha256 73d940930762e27d3b5daf10a5ed8b02324930d99ad135133b69c6b2f0aaf8ae  clone ok
+rasters    4458 nodes   123152083 B  IDENTICAL  sha256 1284ed5e6490a395a71ee9e297c31172b4926851fa4c618b4482f3a13bad2cc5  clone ok
+all 18 bodies identical
+
+## UI in Chromium, base -> final (window.bench.encode and window.bench.ui in page.mjs)
+encodeExport and JSON.stringify, 7 alternating rounds per side, ms median [min..max], load average about 4:
+screen   1,005 nodes    2.8 MB asset bytes  body   4.6 MB  encode 101.5 [98.3..133.1] -> 16.5 [14.9..30.2]      stringify 32.4 -> 32.8     POST body sha256 identical b4f01e83364336b6
+page    10,029 nodes   11.8 MB              body  24.8 MB  encode 478.2 [460.5..520.9] -> 75.4 [74.1..114.4]    stringify 199.4 -> 186.4   identical 43f1413267f3c353
+cap     38,994 nodes   31.5 MB              body  76.7 MB  encode 1302.1 [1268.7..1413.4] -> 229.4 [198.7..302.8] stringify 782.3 -> 740.5 identical e5302d4268a67742
+images  10,029 nodes  112.8 MB              body 159.3 MB  encode 4512.0 [4419.4..5031.9] -> 735.6 [646.4..1078.8] stringify 1237.9 -> 1206.8 identical b2a633cea7f1dbad
+
+structuredClone + encodeExport + sendExport to a same-origin sink, 7 alternating rounds per side, ms median [min..max], every POST answered "saved" with the byte count sent:
+screen  body  4.6 MB  total 483.3 [400.3..617.6] -> 336.8 [309.7..507.3]   clone 14.8 -> 14.8    encode 115.2 -> 15.1   send 352.3 [286.4..490.6] -> 303.8 [281.0..477.6]
+page    body 24.8 MB  total 2502.4 [2371.0..2618.5] -> 2071.5 [1946.8..2188.2]  clone 136.4 -> 134.4  encode 642.4 -> 130.5  send 1702.2 [1680.2..1751.8] -> 1765.5 [1692.0..1947.4]
+
+fetch of a 20 MB body to the same sink by body form, ms per POST, 3 each: string 785 766 1063 | Blob 698 644 317 | Uint8Array 731 645 611
+
+## per-commit comparisons (previous commit -> commit), as printed by ab.mjs
+### 98abab8 perf(plugin): collect variable aliases with a plain recursive walk  (fix f737909 -> 98abab8)
+QuickJS, 7 processes per side (cap: 5):
+screen    nodes  1005  cpu ms base 171.9 [165.8..199.4]  work 121.5 [113.0..132.5]  -29.3% disjoint  | paired cpu ratio 0.695 [0.569..0.720], work faster in 7/7 rounds | payload IDENTICAL
+page      nodes 10029  cpu ms base 1488.9 [1372.7..1833.1]  work 991.8 [936.2..1035.5]  -33.4% disjoint  | paired cpu ratio 0.653 [0.553..0.754], work faster in 7/7 rounds | payload IDENTICAL
+tokens    nodes 10029  cpu ms base 1738.0 [1588.3..1878.3]  work 1121.7 [1014.8..1264.1]  -35.5% disjoint  | paired cpu ratio 0.634 [0.597..0.726], work faster in 7/7 rounds | payload IDENTICAL
+cap       nodes 38994  cpu ms base 5800.7 [5364.4..7242.6]  work 4172.1 [3814.4..4266.5]  -28.1% disjoint  | paired cpu ratio 0.690 [0.576..0.778], work faster in 5/5 rounds | payload IDENTICAL
+Node, 7 processes per side:
+screen    nodes  1005  cpu ms base 44.7 [41.2..78.6]  work 36.5 [30.0..52.2]  -18.3% OVERLAP  | paired cpu ratio 0.804 [0.628..1.167], work faster in 6/7 rounds | payload IDENTICAL
+page      nodes 10029  cpu ms base 352.5 [329.4..370.8]  work 279.5 [255.5..314.9]  -20.7% disjoint  | paired cpu ratio 0.804 [0.705..0.912], work faster in 7/7 rounds | payload IDENTICAL
+cap       nodes 38994  cpu ms base 1288.7 [1266.4..1532.8]  work 1035.6 [984.4..1228.3]  -19.6% disjoint  | paired cpu ratio 0.801 [0.764..0.885], work faster in 7/7 rounds | payload IDENTICAL
+tokens    nodes 10029  cpu ms base 405.9 [375.2..503.0]  work 319.8 [296.0..378.9]  -21.2% OVERLAP  | paired cpu ratio 0.789 [0.636..0.926], work faster in 7/7 rounds | payload IDENTICAL
+
+### fa47093 perf(plugin): encode asset bytes without spreading each chunk  (98abab8 -> fa47093)
+Chromium 157, encodeExport, 7 alternating rounds, ms median [min..max], machine under heavy load:
+screen   2.8 MB asset bytes   132.0 [106.7..177.5] -> 23.4 [15.8..50.5]     POST body sha256 identical
+page    11.8 MB               908.8 [696.8..1254.4] -> 191.1 [105.6..390.7] identical
+cap     31.5 MB               2003.5 [1862.4..3021.3] -> 458.7 [280.7..603.4] identical
+images 112.8 MB               8457.6 [7494.3..9529.5] -> 1607.5 [1242.4..2248.6] identical
+rasters 118.4 MB              4554.1 [3876.4..6843.6] -> 1112.3 [768.9..1967.8] identical
+Chromium 157, clone + encode + POST to a local sink, 5 alternating rounds, ms median [min..max]:
+screen  4.6 MB body  total 670.9 [480.1..980.8] -> 779.8 [679.1..923.5]   (encode 152.3 -> 35.9, send 501.5 -> 686.1)
+page   24.8 MB body  total 3280.0 [2858.7..3702.8] -> 2488.8 [2319.1..3272.3] (encode 1012.1 -> 161.9, send 2023.3 -> 2148.0)
+32 MB micro benchmark (b64-micro.mjs), ms per round:
+Chromium 157: spread 1607.5 1558.7 1245.6 1284.5 1288.9 1313.1 | apply 226.7 232.1 215.5 215.3 216.9 211.8 | native toBase64 33.9 60.6 37.2 40.9 36.2 37.2
+Node 26.13:   spread 1894.3 1791.8 1652.0 1794.8 1730.9 | apply 336.8 354.8 334.5 420.7 374.4 | Reflect.apply 319.9 464.6 343.7 343.6 388.0 | native 41.4 40.4 33.4 33.3 35.2
+
+### 36fb943 perf(plugin): walk the tree without one generator per level  (fa47093 -> 36fb943)
+QuickJS, 7 processes per side:
+page      nodes 10029  cpu ms base 959.7 [926.0..999.8]  work 879.8 [841.7..933.1]  -8.3% OVERLAP  | paired cpu ratio 0.930 [0.871..0.969], work faster in 7/7 rounds | fastest cpu 863.6 -> 817.5 ms (-5.3%) | payload IDENTICAL
+deep30    nodes 10059  cpu ms base 1142.1 [1101.9..1300.9]  work 913.7 [888.5..955.4]  -20.0% disjoint  | paired cpu ratio 0.805 [0.717..0.823], work faster in 7/7 rounds | fastest cpu 1069.6 -> 833.5 ms (-22.1%) | payload IDENTICAL
+nested6   nodes 12729  cpu ms base 1347.0 [1260.4..1447.7]  work 1143.9 [1078.5..1194.4]  -15.1% disjoint  | paired cpu ratio 0.843 [0.798..0.933], work faster in 7/7 rounds | fastest cpu 1204.9 -> 1046.5 ms (-13.2%) | payload IDENTICAL
+Node, 7 processes per side:
+page      nodes 10029  cpu ms base 257.9 [244.2..270.7]  work 251.0 [236.9..293.5]  -2.7% OVERLAP  | paired cpu ratio 0.973 [0.887..1.134], work faster in 5/7 rounds | payload IDENTICAL
+deep30    nodes 10059  cpu ms base 312.4 [290.1..346.7]  work 274.3 [255.2..304.1]  -12.2% OVERLAP  | paired cpu ratio 0.909 [0.738..0.981], work faster in 7/7 rounds | payload IDENTICAL
+nested6   nodes 12729  cpu ms base 365.0 [354.0..390.1]  work 345.0 [326.1..352.4]  -5.5% disjoint  | paired cpu ratio 0.945 [0.855..0.980], work faster in 7/7 rounds | payload IDENTICAL
+cap       nodes 38994  cpu ms base 997.6 [952.8..1022.2]  work 944.6 [927.5..1055.7]  -5.3% OVERLAP  | paired cpu ratio 0.971 [0.914..1.059], work faster in 6/7 rounds | payload IDENTICAL
+
+### 82a66bf perf(plugin): serialize each node into one object  (36fb943 -> 82a66bf)
+QuickJS, 7 processes per side (cap, tokens: 5):
+page      nodes 10029  cpu ms base 833.2 [795.8..864.9]  work 771.6 [741.2..794.8]  -7.4% disjoint  | paired cpu ratio 0.926 [0.913..0.941], work faster in 7/7 rounds | payload IDENTICAL
+screen    nodes  1005  cpu ms base 103.1 [98.3..105.2]  work 94.5 [89.5..107.8]  -8.3% OVERLAP  | paired cpu ratio 0.913 [0.869..1.097], work faster in 6/7 rounds | payload IDENTICAL
+cap       nodes 38994  cpu ms base 3328.0 [3218.5..3804.7]  work 3112.0 [3057.4..3192.5]  -6.5% disjoint  | paired cpu ratio 0.930 [0.818..0.977], work faster in 5/5 rounds | payload IDENTICAL
+tokens    nodes 10029  cpu ms base 1148.9 [1081.2..1184.2]  work 1033.2 [992.5..1108.3]  -10.1% OVERLAP  | paired cpu ratio 0.907 [0.845..0.965], work faster in 5/5 rounds | payload IDENTICAL
+Node, 7 processes per side:
+screen    nodes  1005  cpu ms base 29.3 [26.8..30.1]  work 28.5 [27.3..38.9]  -2.9% OVERLAP  | wall ms base 26.3 [24.7..28.6]  work 26.1 [24.8..29.3]  -0.9% OVERLAP | payload IDENTICAL
+page      nodes 10029  cpu ms base 235.8 [233.2..242.8]  work 244.3 [226.9..296.6]  +3.6% OVERLAP  | wall ms base 228.4 [225.2..232.6]  work 213.2 [208.2..250.4]  -6.7% OVERLAP | payload IDENTICAL
+tokens    nodes 10029  cpu ms base 287.8 [265.1..295.8]  work 284.7 [269.5..288.6]  -1.1% OVERLAP  | wall ms base 251.6 [250.6..270.1]  work 242.1 [226.4..250.3]  -3.8% disjoint | payload IDENTICAL
+cap       nodes 38994  cpu ms base 916.6 [891.3..947.9]  work 882.7 [861.0..1096.4]  -3.7% OVERLAP  | wall ms base 907.1 [869.5..987.9]  work 806.6 [798.1..836.3]  -11.1% disjoint | payload IDENTICAL
+
+### tried and not kept
+serialize into one object, alone, on the baseline (before the alias walk): Node page +2.6% OVERLAP, cap -11.3% OVERLAP; QuickJS page -2.9% OVERLAP (7 processes per side). Kept later, after the alias walk, with figma.mixed read once.
+await only for instances in serializeTree: QuickJS page cpu 1133.3 [1010.1..1282.9] -> 1191.5 [1058.0..1422.1], +5.1% OVERLAP, faster in 2/7 rounds.
+single-pass icon search (no repeated vector-only walk): QuickJS page 911.6 -> 919.8 (+0.9% OVERLAP, 2/5 rounds), nested6 1486.9 -> 1375.6 (-7.5% OVERLAP, 4/5 rounds). Node property reads: page 740,395 -> 739,045, nested6 1,015,795 -> 957,745.
+referencedStyleIds as an array instead of a generator: QuickJS page 1027.7 -> 1015.3, -1.2% OVERLAP, paired ratio 1.000, faster in 3/7 rounds.
+
+### alias limit (alias-limit.mjs, qjs/alias-limit.mjs)
+Node 26.13, base: 125,000 aliases ok, 150,000 and above RangeError: Maximum call stack size exceeded. Final: 1,000,000 ok.
+QuickJS, base: 60,000 ok, 70,000 and above RangeError: too many arguments in function call (only 65534 allowed). Final: 400,000 ok.

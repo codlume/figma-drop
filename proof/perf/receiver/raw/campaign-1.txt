@@ -1,0 +1,125 @@
+## 2026-11-14T16:51:00Z 6 cores, Intel Core Processor (Haswell, no TSX), 11671 MB RAM, 8610 MB available, swap used 1190 MB
+# e2e small: 5 alternating rounds x 8 iterations (first dropped), load before 10.77 7.80 6.71 4/549 1961633, after 5.59 7.06 6.58 4/696 1965057
+total        base: 40.5 [25.9..98.3] n=35   head: 27.8 [18.5..164.6] n=35
+read         base: 2.7 [1.9..7.6] n=35   head: 3.5 [2.6..9.1] n=35
+prepare      base: 24.4 [14.9..71.1] n=35   head: 16.8 [10.6..94.6] n=35
+find         base: 0.1 [0..0.3] n=35   head: 0.2 [0..1.9] n=35
+stage        base: 9.5 [7.3..30.9] n=35   head: 3.9 [2.1..51.9] n=35
+commitReply  base: 1.8 [1.1..19.9] n=35   head: 1.9 [1.1..10.7] n=35
+hwmMb        base: 126 [116..140] n=35   head: 123 [115..127] n=35
+peakRssMb    base: 137 [136..140] n=5   head: 127 [126..127] n=5
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"6cb35e0d46d21122f2bfea1ffb74b482211f717d5141af9ff36cbce1ef7367c5","files":11,"bytes":1015054,"digest":"d5922652b3297145"}
+no transport failures
+reply statuses after warmup {"base":{"200":35},"head":{"200":35}}
+# e2e typical: 5 alternating rounds x 8 iterations (first dropped), load before 5.59 7.06 6.58 17/741 1965115, after 5.94 6.67 6.49 9/729 1967623
+total        base: 206.1 [156.4..397.9] n=35   head: 104.1 [77.6..180.7] n=35
+read         base: 11.7 [7.3..54.4] n=35   head: 9.3 [6.3..17.3] n=35
+prepare      base: 141.6 [100.5..256.7] n=35   head: 76 [62.6..148.6] n=35
+find         base: 0.2 [0..3.1] n=35   head: 0.1 [0..3.5] n=35
+stage        base: 48.8 [32.6..101.7] n=35   head: 11.4 [5.7..33.9] n=35
+commitReply  base: 2.8 [1..14.9] n=35   head: 1.7 [1.1..11.6] n=35
+hwmMb        base: 195 [170..256] n=35   head: 157 [150..181] n=35
+peakRssMb    base: 254 [253..256] n=5   head: 178 [171..181] n=5
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"9a91034799a5baa3a1acd82325ff140de71530671038dedef2bec9d69f9de94d","files":14,"bytes":6405493,"digest":"28eb365891e057a7"}
+no transport failures
+reply statuses after warmup {"base":{"200":35},"head":{"200":35}}
+# e2e typical-ascii: 4 alternating rounds x 8 iterations (first dropped), load before 5.94 6.67 6.49 10/729 1967631, after 5.97 6.50 6.45 6/578 1969595
+total        base: 146.4 [109.6..252.2] n=28   head: 111.9 [67.7..206.4] n=28
+read         base: 10.6 [7.5..29.4] n=28   head: 10.5 [6.1..27] n=28
+prepare      base: 102 [81.2..195.7] n=28   head: 73.2 [52.9..172.5] n=28
+find         base: 0.1 [0..0.6] n=28   head: 0.1 [0..1.1] n=28
+stage        base: 27.6 [12.4..54.8] n=28   head: 12.6 [6.3..36.3] n=28
+commitReply  base: 2.2 [1..13] n=28   head: 2.5 [1.1..9.8] n=28
+hwmMb        base: 171 [153..188] n=28   head: 159 [144..178] n=28
+peakRssMb    base: 188 [186..188] n=4   head: 176 [176..178] n=4
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"3950fc9433582204af8a7a9275281c4647eabe05f433e33178a57a13bfd6b9c2","files":14,"bytes":6395483,"digest":"bb3802e4a92523a7"}
+no transport failures
+reply statuses after warmup {"base":{"200":28},"head":{"200":28}}
+# e2e images-2000: 3 alternating rounds x 6 iterations (first dropped), load before 5.97 6.50 6.45 3/578 1969603, after 6.99 6.71 6.53 11/716 1972045
+total        base: 886.5 [535.1..1240.6] n=15   head: 357.6 [240.2..1419] n=15
+read         base: 29.6 [21.5..77.6] n=15   head: 34.7 [19.3..126.1] n=15
+prepare      base: 147.8 [109.4..222.8] n=15   head: 124.5 [93.3..775.5] n=15
+find         base: 0.1 [0..1.4] n=15   head: 0.1 [0..2.9] n=15
+stage        base: 687.3 [400.4..970.8] n=15   head: 200.3 [117.4..540.5] n=15
+commitReply  base: 2.8 [1.1..12] n=15   head: 2.2 [1.3..32.3] n=15
+hwmMb        base: 197 [183..205] n=15   head: 186 [182..202] n=15
+peakRssMb    base: 204 [204..205] n=3   head: 201 [201..202] n=3
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"744c11f4bcbbf10c428e257b61f9339c918fba51eec61f3e878e0c6b7aefea7d","files":2003,"bytes":6000488,"digest":"2475a1bb07540729"}
+no transport failures
+reply statuses after warmup {"base":{"200":15},"head":{"200":15}}
+# e2e large: 3 alternating rounds x 5 iterations (first dropped), load before 6.99 6.71 6.53 8/719 1972058, after 6.59 6.69 6.55 4/605 1975419
+total        base: 1833.1 [1569.1..3508.2] n=12   head: 1115.9 [1024.7..1247.9] n=12
+read         base: 110.9 [85.1..549] n=12   head: 106.1 [75.1..140.3] n=12
+prepare      base: 1381.2 [1176.9..2450.7] n=12   head: 956.4 [873.6..1029.9] n=12
+find         base: 0 [0..0.3] n=12   head: 0.1 [0..0.2] n=12
+stage        base: 339.2 [294..797.2] n=12   head: 52.3 [43..109.9] n=12
+commitReply  base: 3.1 [1.3..10.6] n=12   head: 2.3 [1.8..11.7] n=12
+hwmMb        base: 799 [798..800] n=12   head: 628 [610..642] n=12
+peakRssMb    base: 799 [799..800] n=3   head: 641 [640..642] n=3
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"c620362994d19b272196731676522c4db9842df91076ce0c611d095edbad2bcf","files":49,"bytes":75280546,"digest":"1d500d0b7f0453b3"}
+no transport failures
+reply statuses after warmup {"base":{"200":12},"head":{"200":12}}
+# e2e cap-images: 2 alternating rounds x 4 iterations (first dropped), load before 6.59 6.69 6.55 4/615 1975437, after 5.36 5.91 6.26 7/677 1978413
+total        base: 5131.3 [4374.6..5642] n=6   head: 4216.9 [3628.6..5015.4] n=6
+read         base: 671.2 [509.1..790.2] n=6   head: 582.2 [468.5..626.3] n=6
+prepare      base: 4369 [3523.6..4644.8] n=6   head: 3557.8 [3101.8..4295.3] n=6
+find         base: 0.1 [0..0.1] n=6   head: 0.1 [0..0.3] n=6
+stage        base: 199.1 [176.7..255.2] n=6   head: 58.1 [48.1..79.7] n=6
+commitReply  base: 3.2 [2.5..7.8] n=6   head: 2.4 [2..22.7] n=6
+hwmMb        base: 2857 [1599..2861] n=6   head: 2854 [2831..2857] n=6
+peakRssMb    base: 2861 [2857..2861] n=2   head: 2857 [2856..2857] n=2
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"d02d768d9cc8f8ab47a79593da8e6dbbd90717213d2245e1d43a11694c1434fe","files":71,"bytes":205673603,"digest":"88324aff2b36f6bb"}
+no transport failures
+reply statuses after warmup {"base":{"200":6},"head":{"200":6}}
+# e2e budget-tree: 2 alternating rounds x 3 iterations (first dropped), load before 5.36 5.91 6.26 9/672 1978421, after 8.00 6.91 6.59 7/744 1982455
+total        base: 9958.8 [7968.4..11054.6] n=4   head: 4672.9 [4012.8..5062] n=4
+read         base: 225.9 [201.8..304.3] n=4   head: 262.4 [218.5..389.2] n=4
+prepare      base: 9081.3 [7268.9..10107.8] n=4   head: 4285.6 [3466.1..4714] n=4
+find         base: 2 [0.1..5.3] n=4   head: 0 [0..0.6] n=4
+stage        base: 611.9 [489..634.1] n=4   head: 125.3 [78.4..152.2] n=4
+commitReply  base: 12.2 [5..131.1] n=4   head: 4.2 [2.6..5.1] n=4
+hwmMb        base: 2837 [2212..2845] n=4   head: 1109 [957..1111] n=4
+peakRssMb    base: 2845 [2530..2845] n=2   head: 1111 [1109..1111] n=2
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"604a91feb3ba811eb4809faf4ce793a1eff34b8d826c5e1b3ddeae0522fd6d93","files":14,"bytes":90419991,"digest":"5f7ff44ea9bf23fc"}
+no transport failures
+reply statuses after warmup {"base":{"200":4},"head":{"200":4}}
+# e2e images-2.6M: 2 alternating rounds x 2 iterations (first dropped), load before 8.00 6.91 6.59 5/711 1982464, after 6.98 6.96 6.64 5/571 1984276
+total        base: 6433.8 [6305.1..6433.8] n=2   head: 5968.8 [4880..5968.8] n=2
+read         base: 269.2 [224.4..269.2] n=2   head: 305 [206.1..305] n=2
+prepare      base: 6163 [6079.9..6163] n=2   head: 5662.5 [4673.2..5662.5] n=2
+find         base: null [0..0] n=2   head: null [0..0] n=2
+stage        base: null [0..0] n=2   head: null [0..0] n=2
+commitReply  base: null [0..0] n=2   head: null [0..0] n=2
+hwmMb        base: 1265 [1264..1265] n=2   head: 1091 [1081..1091] n=2
+peakRssMb    base: 1265 [1264..1265] n=2   head: 1091 [1081..1091] n=2
+identity (hash, file count, bytes digest) identical across sides: {"reply":"{\"error\":\"This export has too many image assets.\"}"}
+no transport failures
+reply statuses after warmup {"base":{"413":2},"head":{"413":2}}
+# e2e keys-node: 2 alternating rounds x 1 iterations (first dropped), load before 6.98 6.96 6.64 4/571 1984284, after 5.79 6.47 6.51 4/676 1988535
+total        base: 36442 [34633.1..36442] n=2   head: 28336.7 [26915.2..28336.7] n=2
+read         base: 305.2 [238..305.2] n=2   head: 362.3 [265.2..362.3] n=2
+prepare      base: 35787.9 [34096.3..35787.9] n=2   head: 26697.4 [25510.8..26697.4] n=2
+find         base: 0.2 [0..0.2] n=2   head: 0 [0..0] n=2
+stage        base: 318.4 [269.1..318.4] n=2   head: 1266.8 [1101.5..1266.8] n=2
+commitReply  base: 30.3 [29.7..30.3] n=2   head: 37.6 [10..37.6] n=2
+hwmMb        base: 1449 [1449..1449] n=2   head: 1456 [1456..1456] n=2
+peakRssMb    base: 1449 [1449..1449] n=2   head: 1456 [1456..1456] n=2
+identity (hash, file count, bytes digest) identical across sides: {"contentHash":"671adfa502ac102f5b59f122c0558c4007d2840e0e06168104dfc340fb2ab559","files":3,"bytes":134719360,"digest":"464264634821faff"}
+no transport failures
+reply statuses after warmup {"base":{"200":2},"head":{"200":2}}
+# e2e keys-top: 2 alternating rounds x 1 iterations (first dropped), load before 5.79 6.47 6.51 6/676 1988543, after 8.75 7.48 6.87 8/861 1994473
+total        base: 78293 [51841.7..78293] n=2   head: 26054 [16786.4..26054] n=2
+read         base: 373.4 [335.6..373.4] n=2   head: 558.2 [474.1..558.2] n=2
+prepare      base: 77944.1 [51450.1..77944.1] n=2   head: 25470.4 [16300.8..25470.4] n=2
+find         base: 1.4 [0.3..1.4] n=2   head: 1.5 [0..1.5] n=2
+stage        base: 4.9 [0..4.9] n=2   head: 12.5 [3.1..12.5] n=2
+commitReply  base: 11.9 [0..11.9] n=2   head: 12.9 [6.9..12.9] n=2
+hwmMb        base: 2019 [1948..2019] n=2   head: 1297 [1296..1297] n=2
+peakRssMb    base: 2019 [1948..2019] n=2   head: 1297 [1296..1297] n=2
+identity (hash, file count, bytes digest) DIFFERS: {"reply":"{\"error\":\"figma-drop did not finish in time. Try again.\"}"}
+{
+  base: '{"reply":"{\\"error\\":\\"figma-drop did not finish in time. Try again.\\"}"}',
+  head: '{"contentHash":"9492b7fba548fa1aceaeb89718518edfa95e18a1a9c46132c2cadc5597e45f84","files":3,"bytes":485,"digest":"b5b0ec3e24fd54d7"}'
+}
+no transport failures
+reply statuses after warmup {"base":{"200":1,"503":1},"head":{"200":2}}
