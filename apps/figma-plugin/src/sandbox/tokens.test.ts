@@ -171,6 +171,57 @@ describe('variables', () => {
     expect(tokenNames(raw).sort()).toEqual(['V:master', 'V:style']);
   });
 
+  it('lists tokens in the order the export first names them', async () => {
+    const fake = createFakeFigma();
+    fake.addCollection({ id: 'C:9', name: 'Library', modes: MODES, remote: true });
+    const remote = { remote: true, variableCollectionId: 'C:9', resolvedType: 'FLOAT' } as const;
+    for (const id of ['V:style', 'V:master', 'V:child', 'V:paint', 'V:effect', 'V:target']) {
+      fake.addVariable({ ...remote, id, name: id, valuesByMode: { '1:0': 1 } });
+    }
+    fake.addVariable({
+      ...remote,
+      id: 'V:bound',
+      name: 'V:bound',
+      valuesByMode: { '1:0': alias('V:target') },
+    });
+    fake.addStyle({
+      id: 'S:1,',
+      name: 'Bound',
+      type: 'PAINT',
+      paints: [],
+      boundVariables: { paints: [alias('V:style')] },
+    });
+    const master = fake.node('COMPONENT', {
+      key: 'rk',
+      remote: true,
+      boundVariables: { width: alias('V:master') },
+    });
+    fake.publish(master);
+    const frame = fake.node('FRAME', {
+      fills: [{ type: 'SOLID', boundVariables: { color: alias('V:paint') } }],
+      effects: [{ type: 'DROP_SHADOW', boundVariables: { radius: alias('V:effect') } }],
+      boundVariables: { width: alias('V:bound') },
+      children: [
+        fake.node('RECTANGLE', {
+          boundVariables: { width: alias('V:child'), height: alias('V:paint') },
+        }),
+        fake.node('INSTANCE', { main: master }),
+      ],
+    });
+
+    const raw = await exportNode(fake.figma, frame);
+
+    expect(tokenNames(raw)).toEqual([
+      'V:bound',
+      'V:effect',
+      'V:paint',
+      'V:child',
+      'V:master',
+      'V:style',
+      'V:target',
+    ]);
+  });
+
   it('follows aliases transitively and names the target', async () => {
     const fake = createFakeFigma();
     fake.addCollection({ id: 'C:9', name: 'Library', modes: MODES, remote: true });
