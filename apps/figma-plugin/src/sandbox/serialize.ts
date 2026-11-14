@@ -169,7 +169,13 @@ export async function serializeTree(
   return { tree, truncated };
 }
 
-export function* serializedNodes(tree: SerializedNode): Generator<SerializedNode> {
-  yield tree;
-  for (const child of tree.children ?? []) yield* serializedNodes(child);
+function appendNodes(tree: SerializedNode, nodes: SerializedNode[]): void {
+  nodes.push(tree);
+  for (const child of tree.children ?? []) appendNodes(child, nodes);
+}
+
+export function serializedNodes(tree: SerializedNode): SerializedNode[] {
+  const nodes: SerializedNode[] = [];
+  appendNodes(tree, nodes);
+  return nodes;
 }
