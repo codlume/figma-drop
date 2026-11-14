@@ -40,6 +40,27 @@ function answeredByHand() {
   };
 }
 
+function everyStatusByHand() {
+  const hand = answeredByHand();
+  const statusRequests: PromiseWithResolvers<ReceiverStatus>[] = [];
+  const getStatus = () => {
+    const request = Promise.withResolvers<ReceiverStatus>();
+    statusRequests.push(request);
+    return request.promise;
+  };
+  const answerStatus = (index: number, status: ReceiverStatus) =>
+    hand.settle(() => {
+      const request = statusRequests[index];
+      if (!request) throw new Error(`no status request ${index}`);
+      request.resolve(status);
+    });
+  return {
+    ...hand,
+    bridge: { ...hand.bridge, receiver: { ...hand.bridge.receiver, getStatus } },
+    answerStatus,
+  };
+}
+
 const known = (status: ReceiverStatus) => ({
   kind: 'known',
   status,
@@ -87,6 +108,40 @@ describe('useReceiver', () => {
     expect(result.current.state).toEqual(known(listening));
 
     push(off);
+    expect(result.current.state).toEqual(known(off));
+  });
+
+  it('ignores the getStatus reply of a StrictMode mount that was torn down', async () => {
+    const { bridge, answerStatus } = everyStatusByHand();
+    const { result } = renderHook(() => useReceiver(bridge), { wrapper: StrictMode });
+
+    await answerStatus(1, listening);
+    await answerStatus(0, off);
+
+    expect(result.current.state).toEqual(known(listening));
+  });
+
+  it('ignores a getStatus reply that a reload replaced', async () => {
+    const { bridge, answerStatus } = everyStatusByHand();
+    const { result } = renderHook(() => useReceiver(bridge));
+
+    act(() => result.current.reload());
+    await answerStatus(1, listening);
+    await answerStatus(0, off);
+
+    expect(result.current.state).toEqual(known(listening));
+  });
+
+  it('lets a switch reply beat an older getStatus reply', async () => {
+    const { bridge, answerStatus, switchRequest, settle } = everyStatusByHand();
+    const { result } = renderHook(() => useReceiver(bridge));
+    await answerStatus(0, listening);
+
+    act(() => result.current.reload());
+    act(() => result.current.setEnabled(false));
+    await settle(() => switchRequest.resolve(off));
+    await answerStatus(1, listening);
+
     expect(result.current.state).toEqual(known(off));
   });
 

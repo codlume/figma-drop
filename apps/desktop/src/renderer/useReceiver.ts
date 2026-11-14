@@ -1,3 +1,4 @@
+import { Effect, type Fiber } from 'effect';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FigmaDropApi, ReceiverStatus } from './bridge.ts';
 
@@ -19,7 +20,10 @@ export type UseReceiver = {
 
 type KnownReceiver = Extract<ReceiverState, { kind: 'known' }>;
 
-const STATUS_UNAVAILABLE = 'figma-drop could not read the receiver status.';
+const UNAVAILABLE: ReceiverState = {
+  kind: 'unavailable',
+  message: 'figma-drop could not read the receiver status.',
+};
 const SWITCH_FAILED = 'figma-drop could not switch the receiver.';
 
 const withStatus =
@@ -37,31 +41,25 @@ const whenKnown =
 export function useReceiver(bridge: FigmaDropApi): UseReceiver {
   const [state, setState] = useState<ReceiverState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const statusSuperseded = useRef(false);
+  const pendingStatusRead = useRef<Fiber.Fiber<void> | null>(null);
   const switching = useRef(false);
 
   useEffect(() => {
-    let active = true;
-    statusSuperseded.current = false;
+    const read = Effect.runFork(
+      Effect.tryPromise(() => bridge.receiver.getStatus()).pipe(
+        Effect.match({ onSuccess: withStatus, onFailure: () => UNAVAILABLE }),
+        Effect.andThen((next) => Effect.sync(() => setState(next))),
+      ),
+    );
+    pendingStatusRead.current = read;
 
     const unsubscribe = bridge.receiver.onStatus((status) => {
-      statusSuperseded.current = true;
+      read.interruptUnsafe();
       setState(withStatus(status));
     });
 
-    void (async () => {
-      try {
-        const status = await bridge.receiver.getStatus();
-        if (active && !statusSuperseded.current) setState(withStatus(status));
-      } catch {
-        if (active && !statusSuperseded.current) {
-          setState({ kind: 'unavailable', message: STATUS_UNAVAILABLE });
-        }
-      }
-    })();
-
     return () => {
-      active = false;
+      read.interruptUnsafe();
       unsubscribe();
     };
   }, [bridge, attempt]);
@@ -80,7 +78,7 @@ export function useReceiver(bridge: FigmaDropApi): UseReceiver {
       void (async () => {
         try {
           const status = await bridge.receiver.setEnabled(enabled);
-          statusSuperseded.current = true;
+          pendingStatusRead.current?.interruptUnsafe();
           setState(whenKnown({ status, switching: false }));
         } catch {
           setState(whenKnown({ switching: false, switchError: SWITCH_FAILED }));

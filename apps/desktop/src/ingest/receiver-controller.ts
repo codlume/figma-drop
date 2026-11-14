@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
 import type {
   CommitResult,
@@ -29,7 +29,7 @@ export type ControllerTuning = {
 
 type Holder = { pid: number; command: string };
 
-type Child = { process: ForkedProcess; exited: boolean; watchdog: NodeJS.Timeout | null };
+type Child = { process: ForkedProcess; watchdog: NodeJS.Timeout | null };
 
 // `off`, `port-conflict`, and `failed` hold no process.
 type Phase =
@@ -89,7 +89,7 @@ export const createReceiverController = ((
       setPhase({ phase: 'failed', message: `The receiver could not start: ${describe(error)}` });
       return;
     }
-    const child: Child = { process, exited: false, watchdog: null };
+    const child: Child = { process, watchdog: null };
     setPhase({ phase: 'starting', child });
     process.on('message', (raw) => onMessage(child, raw));
     process.on('exit', () => onExit(child));
@@ -144,7 +144,6 @@ export const createReceiverController = ((
   }
 
   function onExit(child: Child): void {
-    child.exited = true;
     clearWatchdog(child);
     if (!isCurrent(child)) return;
     if (phase.phase === 'stopping') {
@@ -208,11 +207,13 @@ export const createReceiverController = ((
         const { child } = phase;
         setPhase({ phase: 'stopping', child });
         post(child, { type: 'stop' });
-        const exited = waitFor((current) => current.phase === 'off');
-        await Promise.race([exited, delay(stopTimeoutMs)]);
-        if (!child.exited) {
+        const exited = Effect.promise(() => waitFor((current) => current.phase === 'off')).pipe(
+          Effect.timeoutOption(stopTimeoutMs),
+        );
+        await Effect.runPromise(exited);
+        if (isCurrent(child)) {
           child.process.kill();
-          await Promise.race([exited, delay(stopTimeoutMs)]);
+          await Effect.runPromise(exited);
         }
         // A kill that emits no exit still ends here at off.
         if (isCurrent(child)) setPhase({ phase: 'off' });
@@ -276,10 +277,6 @@ async function guard<T>(operation: () => Promise<T>): Promise<T | CommitResult> 
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms).unref());
 }
 
 const identityString = Schema.String.check(Schema.isMaxLength(MAX_IDENTITY_CHARS));

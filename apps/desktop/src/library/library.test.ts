@@ -11,7 +11,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { previewUrl } from '../shared/library';
 import {
@@ -857,6 +857,42 @@ describe('relaunch', () => {
       ]);
     },
   );
+
+  it('keeps the first listed directory when a later copy is read before it', async () => {
+    const sb = await newSandbox();
+    const instrumented = instrumentFs();
+    const lib = await sb.open(instrumented.fs);
+    const original = await sb.commit(lib, { figmaNodeId: '1:1', nodeName: 'Aaa' });
+    const other = await sb.commit(lib, { figmaNodeId: '2:2', nodeName: 'Zzz' });
+    const originalDir = revisionDirOf(original);
+    const moreThanOneScanReadsAtOnce = 40;
+    const laterInTheSameNode = Array.from({ length: moreThanOneScanReadsAtOnce }, (_, index) =>
+      path.join(
+        path.dirname(originalDir),
+        `${String(index + 2).padStart(6, '0')}-${stagingIdFor(600 + index)}`,
+      ),
+    );
+    await Promise.all(laterInTheSameNode.map((dir) => mkdir(dir)));
+    const copy = path.join(path.dirname(revisionDirOf(other)), path.basename(originalDir));
+    await cp(originalDir, copy, { recursive: true });
+    const originalRead = instrumented.hold('lstat', path.join(originalDir, 'receipt.json'));
+
+    const snapshot = lib.getSnapshot();
+    await originalRead.reached;
+    await vi.waitFor(() =>
+      expect(instrumented.calls).toContainEqual(
+        expect.objectContaining({ method: 'lstat', args: [copy], landed: true }),
+      ),
+    );
+    originalRead.release();
+
+    const claims = projectRevisions(expectReady(await snapshot)).filter(
+      ({ id }) => id === original.revisionId,
+    );
+    expect(claims).toEqual([
+      expect.objectContaining({ state: 'ok', bundlePath: path.join(originalDir, 'bundle') }),
+    ]);
+  });
 
   it('keeps no index or project file beside the revision directories', async () => {
     const sb = await newSandbox();

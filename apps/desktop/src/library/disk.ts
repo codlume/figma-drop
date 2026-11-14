@@ -3,6 +3,7 @@ import { constants, type Stats } from 'node:fs';
 import type * as fsPromises from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { BUNDLE_FILES } from '@figma-drop/export-contract';
+import { Array as Arr, Effect } from 'effect';
 import type {
   CommandError,
   CommandErrorCode,
@@ -188,31 +189,19 @@ async function readRecord(fs: LibraryFs, dir: string, home: ReceiptHome): Promis
 // I/O leaves the scan waiting on latency. The bound keeps file descriptors well below
 // any limit, because a receipt read that fails reads as damaged.
 const SCAN_CONCURRENCY = 32;
+const READS_PER_FIBER = 8;
 
-// Resolves in input order. After the first rejection no new item starts, though calls
-// already in flight still settle.
-async function mapConcurrently<Item, Result>(
+function mapConcurrently<Item, Result>(
   items: readonly Item[],
   run: (item: Item) => Promise<Result>,
 ): Promise<Result[]> {
-  const results: Result[] = [];
-  let next = 0;
-  let failed = false;
-  const worker = async () => {
-    while (!failed && next < items.length) {
-      const index = next;
-      next += 1;
-      try {
-        results[index] = await run(items[index] as Item);
-      } catch (cause) {
-        failed = true;
-        throw cause;
-      }
-    }
-  };
-  const workers = Math.min(SCAN_CONCURRENCY, items.length);
-  await Promise.all(Array.from({ length: workers }, worker));
-  return results;
+  return Effect.runPromise(
+    Effect.forEach(
+      Arr.chunksOf(items, READS_PER_FIBER),
+      (batch) => Effect.promise(() => Promise.all(batch.map(run))),
+      { concurrency: SCAN_CONCURRENCY / READS_PER_FIBER },
+    ),
+  ).then((batches) => batches.flat());
 }
 
 type ScannedProject = { path: string; dir: HashedDir; id: ProjectId };
