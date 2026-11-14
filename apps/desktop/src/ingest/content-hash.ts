@@ -9,6 +9,7 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set(HASH_EXCLUDED_FIELDS);
 
 const SCRATCH_BYTES = 64 * 1024;
 const STRING_CHUNK_UNITS = 16 * 1024;
+const LONGEST_STRING_WRITTEN_BY_LOOP = 64;
 
 const TAG = { null: 0, false: 1, true: 2, number: 3, string: 4, array: 5, object: 6 } as const;
 
@@ -48,6 +49,21 @@ class CanonicalWriter {
   string(value: string): void {
     this.tag(TAG.string);
     this.count(value.length);
+    if (value.length <= LONGEST_STRING_WRITTEN_BY_LOOP) this.unitsByLoop(value);
+    else this.unitsByNativeEncoder(value);
+  }
+
+  private unitsByLoop(value: string): void {
+    this.reserve(value.length * 2);
+    for (let index = 0; index < value.length; index += 1) {
+      const unit = value.charCodeAt(index);
+      this.scratch[this.used] = unit & 0xff;
+      this.scratch[this.used + 1] = unit >>> 8;
+      this.used += 2;
+    }
+  }
+
+  private unitsByNativeEncoder(value: string): void {
     for (let start = 0; start < value.length; start += STRING_CHUNK_UNITS) {
       const chunk = value.slice(start, start + STRING_CHUNK_UNITS);
       this.reserve(chunk.length * 2);
