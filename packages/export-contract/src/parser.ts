@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { Result, Schema, SchemaIssue } from 'effect';
 import { LITERAL_FALLBACK_FILE_KEY } from './index.ts';
 
 // Open objects throughout: unknown fields survive so a newer plugin never fails
@@ -6,53 +6,65 @@ import { LITERAL_FALLBACK_FILE_KEY } from './index.ts';
 // the top level only, because parse time must not scale with a hostile tree, and
 // bundle files store them verbatim. `assets` and `images` are still walked, so
 // parse time scales with their entry count.
-const assetSchema = z.looseObject({ name: z.string(), base64: z.string() });
-const imageSchema = z.looseObject({
-  imageHash: z.string().optional(),
-  name: z.string(),
-  base64: z.string(),
-});
-const plainObject = z.custom<Record<string, unknown>>(
-  (value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-  'expected a plain object',
+const openObject = <const Fields extends Schema.Struct.Fields>(fields: Fields) =>
+  Schema.StructWithRest(Schema.Struct(fields), [Schema.Record(Schema.String, Schema.Unknown)]);
+
+const plainObject = Schema.declare(
+  (value): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value),
 );
-const plainArray = z.custom<unknown[]>((value) => Array.isArray(value), 'expected an array');
+const plainArray = Schema.declare((value): value is unknown[] => Array.isArray(value));
 
-export const exportPayloadSchema = z.looseObject({
-  node: plainObject,
-  fileKey: z.string().optional(),
-  fileName: z.string().optional(),
-  nodeId: z.string().optional(),
-  nodeName: z.string().optional(),
-  exportedAt: z.string().optional(),
-  outputDir: z.string().optional(),
-  folderName: z.string().optional(),
-  summary: plainObject.optional(),
-  components: plainArray.optional(),
-  remoteMasters: plainArray.optional(),
-  variables: plainObject.optional(),
-  styles: plainObject.optional(),
-  svg: z.string().optional(),
-  png: z.string().optional(),
-  assets: z.array(assetSchema).optional(),
-  images: z.array(imageSchema).optional(),
-  contractVersion: z.number().optional(),
-  batchId: z.string().optional(),
+const asset = openObject({ name: Schema.String, base64: Schema.String });
+const image = openObject({
+  imageHash: Schema.optional(Schema.String),
+  name: Schema.String,
+  base64: Schema.String,
 });
 
-export type ExportPayload = z.infer<typeof exportPayloadSchema>;
+const exportPayload = openObject({
+  node: plainObject,
+  fileKey: Schema.optional(Schema.String),
+  fileName: Schema.optional(Schema.String),
+  nodeId: Schema.optional(Schema.String),
+  nodeName: Schema.optional(Schema.String),
+  exportedAt: Schema.optional(Schema.String),
+  outputDir: Schema.optional(Schema.String),
+  folderName: Schema.optional(Schema.String),
+  summary: Schema.optional(plainObject),
+  components: Schema.optional(plainArray),
+  remoteMasters: Schema.optional(plainArray),
+  variables: Schema.optional(plainObject),
+  styles: Schema.optional(plainObject),
+  svg: Schema.optional(Schema.String),
+  png: Schema.optional(Schema.String),
+  assets: Schema.optional(Schema.Array(asset)),
+  images: Schema.optional(Schema.Array(image)),
+  contractVersion: Schema.optional(Schema.Finite),
+  batchId: Schema.optional(Schema.String),
+});
+
+const openRequest = openObject({ path: Schema.String });
+
+export type ExportPayload = typeof exportPayload.Type;
+export type OpenRequest = typeof openRequest.Type;
 
 export type ParseResult = { ok: true; payload: ExportPayload } | { ok: false; error: string };
 
+const decodeExportPayload = Schema.decodeUnknownResult(exportPayload);
+const decodeOpenRequest = Schema.decodeUnknownResult(openRequest);
+const formatIssue = SchemaIssue.makeFormatterStandardSchemaV1();
+
 export function parseExportPayload(value: unknown): ParseResult {
-  const parsed = exportPayloadSchema.safeParse(value);
-  if (parsed.success) return { ok: true, payload: parsed.data };
-  const issue = parsed.error.issues[0];
-  return { ok: false, error: `invalid export: ${issue?.path.join('.') || 'body'}` };
+  const parsed = decodeExportPayload(value);
+  if (Result.isSuccess(parsed)) return { ok: true, payload: parsed.success };
+  const path = formatIssue(parsed.failure.issue).issues[0]?.path ?? [];
+  return { ok: false, error: `invalid export: ${path.join('.') || 'body'}` };
 }
 
-export const openRequestSchema = z.looseObject({ path: z.string() });
-export type OpenRequest = z.infer<typeof openRequestSchema>;
+export function parseOpenRequest(value: unknown): OpenRequest | undefined {
+  return Result.getOrUndefined(decodeOpenRequest(value));
+}
 
 export type SyncSuccess = { path: string; preview?: string };
 export type ErrorReply = { error: string };
