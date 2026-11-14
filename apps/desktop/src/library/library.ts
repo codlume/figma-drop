@@ -20,7 +20,6 @@ import type {
 import {
   addRevision,
   BLOCKED,
-  bundleDir,
   decide,
   imagePreview,
   locate,
@@ -77,7 +76,7 @@ function commitResult(
     ok: true,
     status,
     revisionId: revision.id,
-    path: bundleDir(revision),
+    path: revision.bundle,
     ...(preview ? { preview } : {}),
   };
 }
@@ -135,7 +134,7 @@ export async function openLibrary(
   }
 
   async function isLive(revision: CatalogRevision): Promise<boolean> {
-    const where = await contain(fs, root, bundleDir(revision));
+    const where = await contain(fs, root, revision.bundle);
     return where.state === 'inside' && where.info.isDirectory();
   }
 
@@ -242,7 +241,7 @@ export async function openLibrary(
     if (!revision) return commandError('not-found');
     if (revision.record.state === 'damaged') return commandError('damaged');
     const { receipt } = revision.record;
-    const source = bundleDir(revision);
+    const source = revision.bundle;
     const bundle = await contain(fs, root, source);
     if (bundle.state === 'vanished') return commandError('not-found');
     if (bundle.state === 'refused' || !bundle.info.isDirectory()) return commandError('damaged');
@@ -267,7 +266,7 @@ export async function openLibrary(
     if (!catalog) return commandError('unavailable');
     const revision = catalog.revisions.get(revisionId);
     if (!revision) return commandError('not-found');
-    const path = bundleDir(revision);
+    const path = revision.bundle;
     const where = await contain(fs, root, path);
     if (where.state === 'vanished') return commandError('not-found');
     if (where.state === 'refused' || !where.info.isDirectory()) return commandError('damaged');
@@ -279,7 +278,7 @@ export async function openLibrary(
     if (revision?.record.state !== 'ok') return null;
     const image = imagePreview(revision.record.receipt);
     if (!image) return null;
-    const path = join(bundleDir(revision), image.file);
+    const path = join(revision.bundle, image.file);
     const where = await contain(fs, root, path);
     return where.state === 'inside' && where.info.isFile()
       ? { path, contentType: image.contentType }

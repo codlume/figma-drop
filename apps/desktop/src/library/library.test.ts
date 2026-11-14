@@ -1111,6 +1111,24 @@ describe('snapshot', () => {
     ]);
   });
 
+  it('orders by the instant a receipt names, whatever its notation', async () => {
+    const sb = await newSandbox();
+    const lib = await sb.open();
+    const receivedAt = async (identity: string, time: string) => {
+      const entry = await sb.commit(lib, { identity: unidentified(identity) });
+      const receipt = { ...(await readReceipt(revisionDirOf(entry))), receivedAt: time };
+      await writeFile(path.join(revisionDirOf(entry), 'receipt.json'), JSON.stringify(receipt));
+      return entry.revisionId;
+    };
+    const oldest = await receivedAt('a', '2026-03-01T10:00:00.000Z');
+    const middle = await receivedAt('b', '2026-03-01T12:30:00.000+02:00');
+    const newest = await receivedAt('c', '2026-03-01T09:45:00.000-01:00');
+
+    const snapshot = expectReady(await lib.getSnapshot('disk'));
+
+    expect(idsOf(snapshot.unidentified)).toEqual([newest, middle, oldest]);
+  });
+
   it('takes names from the newest receipt that has them', async () => {
     const sb = await newSandbox();
     const lib = await sb.open();

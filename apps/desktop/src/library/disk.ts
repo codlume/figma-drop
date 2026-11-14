@@ -12,6 +12,7 @@ import type {
   RevisionId,
 } from '../shared/library';
 import {
+  bundleIn,
   FILES_DIR,
   UNIDENTIFIED_DIR,
   type Catalog,
@@ -177,10 +178,14 @@ async function readReceipt(
   }
 }
 
-async function readRecord(fs: LibraryFs, dir: string, home: ReceiptHome): Promise<RevisionRecord> {
+async function readRecord(
+  fs: LibraryFs,
+  { dir, bundle }: { dir: string; bundle: string },
+  home: ReceiptHome,
+): Promise<RevisionRecord> {
   const receipt = await readReceipt(fs, join(dir, RECEIPT_FILE), home);
-  const bundle = await lstatOrNull(fs, join(dir, 'bundle')).catch(() => null);
-  if (receipt && bundle?.isDirectory()) return { state: 'ok', receipt };
+  const bundleInfo = await lstatOrNull(fs, bundle).catch(() => null);
+  if (receipt && bundleInfo?.isDirectory()) return { state: 'ok', receipt };
   const info = await lstatOrNull(fs, dir).catch(() => null);
   return { state: 'damaged', receivedAt: (info?.mtime ?? new Date(0)).toISOString() };
 }
@@ -254,17 +259,21 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   }
   const projectRevisions = await mapConcurrently(
     revisionDirs,
-    async ({ node, seq, id, dir }): Promise<ProjectRevision> => ({
-      kind: 'project',
-      seq,
-      id,
-      dir,
-      projectId: node.project.id,
-      nodeId: node.id,
-      projectDir: node.project.dir,
-      nodeDir: node.dir,
-      record: await readRecord(fs, dir, { kind: 'project', revisionId: id, nodeId: node.id }),
-    }),
+    async ({ node, seq, id, dir }): Promise<ProjectRevision> => {
+      const at = { dir, bundle: bundleIn(dir) };
+      const home: ReceiptHome = { kind: 'project', revisionId: id, nodeId: node.id };
+      return {
+        kind: 'project',
+        seq,
+        id,
+        ...at,
+        projectId: node.project.id,
+        nodeId: node.id,
+        projectDir: node.project.dir,
+        nodeDir: node.dir,
+        record: await readRecord(fs, at, home),
+      };
+    },
   );
   for (const revision of projectRevisions) keepFirst(revision);
 
@@ -275,13 +284,16 @@ export async function scanCatalog(fs: LibraryFs, root: string): Promise<Catalog>
   });
   const unidentified = await mapConcurrently(
     unidentifiedDirs,
-    async ({ slug, id, dir }): Promise<UnidentifiedRevision> => ({
-      kind: 'unidentified',
-      slug,
-      id,
-      dir,
-      record: await readRecord(fs, dir, { kind: 'unidentified', revisionId: id }),
-    }),
+    async ({ slug, id, dir }): Promise<UnidentifiedRevision> => {
+      const at = { dir, bundle: bundleIn(dir) };
+      return {
+        kind: 'unidentified',
+        slug,
+        id,
+        ...at,
+        record: await readRecord(fs, at, { kind: 'unidentified', revisionId: id }),
+      };
+    },
   );
   for (const revision of unidentified) keepFirst(revision);
 
