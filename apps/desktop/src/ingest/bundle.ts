@@ -1,7 +1,9 @@
+import { constants } from 'node:buffer';
 import { BUNDLE_FILES } from '@figma-drop/export-contract';
 import type { ExportPayload } from '@figma-drop/export-contract/parser';
 import { placeAssets } from './asset-names';
 import type { BundleFile } from './export-pipeline';
+import { serializeJson } from './json-indent';
 import type { RejectionCode } from './rejections';
 
 export const MAX_ASSETS = 2000;
@@ -32,26 +34,18 @@ function isStrictBase64(value: string): boolean {
   return true;
 }
 
-function indented(value: unknown): string | null {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch (error) {
-    if (error instanceof RangeError) return null;
-    throw error;
-  }
-}
-
 // Indentation grows with depth, so a few megabytes nested 900 deep pretty-print to
 // gigabytes across the bundle's files. That exhausts the heap, which no catch can
 // recover from. A file that would overdraw the shared allowance stays compact.
-function jsonEncoder(): (value: unknown) => string {
+function jsonEncoder(): (value: unknown) => Buffer {
   let allowance = MAX_INDENTATION_CHARS;
   return (value) => {
-    const compact = JSON.stringify(value);
-    const pretty = indented(value);
-    if (pretty === null || pretty.length - compact.length > allowance) return compact;
-    allowance -= pretty.length - compact.length;
-    return pretty;
+    const json = serializeJson(value);
+    const overdrawsAllowance = json.indentGrowth > allowance;
+    const outgrowsOneString = json.indentedChars > constants.MAX_STRING_LENGTH;
+    if (overdrawsAllowance || outgrowsOneString) return json.compact;
+    allowance -= json.indentGrowth;
+    return json.indented();
   };
 }
 
