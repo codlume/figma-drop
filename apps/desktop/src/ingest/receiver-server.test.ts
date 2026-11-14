@@ -307,6 +307,47 @@ describe('POST /sync', () => {
     expect((await syncRequest(port, validPayload())).status).toBe(200);
     expect(backend.commits).toHaveLength(1);
   });
+
+  it('frees the slot when the client leaves during a hung commit, and discards late', async () => {
+    const hung = deferred<CommitResult>();
+    const committing = deferred<void>();
+    let calls = 0;
+    const { port, stagingDir, handler } = await start({
+      commit: () => {
+        if (calls++ > 0) return Promise.resolve(committed('r2'));
+        committing.resolve();
+        return hung.promise;
+      },
+    });
+    const leaving = httpRequest({
+      host: '127.0.0.1',
+      port,
+      method: 'POST',
+      path: '/sync',
+      headers: PLUGIN_HEADERS,
+    });
+    leaving.on('error', () => {});
+    leaving.end(validPayload());
+    await committing.promise;
+    leaving.destroy();
+    await handler.idle();
+
+    expect((await syncRequest(port, validPayload())).status).toBe(200);
+    expect(await readdir(stagingDir)).toHaveLength(2);
+    hung.resolve({ ok: false, code: 'failed', message: 'late' });
+    await waitForEntries(stagingDir, 1);
+  });
+
+  it('keeps saving an export whose lookup outlived the deadline', async () => {
+    const looking = deferred<CommitResult | null>();
+    const { port, backend } = await start(
+      { findExport: () => looking.promise },
+      { deadlineMs: 50 },
+    );
+    expectRejection(await syncRequest(port, validPayload()), 'deadlineExceeded');
+    looking.resolve(null);
+    await vi.waitFor(() => expect(backend.commits).toHaveLength(1));
+  });
 });
 
 function head(port: number, target: string, framing: string): string {
@@ -695,6 +736,14 @@ describe('POST /open', () => {
     const reply = await openRequest(port, JSON.stringify({ path: '/library/r1' }));
     expectRejection(reply, 'focusFailed');
     expect(reply.body).not.toContain('window gone');
+  });
+
+  it('answers the deadline on a hung focus', async () => {
+    const { port } = await start({ focus: () => new Promise(() => {}) }, { deadlineMs: 50 });
+    const reply = await openRequest(port, JSON.stringify({ path: '/library/r1' }));
+    expectRejection(reply, 'deadlineExceeded');
+    expectCors(reply);
+    expect(reply.headers.connection).toBe('close');
   });
 
   it('never hands an oversized path or body to the backend', async () => {
