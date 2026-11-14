@@ -1,11 +1,11 @@
+import { Option, Schema } from 'effect';
+
 import type {
   CommitResult,
   CreateReceiverController,
-  ExportLookup,
   ForkedProcess,
   ReceiverController,
   ReceiverControllerOptions,
-  StagedExport,
 } from '../shared/integration';
 import type { Unsubscribe } from '../shared/ipc';
 import type { StagingId } from '../shared/library';
@@ -282,120 +282,62 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms).unref());
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const SHA256_HEX = /^[0-9a-f]{64}$/;
+const identityString = Schema.String.check(Schema.isMaxLength(MAX_IDENTITY_CHARS));
+const nonEmpty = identityString.check(Schema.isNonEmpty());
+const port = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65_535 }));
+const stagingId = Schema.String.pipe(
+  Schema.refine((value): value is StagingId =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value),
+  ),
+);
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isBoundedString = (value: unknown): value is string =>
-  isString(value) && value.length <= MAX_IDENTITY_CHARS;
-const isNullableString = (value: unknown): value is string | null =>
-  value === null || isBoundedString(value);
-const isPort = (value: unknown): value is number =>
-  Number.isInteger(value) && (value as number) > 0 && (value as number) <= 65_535;
+const lookup = {
+  identity: Schema.Union([
+    Schema.Struct({ kind: Schema.Literal('file'), fileKey: nonEmpty }),
+    Schema.Struct({
+      kind: Schema.Literal('unidentified'),
+      claimedKey: Schema.NullOr(identityString),
+    }),
+  ]),
+  figmaNodeId: nonEmpty,
+  contentHash: Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)),
+};
 
-// Child messages are untrusted because the child parses hostile bodies, so each one
-// is rebuilt field by field, with identity lengths enforced here as well as there.
+const call = Schema.Union([
+  Schema.Struct({
+    method: Schema.Literal('commit'),
+    staged: Schema.Struct({
+      ...lookup,
+      stagingId,
+      fileName: Schema.NullOr(identityString),
+      nodeName: Schema.NullOr(identityString),
+      exportedAt: Schema.NullOr(identityString),
+    }),
+  }),
+  Schema.Struct({ method: Schema.Literal('findExport'), lookup: Schema.Struct(lookup) }),
+  Schema.Struct({ method: Schema.Literal('focus'), path: identityString }),
+]);
+
+const status = Schema.Union([
+  Schema.Struct({ state: Schema.Literal('listening'), port }),
+  Schema.Struct({ state: Schema.Literal('stopping') }),
+  Schema.Struct({ state: Schema.Literal('failed'), message: Schema.String }),
+  Schema.Struct({
+    state: Schema.Literal('port-conflict'),
+    port,
+    holder: Schema.optionalKey(Schema.Struct({ pid: Schema.Int, command: Schema.String })),
+  }),
+]);
+
+const decodeChildMessage = Schema.decodeUnknownOption(
+  Schema.Union([
+    Schema.Struct({ type: Schema.Literal('parse-start') }),
+    Schema.Struct({ type: Schema.Literal('parse-end') }),
+    Schema.Struct({ type: Schema.Literal('status'), status }),
+    Schema.Struct({ type: Schema.Literal('call'), callId: Schema.Int, call }),
+  ]),
+);
+
 export function parseChildMessage(raw: unknown): ChildMessage | null {
-  if (!isRecord(raw)) return null;
-  switch (raw.type) {
-    case 'parse-start':
-      return { type: 'parse-start' };
-    case 'parse-end':
-      return { type: 'parse-end' };
-    case 'status': {
-      const status = parseStatus(raw.status);
-      return status ? { type: 'status', status } : null;
-    }
-    case 'call': {
-      const call = parseCall(raw.call);
-      return call && Number.isInteger(raw.callId)
-        ? { type: 'call', callId: raw.callId as number, call }
-        : null;
-    }
-    default:
-      return null;
-  }
-}
-
-function parseStatus(value: unknown): ChildStatus | null {
-  if (!isRecord(value)) return null;
-  switch (value.state) {
-    case 'listening':
-      return isPort(value.port) ? { state: 'listening', port: value.port } : null;
-    case 'stopping':
-      return { state: 'stopping' };
-    case 'failed':
-      return isString(value.message) ? { state: 'failed', message: value.message } : null;
-    case 'port-conflict': {
-      if (!isPort(value.port)) return null;
-      if (value.holder === undefined) return { state: 'port-conflict', port: value.port };
-      const holder = value.holder;
-      if (!isRecord(holder) || !Number.isInteger(holder.pid) || !isString(holder.command)) {
-        return null;
-      }
-      return {
-        state: 'port-conflict',
-        port: value.port,
-        holder: { pid: holder.pid as number, command: holder.command },
-      };
-    }
-    default:
-      return null;
-  }
-}
-
-function parseCall(value: unknown): BackendCall | null {
-  if (!isRecord(value)) return null;
-  switch (value.method) {
-    case 'commit': {
-      const staged = parseStaged(value.staged);
-      return staged ? { method: 'commit', staged } : null;
-    }
-    case 'findExport': {
-      const lookup = parseLookup(value.lookup);
-      return lookup ? { method: 'findExport', lookup } : null;
-    }
-    case 'focus':
-      return isBoundedString(value.path) ? { method: 'focus', path: value.path } : null;
-    default:
-      return null;
-  }
-}
-
-function parseIdentity(value: unknown): StagedExport['identity'] | null {
-  if (!isRecord(value)) return null;
-  if (value.kind === 'file' && isBoundedString(value.fileKey) && value.fileKey !== '') {
-    return { kind: 'file', fileKey: value.fileKey };
-  }
-  if (value.kind === 'unidentified' && isNullableString(value.claimedKey)) {
-    return { kind: 'unidentified', claimedKey: value.claimedKey };
-  }
-  return null;
-}
-
-function parseLookup(value: unknown): ExportLookup | null {
-  if (!isRecord(value)) return null;
-  const identity = parseIdentity(value.identity);
-  if (!identity) return null;
-  if (!isBoundedString(value.figmaNodeId) || value.figmaNodeId === '') return null;
-  if (!isString(value.contentHash) || !SHA256_HEX.test(value.contentHash)) return null;
-  return { identity, figmaNodeId: value.figmaNodeId, contentHash: value.contentHash };
-}
-
-function parseStaged(value: unknown): StagedExport | null {
-  const lookup = parseLookup(value);
-  if (!lookup || !isRecord(value)) return null;
-  if (!isString(value.stagingId) || !UUID.test(value.stagingId)) return null;
-  if (!isNullableString(value.fileName)) return null;
-  if (!isNullableString(value.nodeName)) return null;
-  if (!isNullableString(value.exportedAt)) return null;
-  return {
-    ...lookup,
-    stagingId: value.stagingId as StagingId,
-    fileName: value.fileName,
-    nodeName: value.nodeName,
-    exportedAt: value.exportedAt,
-  };
+  return Option.getOrNull(decodeChildMessage(raw));
 }
