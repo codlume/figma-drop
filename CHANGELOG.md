@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.2](https://github.com/codlume/figma-drop/compare/v0.2.1...v0.2.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **renderer:** close the image viewer natively so focus never drops to the body ([#36](https://github.com/codlume/figma-drop/issues/36)) ([6e47269](https://github.com/codlume/figma-drop/commit/6e4726962bc85a41a6c98aa5c1439bec77b90a91))
+
+
+### Performance Improvements
+
+* **contract:** check an export without copying its unknown keys ([#31](https://github.com/codlume/figma-drop/issues/31)) ([e32e8f4](https://github.com/codlume/figma-drop/commit/e32e8f418b8f5a9badee5abc6e9bb91398363983))
+* speed up ingest, snapshots, and plugin export ([#33](https://github.com/codlume/figma-drop/issues/33)) ([566d1a4](https://github.com/codlume/figma-drop/commit/566d1a41690ea91a62582871a0312319a8e3fa45))
+
 ## [0.2.1](https://github.com/codlume/figma-drop/compare/v0.2.0...v0.2.1) (2026-11-09)
 
 
